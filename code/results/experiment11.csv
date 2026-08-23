@@ -1,7 +1,7 @@
 1/h,1/H,Contrast,Topology,Selected m,Adaptive cycles,Oracle m,Oracle cycles,Gap %,Selection ms,P density %
-32,8,1e+02,cross-channel,0,38,0,38,0.00,1.503,5.0989
-32,8,1e+04,parallel-channels,20,45,20,45,0.00,22.825,71.2799
-64,8,1e+02,diagonal-channels,12,228,12,228,0.00,277.154,24.6651
-64,8,1e+06,parallel-channels,12,160,22,144,11.11,243.310,24.6651
-64,16,1e+04,diagonal-channels,28,51,30,50,2.00,531.934,38.2884
-64,16,1e+06,meandering-channel,36,55,40,51,7.84,542.653,51.8535
+32,8,1e+02,cross-channel,0,38,0,38,0.00,0.425,5.0989
+32,8,1e+04,parallel-channels,12,54,20,45,20.00,4.676,44.2757
+64,8,1e+02,diagonal-channels,12,228,12,228,0.00,57.644,24.6651
+64,8,1e+06,parallel-channels,12,160,22,144,11.11,48.030,24.6651
+64,16,1e+04,diagonal-channels,24,55,30,50,10.00,89.125,31.5204
+64,16,1e+06,meandering-channel,40,51,40,51,0.00,167.476,58.3662

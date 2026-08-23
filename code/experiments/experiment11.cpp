@@ -56,7 +56,12 @@ int main(int argc, char** argv) {
         "Selection ms", "P density %"};
     experiment_support::Rows rows;
 
+    int case_index = 0;
     for (const OracleCase& item : cases) {
+        ++case_index;
+        experiment_support::progress(
+            "experiment11 case " + std::to_string(case_index) + "/" +
+            std::to_string(cases.size()) + ": " + item.field.name);
         experiment_support::BasicConfig config;
         config.fine_intervals = item.fine;
         config.coarse_intervals = item.coarse;
@@ -108,9 +113,12 @@ int main(int argc, char** argv) {
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
             grid, problem.matrix, geometric.prolongation,
             options, &problem.rhs);
+        const int adaptive_cycles = cycles_for(
+            problem.matrix, problem.rhs, adaptive.prolongation,
+            threads, maximum_cycles);
         const double gap = oracle_cycles > 0
             ? 100.0 * static_cast<double>(
-                  adaptive.report.selected_cycles - oracle_cycles) /
+                  adaptive_cycles - oracle_cycles) /
                   static_cast<double>(oracle_cycles)
             : 0.0;
         rows.push_back({
@@ -118,7 +126,7 @@ int main(int argc, char** argv) {
             experiment_support::scientific(item.contrast, 0),
             item.field.name,
             std::to_string(adaptive.report.selected_steps),
-            std::to_string(adaptive.report.selected_cycles),
+            std::to_string(adaptive_cycles),
             std::to_string(oracle_steps), std::to_string(oracle_cycles),
             experiment_support::fixed(gap, 2),
             experiment_support::fixed(adaptive.report.selection_wall_ms),

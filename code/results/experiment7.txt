@@ -1,40 +1,36 @@
 Adaptive finite-PCG checkpoint selection
 ========================================
 
-Version         : 3.1.0
+Version         : 3.2.0
 Fine grid       : h=1/128
 Coarse grid     : H=1/16
 Contrast        : 1e+04
 Smoother        : one forward + one backward Gauss-Seidel
 Solve tolerance : 1e-6
 Timing          : one end-to-end run per candidate
-Selector        : screen-refine-confirm
+Selector        : cost-aware sparse screen
 
-Note: The selector first screens coarse PCG checkpoints with 32 cycles, backtracks from the best screen anchor, refines at spacing two with 64-cycle pilots, and continues only two diverse finalists to the actual solve tolerance. The final objective is measured cycles on the representative right-hand side.
+Note: The v3.2 selector pilots the geometric basis and at most two positive PCG checkpoints on this large grid (m=16 and m=40). It does not run finalists to the solve tolerance during selection. The selected candidate is evaluated independently in the end-to-end table, so forecast error is not hidden in the reported cycle count. The staged row uses the v3.1 quality policy with the v3.2 hierarchy-reuse fix.
 
 End-to-end verification
 -----------------------
 Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
 -----------  ------------------  --------------------  -----------  ----------  ----------  ------------
-cross-channel           PCG-fixed                  m=16       9.1300     512.549    2977.534          4043
-cross-channel           PCG-fixed                  m=24      14.4398     577.442    1224.416           926
-cross-channel           PCG-fixed                  m=32      20.4547     667.767    1016.242           347
-cross-channel           PCG-fixed                  m=36      23.5999     734.124     997.350           268
-cross-channel           PCG-fixed                  m=38      25.2786     713.736     994.755           231
-cross-channel           PCG-fixed                  m=40      26.9969     792.449    1058.632           234
-cross-channel           PCG-fixed                  m=48      33.8960     864.585    1181.602           256
-cross-channel        PCG-adaptive         selected m=38      25.2786    3195.398    3454.163           231
+cross-channel           PCG-fixed                  m=16       9.1300     190.515    2071.869          4043
+cross-channel           PCG-fixed                  m=24      14.4398     245.169     765.084           926
+cross-channel           PCG-fixed                  m=32      20.4547     300.956     539.147           347
+cross-channel           PCG-fixed                  m=36      23.5999     340.008     543.484           268
+cross-channel           PCG-fixed                  m=38      25.2786     359.510     580.781           231
+cross-channel           PCG-fixed                  m=40      26.9969     384.630     578.657           234
+cross-channel           PCG-fixed                  m=48      33.8960     441.389     689.846           256
+cross-channel        PCG-adaptive         selected m=40      26.9969     495.653     692.867           234
+cross-channel          PCG-staged         selected m=38      25.2786    1494.620    1674.091           231
 
 Adaptive decision trace
 -----------------------
 m          phase    pilot     rho_tail   pilot residual  pred cycles    confirmed  P density %     path ms    pilot ms   confirm ms   selected
 -----  ---------  -------  -----------  ---------------  -----------  -----------  -----------  ----------  ----------  -----------  ---------
-0         screen       32     0.996561        5.500e+00         4538            -       1.3950       0.000      18.152        0.000         no
-16        screen       32     0.990804        2.196e+01         1862            -       9.1300     394.353      43.819        0.000         no
-32        screen       32     0.927873        3.842e+00          235            -      20.4547     553.542     136.633        0.000         no
-48        screen       32     0.905077        5.442e-01          165            -      33.8960     693.327     213.024        0.000         no
-38        refine       64     0.921379        1.614e-01          211          231      25.2786     604.955     116.075      190.260        yes
-40        refine       64     0.919222        1.128e-01          203            -      26.9969     625.676     126.387        0.000         no
-42        refine       64     0.917953        8.062e-02          196            -      28.6040     642.780     125.644        0.000         no
-44        refine       64     0.917127        5.665e-02          191          244      30.3389     662.238     121.323      239.488         no
+0         budget       32     0.996561        5.500e+00         4538            -       1.3950       0.000      10.024        0.000         no
+16        budget       32     0.990804        2.196e+01         1862            -       9.1300     156.936      25.951        0.000         no
+40        budget       32     0.915679        1.699e+00          195            -      26.9969     317.802      59.286        0.000        yes
 

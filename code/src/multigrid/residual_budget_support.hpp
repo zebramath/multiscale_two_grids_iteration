@@ -293,9 +293,10 @@ inline ResidualBudgetSupportResult build_residual_budget_interpolation(
     std::vector<int> visited_nodes;
     std::vector<int> marked_columns;
 
-    for (int round = 1; round <= options.maximum_rounds; ++round) {
+    for (int round_index = 0;
+         round_index < options.maximum_rounds; ++round_index) {
         ResidualBudgetRoundReport round_report;
-        round_report.round = round;
+        round_report.round = round_index + 1;
         const auto [round_mean, round_maximum] =
             mean_and_maximum(snapshot.norm);
         round_report.mean_scaled_residual = round_mean;
@@ -480,7 +481,7 @@ inline ResidualBudgetSupportResult build_residual_budget_interpolation(
             refinement_begin, Clock::now());
         result.report.refinement_ms += round_report.refinement_ms;
         result.report.history.push_back(round_report);
-        result.report.rounds = round;
+        result.report.rounds = round_index + 1;
 
         const auto residual_begin = Clock::now();
         snapshot = scaled_f_residual(

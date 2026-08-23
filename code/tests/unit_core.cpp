@@ -43,7 +43,7 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 } // namespace
 
 int main() {
-    require(tgi::version == "3.1.0", "wrong package version");
+    require(tgi::version == "3.2.0", "wrong package version");
     const experiment_support::Row expected_headers{
         "Field", "Method", "Parameter", "P density %",
         "Setup ms", "Total ms", "Cycles"};
@@ -219,5 +219,9 @@ int main() {
         "invalid Cholesky permutation was accepted");
     const auto solved = tgi::solve_two_grid(a, rhs, cycle, 1.0e-6, 1000);
     require(solved.converged, "two-grid solve did not converge");
+    const auto zero_budget = tgi::solve_two_grid(
+        a, rhs, cycle, 1.0e-6, 0);
+    require(!zero_budget.converged && zero_budget.cycles == 0,
+            "two-grid solve ignored its zero-cycle hard stop");
     return 0;
 }

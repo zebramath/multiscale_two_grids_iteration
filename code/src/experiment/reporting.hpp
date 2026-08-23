@@ -44,6 +44,10 @@ inline std::string integer(double value) {
     return std::to_string(static_cast<long long>(std::llround(value)));
 }
 
+inline void progress(const std::string& message) {
+    std::cerr << "[progress] " << message << std::endl;
+}
+
 inline std::filesystem::path write_result(
     const std::string& name, const std::string& contents) {
     const std::filesystem::path directory = TGI_RESULTS_DIR;

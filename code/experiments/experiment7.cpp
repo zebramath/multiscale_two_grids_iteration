@@ -32,19 +32,6 @@ int main(int argc, char** argv) {
     tgi::AdaptiveGlobalPcgOptions options;
     options.minimum_steps = 16;
     options.maximum_steps = 64;
-    options.maximum_screening_steps = 48;
-    options.screening_increment = 16;
-    options.screening_pilot_iterations = 32;
-    options.screening_tail_window = 8;
-    options.screening_patience = 2;
-    options.refinement_backtrack_steps = 10;
-    options.refinement_stop_before_anchor_steps = 4;
-    options.refinement_increment = 2;
-    options.refinement_pilot_iterations = 64;
-    options.refinement_tail_window = 16;
-    options.confirmation_candidates = 2;
-    options.easy_accept_cycles = 48;
-    options.medium_accept_cycles = 64;
     options.maximum_confirmation_cycles = config.max_cycles;
     options.thread_count = config.threads;
     const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
@@ -58,6 +45,30 @@ int main(int argc, char** argv) {
     rows.push_back(experiment_support::evaluate_candidate(
         problem.field_name, problem.matrix, problem.rhs,
         adaptive_candidate, config));
+
+    auto staged_options = options;
+    staged_options.cost_aware_mode = false;
+    staged_options.maximum_screening_steps = 48;
+    staged_options.screening_increment = 16;
+    staged_options.screening_pilot_iterations = 32;
+    staged_options.screening_tail_window = 8;
+    staged_options.refinement_backtrack_steps = 10;
+    staged_options.refinement_stop_before_anchor_steps = 4;
+    staged_options.refinement_increment = 2;
+    staged_options.refinement_pilot_iterations = 64;
+    staged_options.refinement_tail_window = 16;
+    staged_options.confirmation_candidates = 2;
+    const auto staged = tgi::build_adaptive_global_pcg_interpolation(
+        grid, problem.matrix, geometric.prolongation, staged_options,
+        &problem.rhs);
+    experiment_support::StudyCandidate staged_candidate{
+        "PCG-staged",
+        "selected m=" + std::to_string(staged.report.selected_steps),
+        staged.prolongation,
+        geometric_ms + staged.report.selection_wall_ms};
+    rows.push_back(experiment_support::evaluate_candidate(
+        problem.field_name, problem.matrix, problem.rhs,
+        staged_candidate, config));
 
     const experiment_support::Row history_headers{
         "m", "phase", "pilot", "rho_tail", "pilot residual",
@@ -84,13 +95,14 @@ int main(int argc, char** argv) {
     experiment_support::Report report(
         "Adaptive finite-PCG checkpoint selection");
     report.add_summary(experiment_support::fixed_study_summary(
-        config, "Selector", "screen-refine-confirm"));
+        config, "Selector", "cost-aware sparse screen"));
     report.add_note(
-        "The selector first screens coarse PCG checkpoints with 32 cycles, "
-        "backtracks from the best screen anchor, refines at spacing two with "
-        "64-cycle pilots, and continues only two diverse finalists to the "
-        "actual solve tolerance. The final objective is measured cycles on "
-        "the representative right-hand side.");
+        "The v3.2 selector pilots the geometric basis and at most two positive "
+        "PCG checkpoints on this large grid (m=16 and m=40). It does not run "
+        "finalists to the solve tolerance during selection. The selected "
+        "candidate is evaluated independently in the end-to-end table, so "
+        "forecast error is not hidden in the reported cycle count. The staged "
+        "row uses the v3.1 quality policy with the v3.2 hierarchy-reuse fix.");
     report.add_table(
         "End-to-end verification", experiment_support::study_headers(),
         experiment_support::study_widths(), rows);

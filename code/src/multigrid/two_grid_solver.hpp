@@ -926,10 +926,11 @@ inline TwoGridIterationResult solve_two_grid(const SparseMatrix& a, const Vector
         result.converged = true;
         return result;
     }
-    for (int iteration = 1; iteration <= max_cycles; ++iteration) {
+    // Zero-based loop avoids signed overflow when max_cycles == INT_MAX.
+    for (int iteration = 0; iteration < max_cycles; ++iteration) {
         const double residual_squared =
             cycle.iterate(rhs, result.solution, residual, workspace);
-        result.cycles = iteration;
+        result.cycles = iteration + 1;
         result.relative_residual =
             std::sqrt(residual_squared) / initial_norm;
         if (result.relative_residual <= relative_tolerance) {

@@ -85,11 +85,20 @@ int main(int argc, char** argv) {
 
     const experiment_support::Row headers{
         "1/h", "1/H", "H/h", "Contrast", "Seed", "Topology",
-        "Method", "Parameter", "P density %", "selector cycles", "Cycles",
+        "Method", "Parameter", "P density %", "selector estimate", "Cycles",
         "Setup ms", "Total ms"};
     experiment_support::Rows rows;
+    const experiment_support::Row history_headers{
+        "1/h", "1/H", "Contrast", "Seed", "Topology", "m",
+        "Pilot residual", "Tail rho", "Forecast", "Selected"};
+    experiment_support::Rows history_rows;
     constexpr int max_cycles = 12000;
+    int case_index = 0;
     for (const SweepCase& item : cases) {
+        ++case_index;
+        experiment_support::progress(
+            "experiment9 case " + std::to_string(case_index) + "/" +
+            std::to_string(cases.size()) + ": " + item.field.name);
         experiment_support::BasicConfig config;
         config.fine_intervals = item.fine;
         config.coarse_intervals = item.coarse;
@@ -140,6 +149,18 @@ int main(int argc, char** argv) {
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
             grid, problem.matrix, geometric.prolongation, adaptive_options,
             &problem.rhs);
+        for (const auto& checkpoint : adaptive.report.history) {
+            history_rows.push_back({
+                std::to_string(item.fine), std::to_string(item.coarse),
+                experiment_support::scientific(item.contrast, 0),
+                std::to_string(item.seed), item.field.name,
+                std::to_string(checkpoint.steps),
+                experiment_support::scientific(
+                    checkpoint.pilot_relative_residual, 3),
+                experiment_support::fixed(checkpoint.rho_rhs_pilot, 6),
+                std::to_string(checkpoint.predicted_cycles),
+                checkpoint.selected ? "yes" : "no"});
+        }
         rows.push_back(measure(
             item, "PCG-adaptive",
             "m=" + std::to_string(adaptive.report.selected_steps),
@@ -147,6 +168,21 @@ int main(int argc, char** argv) {
             geometric_ms + adaptive.report.selection_wall_ms,
             threads, max_cycles,
             std::to_string(adaptive.report.selected_cycles)));
+
+        // Same candidate budgets as v3.1, but with the v3.2 implementation
+        // fix that reuses each candidate hierarchy between pilot and
+        // confirmation.  This is the high-quality ablation baseline.
+        adaptive_options.cost_aware_mode = false;
+        const auto staged = tgi::build_adaptive_global_pcg_interpolation(
+            grid, problem.matrix, geometric.prolongation, adaptive_options,
+            &problem.rhs);
+        rows.push_back(measure(
+            item, "PCG-staged",
+            "m=" + std::to_string(staged.report.selected_steps),
+            problem.matrix, problem.rhs, staged.prolongation,
+            geometric_ms + staged.report.selection_wall_ms,
+            threads, max_cycles,
+            std::to_string(staged.report.selected_cycles)));
     }
 
     experiment_support::Report report(
@@ -161,11 +197,14 @@ int main(int argc, char** argv) {
         "The full matrix contains 18 coefficient problems: three grids, "
         "three contrasts, two seeds, and four channel topologies assigned in "
         "balanced rotation. Each problem compares the geometric basis, fixed "
-        "m=40 PCG, and the same adaptive rule without case-specific tuning.");
+        "m=40 PCG, the low-budget v3.2 rule, and the high-quality staged rule "
+        "without case-specific tuning.");
     report.add_table(
         "Robustness matrix", headers,
         {5, 5, 5, 10, 6, 20, 14, 10, 11, 10, 12, 10, 10}, rows, true);
     report.save("experiment9");
     experiment_support::write_csv("experiment9", headers, rows);
+    experiment_support::write_csv(
+        "experiment9_history", history_headers, history_rows);
     return 0;
 }

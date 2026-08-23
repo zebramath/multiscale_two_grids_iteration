@@ -160,14 +160,15 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
     Vector direction = z;
     Vector ad;
     double rz = dot(residual, z);
-    for (int iteration = 1; iteration <= max_iterations; ++iteration) {
+    // Zero-based loop avoids signed overflow when max_iterations == INT_MAX.
+    for (int iteration = 0; iteration < max_iterations; ++iteration) {
         matrix.multiply(direction, ad);
         const double denominator = dot(direction, ad);
         if (!(denominator > 0.0) || !std::isfinite(denominator)) break;
         const double alpha = rz / denominator;
         axpy(alpha, direction, x);
         axpy(-alpha, ad, residual);
-        stats.iterations = iteration;
+        stats.iterations = iteration + 1;
         residual_squared = dot(residual, residual);
         if (residual_squared <= target_squared) {
             stats.converged = true;

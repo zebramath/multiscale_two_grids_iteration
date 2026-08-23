@@ -97,8 +97,35 @@ int main() {
             "adaptive PCG selected an invalid checkpoint");
     require(!adaptive.report.history.empty(),
             "adaptive PCG did not record its decisions");
+    require(adaptive.report.history.size() <= 4U,
+            "budget adaptive PCG exceeded its finite candidate budget");
+    require(!adaptive.report.selected_cycles_confirmed,
+            "budget adaptive PCG unexpectedly ran a full confirmation solve");
     require(adaptive.prolongation.rows() == grid.fine_size(),
             "adaptive PCG returned an invalid prolongation");
+
+    tgi::AdaptiveGlobalPcgOptions invalid_options = adaptive_options;
+    invalid_options.maximum_confirmation_cycles = 0;
+    bool rejected_invalid_budget = false;
+    try {
+        (void)tgi::build_adaptive_global_pcg_interpolation(
+            grid, a, geometric.prolongation,
+            invalid_options, &adaptive_rhs);
+    } catch (const std::invalid_argument&) {
+        rejected_invalid_budget = true;
+    }
+    require(rejected_invalid_budget,
+            "adaptive PCG accepted a nonpositive confirmation cap");
+
+    adaptive_options.cost_aware_mode = false;
+    const auto staged = tgi::build_adaptive_global_pcg_interpolation(
+        grid, a, geometric.prolongation, adaptive_options, &adaptive_rhs);
+    require(staged.report.selected_cycles > 0,
+            "staged adaptive PCG did not confirm a candidate");
+    require(staged.report.selected_cycles_confirmed,
+            "staged adaptive PCG lost its confirmation status");
+    require(staged.prolongation.rows() == grid.fine_size(),
+            "staged adaptive PCG returned an invalid prolongation");
 
     return 0;
 }
