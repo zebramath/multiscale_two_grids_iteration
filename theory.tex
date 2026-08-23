@@ -4,7 +4,7 @@
 \usepackage{mathstyle}
 \usepackage{reportstyle}
 
-\setinfo{局部能量插值、有限步 PCG 与两网格非单调性的理论分析}{崔正平}
+\setinfo{局部能量插值、有限步 PCG 与成本感知自适应选择}{崔正平}
 
 \theoremstyle{chineseplain}
 \newtheorem{theorem}{定理}[section]
@@ -75,6 +75,8 @@ $10^{-14}$ 的输出条目，浮点运算也会破坏严格共轭，因此数值
     并给出全局、相邻步、局部渐近和有限尾部四种层次的判据；
     \item 为阈值剪枝和自适应停止补充扰动界，明确哪些量可由代码直接估计，
     以及谱半径结论与给定右端项循环数之间的关系。
+    \item 建立候选预测误差、实际循环数损失、Setup 成本和右端项数量之间的
+    定量关系，为 v3.2 的低预算选择规则给出可检验的评价标准。
 \end{enumerate}
 前两类结论解释 experiment1、experiment2、experiment5 和 experiment6；
 第三类结论与 experiment3 的剪枝现象及后续自适应算法直接相关。为了避免逻辑过度外推，
@@ -1427,6 +1429,145 @@ $\sigma_2(\bm X)^2$。
 这些量用于验证理论链条，不应取代当前右端项下的循环数和计时结果。
 
 
+\section{成本感知自适应选择的理论框架}
+
+前文说明有限 PCG 中间点可能严格优于精确能量终点，但这并不自动给出一个低成本
+选择算法。本节把 v3.2 实际优化的量单独形式化。这样可以避免把“候选循环数较小”
+与“包含选择成本后的总时间较小”混为一谈。
+
+\subsection{有限候选、预测误差与近似最优性}
+
+设 $\mathcal M$ 是允许检查的有限 PCG 步数集合，并把几何插值记为 $m=0$。
+固定右端项、初值、容差和两网格循环后，记候选 $m$ 的真实循环数为 $N_m$，
+短试运行给出的预测为 $\widehat N_m$。这里的 oracle 仅指候选集内部的
+\begin{align}
+    N_\star=\min_{m\in\mathcal M}N_m,
+\end{align}
+并不代表所有可能插值中的全局最优值。
+
+\begin{proposition}[预测误差到选择损失的传递]\label{prop:forecast-regret}
+假设存在 $0\le\delta<1$，使所有候选满足
+\begin{align}
+    (1-\delta)N_m\le \widehat N_m\le(1+\delta)N_m.
+                                                               \label{eq:forecast-relative-error}
+\end{align}
+若选择器返回的 $\widehat m$ 满足
+\begin{align}
+    \widehat N_{\widehat m}
+    \le(1+\gamma)\min_{m\in\mathcal M}\widehat N_m,
+    \qquad \gamma\ge0,                                  \label{eq:forecast-slack}
+\end{align}
+则
+\begin{align}
+    N_{\widehat m}
+    \le
+    \frac{(1+\gamma)(1+\delta)}{1-\delta}\,N_\star.     \label{eq:cycle-regret-bound}
+\end{align}
+\end{proposition}
+
+\begin{proof}
+取 $m_\star\in\argmin_{m\in\mathcal M}N_m$。依次使用
+\cref{eq:forecast-relative-error,eq:forecast-slack} 得
+\begin{align}
+    (1-\delta)N_{\widehat m}
+    \le\widehat N_{\widehat m}
+    \le(1+\gamma)\widehat N_{m_\star}
+    \le(1+\gamma)(1+\delta)N_\star.
+\end{align}
+除以 $1-\delta$ 即得结论。
+\end{proof}
+
+这个命题说明“允许30\%循环差距”不能只靠把 $\gamma$ 设成 $0.3$ 来保证：若短
+试运行预测本身误差很大，真实损失还会被放大。因此 v3.2 不再使用两个相距很远的
+正步数候选，而使用
+\begin{align}
+    \mathcal M_{3.2}=\{0,m_{\min},m_{\min}+12,40\},       \label{eq:v32-candidates}
+\end{align}
+并在大网格上为控制成本省略中间点。这个集合是实验驱动的离散设计，不是普适常数。
+其合理评价方式是同时报告候选内 oracle 差距和候选离散化造成的遗漏，而不是把
+\cref{eq:cycle-regret-bound} 误写成无条件性能保证。
+
+\subsection{Setup 与多右端项盈亏平衡}
+
+记构造候选 $m$ 的固定成本为 $S_m$，一次右端项求解的平均时间为 $Q_m$。
+若自适应选择本身花费 $S_{\rm sel}$，并返回 $\widehat m$，那么复用同一层次求解
+$R$ 个右端项的总时间模型为
+\begin{align}
+    T_{\rm ad}(R)=S_{\rm sel}+S_{\widehat m}+RQ_{\widehat m}. \label{eq:adaptive-total-time}
+\end{align}
+对一个不需要选择的基准 $m_0$，相应时间为
+\begin{align}
+    T_0(R)=S_{m_0}+RQ_{m_0}.                              \label{eq:baseline-total-time}
+\end{align}
+
+\begin{proposition}[盈亏平衡右端项数]\label{prop:break-even-rhs}
+若 $Q_{\widehat m}<Q_{m_0}$，则自适应方法严格更快当且仅当
+\begin{align}
+    R>
+    \frac{S_{\rm sel}+S_{\widehat m}-S_{m_0}}
+         {Q_{m_0}-Q_{\widehat m}}.                       \label{eq:break-even-rhs}
+\end{align}
+若 $Q_{\widehat m}\ge Q_{m_0}$ 且自适应固定成本更大，则不存在正的盈亏平衡点。
+\end{proposition}
+
+\begin{proof}
+将 \cref{eq:adaptive-total-time} 与 \cref{eq:baseline-total-time} 相减并整理即可。
+\end{proof}
+
+第二种情况尤其重要：若事先已经知道固定 $m=40$ 正好合适，而自适应器最终也选择
+$m=40$，两者每次求解的工作相同，自适应器不可能靠增加右端项数量回收额外选择成本。
+自适应的价值来自“事先不知道哪个候选合适”，不能与拥有 oracle 先验的固定方法
+混为一谈。
+
+实际每次循环的时间还随插值密度和粗矩阵填充变化，所以循环数不是时间的完全代理。
+更准确的目标应写成 $Q_m$，或用
+\begin{align}
+    Q_m\approx \tau_m N_m
+\end{align}
+表示，其中 $\tau_m$ 是候选 $m$ 的平均单循环时间。v3.2 允许在预测值接近时偏向
+较早、较稀疏的候选，本质上就是在循环数与 $\tau_m$ 之间折中。
+
+\subsection{多个右端项时的目标边界}
+
+单个代表性右端项只能定义 $N_m(\bm b_{\rm rep})$。对右端项集合
+$\mathcal B=\{\bm b_1,\ldots,\bm b_R\}$，可根据任务选择
+\begin{align}
+    \overline Q_m
+      &=\frac1R\sum_{i=1}^RQ_m(\bm b_i),\label{eq:mean-rhs-cost}\\
+    Q_m^{\max}
+      &=\max_{1\le i\le R}Q_m(\bm b_i).                 \label{eq:max-rhs-cost}
+\end{align}
+前者优化平均吞吐量，后者控制最坏右端项。若只用一个 $\bm b_{\rm rep}$ 选择，除非
+另有慢模态投影假设，否则不能由 $N_m(\bm b_{\rm rep})$ 推出
+\cref{eq:mean-rhs-cost,eq:max-rhs-cost} 的近似最优性。因此
+\texttt{experiment14} 使用五个不同形状的右端项重新测量平均和最大循环数；这属于
+必要的泛化检查，而不是重复实验。
+
+\subsection{v3.2 低预算策略的可证明部分与经验部分}
+
+v3.2 的实现遵循以下顺序：
+\begin{enumerate}
+    \item 对几何插值做短试运行；预测已经很小时立即返回；
+    \item 沿同一全局 PCG 路径生成少量固定检查点，Krylov 工作不重新开始；
+    \item pilot 长度随 $H/h$ 增加，以缓解慢瞬态导致的预测偏差；
+    \item 大网格减少一个中间检查点，使候选数随单候选构造成本受控；
+    \item 不再把两个候选都继续到真实容差，最终真实循环数只在独立评价阶段测量。
+\end{enumerate}
+
+其中，PCG 路径复用严格删除了重复 Krylov 工作；
+\cref{prop:forecast-regret,prop:break-even-rhs} 分别给出预测可靠时的循环数界和总时间
+判据。候选位置、早停阈值和 pilot 长度仍是经验参数。因而正确结论是：v3.2 有
+明确的成本模型和条件性性能界，但尚不存在对任意 SPD 系统都成立的30\% oracle
+保证。
+
+这里还要区分数学上的有限维精确终止与程序的可控终止。实现只考察有限候选集
+$\mathcal M$，每个 pilot 至多运行 $k_{\rm pilot}$ 次，真实确认至多运行
+$N_{\max}$ 次；全局 PCG 路径至多推进到 $\max\mathcal M$。因此即使有限精度下残差
+停滞，选择阶段和最终求解也会在预设上限后返回“不收敛”，而不会依赖精确算术的
+有限步终止性质。外层墙钟超时只用于定位异常慢的实验，不参与算法选择，也不改变
+上述理论结论。
+
+
 \section{主要结论、定理层级与研究含义}
 
 本节把全文结论按“无条件恒等式---结构性充分条件---适用边界”的顺序归纳。
@@ -1478,6 +1619,11 @@ $\sigma_2(\bm X)^2$。
     \cref{prop:cycles-rho} 给出能量误差的 $\rhoTG^k$ 收缩，以及二范数
     残差中附带 $\sqrt{\kappa_2(\bm A)}$ 的上界。它说明谱半径是稳健的右端项无关指标，
     但某一实验的循环数还受初始误差在慢模态上的投影和停止准则影响。
+
+    \item \textbf{预测误差和 Setup 可以进入同一个定量框架。}
+    \cref{prop:forecast-regret} 把短试运行的相对预测误差转换为候选内 oracle
+    损失；\cref{prop:break-even-rhs} 则给出自适应选择相对固定基准的盈亏平衡
+    右端项数。二者分别约束“选得是否足够好”和“选择成本能否回收”。
 \end{enumerate}
 
 \subsection{有限步优于精确能量插值的结构性结论}
@@ -1536,25 +1682,33 @@ $\sigma_2(\bm X)^2$。
     \item 剪枝和提前停止是两种不同扰动。前者通常破坏 PCG 正交结构，不能直接套用
     \cref{thm:pcg-tail}；它应使用\cref{prop:energy-perturbation,cor:safe-pruning}
     的一般扰动界单独评估。
+
+    \item 低预算自适应器的近似保证依赖
+    \cref{eq:forecast-relative-error}。当前短试运行预测并没有无条件相对误差界，
+    所以30\%循环容忍度是实验目标而非定理结论；单一代表右端项也不能代替
+    多右端项平均或最坏成本。
 \end{enumerate}
 
 \subsection{对算法与实验设计的直接启示}
 
 上述结论支持一个较稳健的实现原则。首先，用支撑外残差决定是否扩展局部区域，
 用局部代数残差决定是否继续求解；二者同时足够小时才把该列视为收敛。其次，
-全局或局部 PCG 不应默认以最精确插值作为最终选择，而应在迭代路径上保存实测
-两网格指标最好的历史候选。再次，剪枝应同时比较删除量和当前谱裕量；若不能满足
+全局或局部 PCG 不应默认以最精确插值作为最终选择。高质量模式可在迭代路径上保存
+实测两网格指标最好的历史候选；低预算模式则应限制候选数，报告预测误差与独立
+oracle 差距。再次，剪枝应同时比较删除量和当前谱裕量；若不能满足
 \cref{eq:safe-pruning}，则需要重新测量两网格因子，而不能仅凭系数绝对值判断。
 
 从研究角度看，最值得继续追踪的不是单独的 PCG 残差，而是四组相互补充的量：
-支撑误差、PCG 能量尾、Ritz 选择性和两网格谱裕量。它们分别回答“区域是否够大”、
+支撑误差、PCG 能量尾、Ritz 选择性和两网格谱裕量；工程评价还必须加入 Setup 与
+多右端项平均成本。它们分别回答“区域是否够大”、
 “线性方程是否够准”、“哪些谱分量被恢复”和“这种恢复是否真正改善两网格”。
 因此，本文最终得到的核心结论可概括为：
 \begin{quote}
 能量极小化确定了唯一而稳定的精确终点；有限 PCG 的谱选择性则可能产生更好的
 两网格中间点。在明确的通道对齐、Ritz 分离和小尾部条件下，这种优势可以被严格
 证明、逐步比较并用显式裕量保护；离开这些条件时，应回到精确 LMI 或实测指标，
-而不能假设能量与两网格性能单调一致。
+而不能假设能量与两网格性能单调一致。低预算自适应的价值还取决于预测误差、
+候选构造成本和右端项数量，只有满足显式盈亏平衡条件时才具有时间优势。
 \end{quote}
 
 
