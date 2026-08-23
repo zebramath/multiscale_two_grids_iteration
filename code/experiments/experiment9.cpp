@@ -40,7 +40,7 @@ experiment_support::Row measure(
         experiment_support::fixed(interpolation_ms + metric.total_ms)};
 }
 
-} // namespace
+}
 
 int main(int argc, char** argv) {
     bool quick = false;
@@ -51,11 +51,8 @@ int main(int argc, char** argv) {
             quick = true;
         } else if (argument.rfind("--threads=", 0) == 0) {
             threads = std::stoi(argument.substr(10));
-        } else {
-            throw std::invalid_argument("unknown argument: " + argument);
         }
     }
-    if (threads <= 0) throw std::invalid_argument("invalid thread count");
 
     const std::array<std::pair<int, int>, 3> grids{
         std::pair<int, int>{32, 8}, {64, 8}, {64, 16}};
@@ -131,20 +128,7 @@ int main(int argc, char** argv) {
         tgi::AdaptiveGlobalPcgOptions adaptive_options;
         adaptive_options.minimum_steps = 12;
         adaptive_options.maximum_steps = 56;
-        adaptive_options.maximum_screening_steps = 44;
-        adaptive_options.screening_increment = 16;
-        adaptive_options.screening_pilot_iterations = 24;
-        adaptive_options.screening_tail_window = 6;
-        adaptive_options.minimum_screened_positive_candidates = 4;
-        adaptive_options.refinement_backtrack_steps = 10;
-        adaptive_options.refinement_stop_before_anchor_steps = 4;
-        adaptive_options.refinement_increment = 2;
-        adaptive_options.refinement_pilot_iterations = 48;
-        adaptive_options.refinement_tail_window = 12;
-        adaptive_options.confirmation_candidates = 2;
-        adaptive_options.easy_accept_cycles = 48;
-        adaptive_options.medium_accept_cycles = 64;
-        adaptive_options.maximum_confirmation_cycles = max_cycles;
+        adaptive_options.maximum_cycles = max_cycles;
         adaptive_options.thread_count = threads;
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
             grid, problem.matrix, geometric.prolongation, adaptive_options,
@@ -169,20 +153,6 @@ int main(int argc, char** argv) {
             threads, max_cycles,
             std::to_string(adaptive.report.selected_cycles)));
 
-        // Same candidate budgets as v3.1, but with the v3.2 implementation
-        // fix that reuses each candidate hierarchy between pilot and
-        // confirmation.  This is the high-quality ablation baseline.
-        adaptive_options.cost_aware_mode = false;
-        const auto staged = tgi::build_adaptive_global_pcg_interpolation(
-            grid, problem.matrix, geometric.prolongation, adaptive_options,
-            &problem.rhs);
-        rows.push_back(measure(
-            item, "PCG-staged",
-            "m=" + std::to_string(staged.report.selected_steps),
-            problem.matrix, problem.rhs, staged.prolongation,
-            geometric_ms + staged.report.selection_wall_ms,
-            threads, max_cycles,
-            std::to_string(staged.report.selected_cycles)));
     }
 
     experiment_support::Report report(
@@ -197,8 +167,8 @@ int main(int argc, char** argv) {
         "The full matrix contains 18 coefficient problems: three grids, "
         "three contrasts, two seeds, and four channel topologies assigned in "
         "balanced rotation. Each problem compares the geometric basis, fixed "
-        "m=40 PCG, the low-budget v3.2 rule, and the high-quality staged rule "
-        "without case-specific tuning.");
+        "m=40 PCG, and the data-driven v3.3 selector without case-specific "
+        "tuning.");
     report.add_table(
         "Robustness matrix", headers,
         {5, 5, 5, 10, 6, 20, 14, 10, 11, 10, 12, 10, 10}, rows, true);

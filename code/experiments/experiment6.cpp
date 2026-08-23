@@ -17,11 +17,6 @@ using LongVector = std::vector<long double>;
 LongVector dense_long_double_solve(
     const tgi::SparseMatrix& matrix, const tgi::Vector& rhs) {
     const int n = matrix.rows();
-    if (matrix.cols() != n || static_cast<int>(rhs.size()) != n) {
-        throw std::invalid_argument(
-            "dense_long_double_solve: incompatible dimensions");
-    }
-
     std::vector<long double> lower(
         static_cast<std::size_t>(n) * static_cast<std::size_t>(n), 0.0L);
     const auto at = [n](int row, int col) {
@@ -137,9 +132,6 @@ experiment_support::Row evaluate_verified_candidate(
     const tgi::Vector& rhs,
     const experiment_support::StudyCandidate& candidate,
     const experiment_support::BasicConfig& config) {
-    // The validation cycle is deliberately outside the reported timing.
-    // It checks the production sparse solve against an independent
-    // long-double dense Cholesky implementation without changing the solver.
     const tgi::TwoGridCycle validation_cycle(
         matrix, candidate.prolongation, 1, config.threads);
     verify_coarse_solver(validation_cycle);
@@ -147,7 +139,7 @@ experiment_support::Row evaluate_verified_candidate(
         field, matrix, rhs, candidate, config);
 }
 
-} // namespace
+}
 
 int main(int argc, char** argv) {
     const auto config = experiment_support::parse_config(argc, argv);
@@ -162,7 +154,6 @@ int main(int argc, char** argv) {
     auto geometric = experiment_support::geometric_interpolation(grid, a);
     const double geometric_ms = geometric.report.timing.total_ms;
     for (int steps = 16; steps <= 64; steps += 2) {
-        // Zero tolerance selects an explicit fixed PCG budget.
         auto options = experiment_support::energy_options(
             0, config.threads, 0.0);
         options.local_max_iterations = steps;

@@ -1,7 +1,7 @@
 Adaptive finite-PCG checkpoint selection
 ========================================
 
-Version         : 3.2.0
+Version         : 3.3.0
 Fine grid       : h=1/128
 Coarse grid     : H=1/16
 Contrast        : 1e+04
@@ -10,27 +10,26 @@ Solve tolerance : 1e-6
 Timing          : one end-to-end run per candidate
 Selector        : cost-aware sparse screen
 
-Note: The v3.2 selector pilots the geometric basis and at most two positive PCG checkpoints on this large grid (m=16 and m=40). It does not run finalists to the solve tolerance during selection. The selected candidate is evaluated independently in the end-to-end table, so forecast error is not hidden in the reported cycle count. The staged row uses the v3.1 quality policy with the v3.2 hierarchy-reuse fix.
+Note: The v3.3 selector fits a robust tail model at the geometric basis and one anchor, projects a data-dependent third checkpoint when needed, and never confirms a candidate to the solve tolerance during setup.
 
 End-to-end verification
 -----------------------
 Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
 -----------  ------------------  --------------------  -----------  ----------  ----------  ------------
-cross-channel           PCG-fixed                  m=16       9.1300     190.515    2071.869          4043
-cross-channel           PCG-fixed                  m=24      14.4398     245.169     765.084           926
-cross-channel           PCG-fixed                  m=32      20.4547     300.956     539.147           347
-cross-channel           PCG-fixed                  m=36      23.5999     340.008     543.484           268
-cross-channel           PCG-fixed                  m=38      25.2786     359.510     580.781           231
-cross-channel           PCG-fixed                  m=40      26.9969     384.630     578.657           234
-cross-channel           PCG-fixed                  m=48      33.8960     441.389     689.846           256
-cross-channel        PCG-adaptive         selected m=40      26.9969     495.653     692.867           234
-cross-channel          PCG-staged         selected m=38      25.2786    1494.620    1674.091           231
+cross-channel           PCG-fixed                  m=16       9.1300     153.678    1998.379          4043
+cross-channel           PCG-fixed                  m=24      14.4398     199.037     709.106           926
+cross-channel           PCG-fixed                  m=32      20.4547     245.453     476.969           347
+cross-channel           PCG-fixed                  m=36      23.5999     273.665     465.778           268
+cross-channel           PCG-fixed                  m=38      25.2786     286.557     457.206           231
+cross-channel           PCG-fixed                  m=40      26.9969     311.707     493.215           234
+cross-channel           PCG-fixed                  m=48      33.8960     360.840     598.124           256
+cross-channel        PCG-adaptive         selected m=40      26.9969     448.995     637.154           234
 
 Adaptive decision trace
 -----------------------
-m          phase    pilot     rho_tail   pilot residual  pred cycles    confirmed  P density %     path ms    pilot ms   confirm ms   selected
------  ---------  -------  -----------  ---------------  -----------  -----------  -----------  ----------  ----------  -----------  ---------
-0         budget       32     0.996561        5.500e+00         4538            -       1.3950       0.000      10.024        0.000         no
-16        budget       32     0.990804        2.196e+01         1862            -       9.1300     156.936      25.951        0.000         no
-40        budget       32     0.915679        1.699e+00          195            -      26.9969     317.802      59.286        0.000        yes
+m           phase    pilot     rho_tail   uncertainty   pilot residual  PCG energy residual  pred cycles  P density %     path ms    pilot ms   selected
+-----  ----------  -------  -----------  ------------  ---------------  ------------------  -----------  -----------  ----------  ----------  ---------
+0         initial       24     0.994006        0.1079        5.654e+00           1.000e+00         2611       1.3950       0.000       8.270         no
+16         anchor       24     0.990369        0.0116        2.364e+01           1.101e-01         1779       9.1300     151.639      15.686         no
+40      projected       24     0.912467        0.0128        3.438e+00           1.112e-02          189      26.9969     289.676      42.487        yes
 

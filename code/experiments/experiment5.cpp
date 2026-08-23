@@ -9,8 +9,6 @@ int main(int argc, char** argv) {
     const auto config = experiment_support::parse_config(argc, argv);
     const tgi::StructuredGrid grid = experiment_support::make_grid(config);
     experiment_support::Rows rows;
-    // These are global-F-system iteration budgets.  The larger values make
-    // the approach to the global energy-minimum target visible.
     constexpr std::array<int, 5> steps{4, 8, 16, 32, 64};
 
     for (const auto& field : experiment_support::standard_fields()) {
@@ -23,9 +21,6 @@ int main(int argc, char** argv) {
         auto geometric = experiment_support::geometric_interpolation(grid, a);
         const double geometric_ms = geometric.report.timing.total_ms;
 
-        // P_G is the common initial guess; every finite-step row targets the
-        // same global F-point equation AP=0. The exact global basis supplies
-        // the limiting reference row.
         experiment_support::StudyCandidate initial{
             "geometric", "P_G", geometric.prolongation,
             geometric_ms};
@@ -50,7 +45,6 @@ int main(int argc, char** argv) {
         }
 
         for (int count : steps) {
-            // Zero tolerance selects an explicit fixed PCG budget.
             auto options = experiment_support::energy_options(
                 0, config.threads, 0.0);
             options.local_max_iterations = count;
@@ -90,3 +84,4 @@ int main(int argc, char** argv) {
         "experiment5", experiment_support::study_headers(), rows);
     return 0;
 }
+

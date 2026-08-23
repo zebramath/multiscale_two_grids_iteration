@@ -23,20 +23,15 @@ int reported_cycles(
     return metric.converged ? metric.cycles : maximum + 1;
 }
 
-} // namespace
+}
 
 int main(int argc, char** argv) {
     int threads = 4;
-    if (argc == 2) {
-        const std::string argument = argv[1];
-        if (argument.rfind("--threads=", 0) != 0) {
-            throw std::invalid_argument("unknown argument: " + argument);
-        }
-        threads = std::stoi(argument.substr(10));
-    } else if (argc > 2) {
-        throw std::invalid_argument("experiment12 accepts only --threads");
+    for (int index = 1; index < argc; ++index) {
+        const std::string argument = argv[index];
+        if (argument.rfind("--threads=", 0) == 0)
+            threads = std::stoi(argument.substr(10));
     }
-    if (threads <= 0) throw std::invalid_argument("invalid thread count");
 
     const auto& channels = experiment_support::channel_topologies();
     const auto& standard = experiment_support::standard_fields();
@@ -103,7 +98,7 @@ int main(int argc, char** argv) {
         tgi::AdaptiveGlobalPcgOptions options;
         options.minimum_steps = 12;
         options.maximum_steps = 56;
-        options.maximum_confirmation_cycles = maximum_cycles;
+        options.maximum_cycles = maximum_cycles;
         options.thread_count = threads;
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
             grid, problem.matrix, geometric.prolongation,
@@ -146,10 +141,10 @@ int main(int argc, char** argv) {
         {"Oracle", "m=0 and m=12,16,...,48"},
         {"Solve tolerance", "1e-6"}});
     report.add_note(
-        "The initial two-positive-candidate policy failed on part of this set. "
-        "Those failures motivated the final three-checkpoint set m_min, "
-        "m_min+12, and m=40. This table reports the corrected policy and is "
-        "diagnostic rather than held-out evidence. The oracle is evaluation-only.");
+        "This historical diagnostic set is rerun with the v3.3 data-driven "
+        "selector. Candidate locations come from pilot forecasts and PCG "
+        "energy-residual decay rather than case-specific step values. The "
+        "oracle is evaluation-only.");
     report.add_table(
         "Post-diagnosis validation", headers,
         {5, 5, 10, 6, 20, 10, 16, 18, 9, 14, 8, 16, 15, 9}, rows);

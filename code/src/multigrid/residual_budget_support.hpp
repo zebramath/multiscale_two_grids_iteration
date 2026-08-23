@@ -223,31 +223,13 @@ inline std::pair<double, double> mean_and_maximum(
     return {mean, maximum};
 }
 
-} // namespace residual_budget_support_detail
+}
 
 inline ResidualBudgetSupportResult build_residual_budget_interpolation(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& initial_prolongation,
     const InterpolationOptions& interpolation_options,
     const ResidualBudgetSupportOptions& options) {
-    if (a.rows() != grid.fine_size() || a.cols() != grid.fine_size() ||
-        initial_prolongation.rows() != grid.fine_size() ||
-        initial_prolongation.cols() != grid.coarse_size()) {
-        throw std::invalid_argument(
-            "build_residual_budget_interpolation: incompatible dimensions");
-    }
-    if (options.base_patch_layers <= 0 || options.maximum_rounds < 0 ||
-        options.maximum_extra_nodes_per_column < 0 ||
-        options.maximum_nodes_per_round <= 0 ||
-        !(options.marking_fraction > 0.0 &&
-          options.marking_fraction <= 1.0) ||
-        !(options.target_residual_ratio >= 0.0) ||
-        !(options.refinement_tolerance > 0.0) ||
-        !(options.strong_edge_fraction >= 0.0)) {
-        throw std::invalid_argument(
-            "build_residual_budget_interpolation: invalid options");
-    }
-
     using namespace residual_budget_support_detail;
     const auto total_begin = Clock::now();
     ResidualBudgetSupportResult result;
@@ -520,4 +502,4 @@ inline ResidualBudgetSupportResult build_residual_budget_interpolation(
     return result;
 }
 
-} // namespace tgi
+}

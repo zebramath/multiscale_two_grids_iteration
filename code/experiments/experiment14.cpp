@@ -63,9 +63,6 @@ WorkloadMetric evaluate_workload(
     WorkloadMetric result;
     const tgi::TwoGridCycle cycle(a, p, 1, threads);
     result.hierarchy_setup_ms = cycle.setup_report().total_ms;
-    // Warm allocations with two cycles.  A previous full-solve warmup could
-    // spend another maximum_cycles iterations on a failing hierarchy and
-    // looked like a hang even though it was bounded.
     tgi::Vector warm_solution(rhs_set.front().size(), 0.0);
     tgi::Vector warm_residual = rhs_set.front();
     tgi::TwoGridCycle::Workspace warm_workspace;
@@ -82,7 +79,7 @@ WorkloadMetric evaluate_workload(
         for (const tgi::Vector& rhs : rhs_set) {
             const auto begin = std::chrono::steady_clock::now();
             const auto solved = tgi::solve_two_grid(
-                a, rhs, cycle, 1.0e-6, maximum_cycles);
+                rhs, cycle, 1.0e-6, maximum_cycles);
             solve_ms += std::chrono::duration<double, std::milli>(
                 std::chrono::steady_clock::now() - begin).count();
             cycles += solved.cycles;
@@ -112,41 +109,14 @@ std::string break_even_rhs(
         (adaptive_setup - baseline_setup) / saving)));
 }
 
-tgi::AdaptiveGlobalPcgOptions quality_options(
-    const tgi::StructuredGrid& grid, int threads, int maximum_cycles) {
-    tgi::AdaptiveGlobalPcgOptions options;
-    options.cost_aware_mode = false;
-    options.minimum_steps = grid.intervals() >= 128 ? 16 : 12;
-    options.maximum_steps = grid.intervals() >= 128 ? 64 : 56;
-    options.maximum_screening_steps = grid.intervals() >= 128 ? 48 : 44;
-    options.screening_increment = 16;
-    options.screening_pilot_iterations = grid.ratio() >= 8 ? 32 : 24;
-    options.screening_tail_window = grid.ratio() >= 8 ? 8 : 6;
-    options.minimum_screened_positive_candidates =
-        grid.intervals() >= 128 ? 3 : 4;
-    options.refinement_backtrack_steps = 10;
-    options.refinement_stop_before_anchor_steps = 4;
-    options.refinement_increment = 2;
-    options.refinement_pilot_iterations = grid.ratio() >= 8 ? 64 : 48;
-    options.refinement_tail_window = grid.ratio() >= 8 ? 16 : 12;
-    options.confirmation_candidates = 2;
-    options.maximum_confirmation_cycles = maximum_cycles;
-    options.thread_count = threads;
-    return options;
 }
-
-} // namespace
 
 int main(int argc, char** argv) {
     int threads = 4;
-    if (argc == 2) {
-        const std::string argument = argv[1];
-        if (argument.rfind("--threads=", 0) != 0) {
-            throw std::invalid_argument("unknown argument: " + argument);
-        }
-        threads = std::stoi(argument.substr(10));
-    } else if (argc > 2) {
-        throw std::invalid_argument("experiment14 accepts only --threads");
+    for (int index = 1; index < argc; ++index) {
+        const std::string argument = argv[index];
+        if (argument.rfind("--threads=", 0) == 0)
+            threads = std::stoi(argument.substr(10));
     }
     const auto& topology = experiment_support::channel_topologies();
     const std::array<WorkloadCase, 4> cases{{
@@ -196,41 +166,26 @@ int main(int argc, char** argv) {
         const double fixed_setup = geometric.report.timing.total_ms +
             fixed_report.total_ms + fixed_metric.hierarchy_setup_ms;
 
-        tgi::AdaptiveGlobalPcgOptions budget_options;
-        budget_options.minimum_steps = grid.intervals() >= 128 ? 16 : 12;
-        budget_options.maximum_steps = 64;
-        budget_options.maximum_confirmation_cycles = maximum_cycles;
-        budget_options.thread_count = threads;
-        const auto budget = tgi::build_adaptive_global_pcg_interpolation(
+        tgi::AdaptiveGlobalPcgOptions adaptive_options;
+        adaptive_options.minimum_steps = grid.intervals() >= 128 ? 16 : 12;
+        adaptive_options.maximum_steps = 64;
+        adaptive_options.maximum_cycles = maximum_cycles;
+        adaptive_options.thread_count = threads;
+        const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
             grid, problem.matrix, geometric.prolongation,
-            budget_options, &problem.rhs);
-        const WorkloadMetric budget_metric = evaluate_workload(
-            problem.matrix, budget.prolongation, rhs_set,
+            adaptive_options, &problem.rhs);
+        const WorkloadMetric adaptive_metric = evaluate_workload(
+            problem.matrix, adaptive.prolongation, rhs_set,
             threads, maximum_cycles);
-        const double budget_setup = geometric.report.timing.total_ms +
-            budget.report.selection_wall_ms +
-            budget_metric.hierarchy_setup_ms;
-
-        auto staged_options = quality_options(
-            grid, threads, maximum_cycles);
-        const auto staged = tgi::build_adaptive_global_pcg_interpolation(
-            grid, problem.matrix, geometric.prolongation,
-            staged_options, &problem.rhs);
-        const WorkloadMetric staged_metric = evaluate_workload(
-            problem.matrix, staged.prolongation, rhs_set,
-            threads, maximum_cycles);
-        const double staged_setup = geometric.report.timing.total_ms +
-            staged.report.selection_wall_ms +
-            staged_metric.hierarchy_setup_ms;
+        const double adaptive_setup = geometric.report.timing.total_ms +
+            adaptive.report.selection_wall_ms +
+            adaptive_metric.hierarchy_setup_ms;
 
         const auto append = [&](const std::string& method, int steps,
                                 double setup, const WorkloadMetric& metric) {
-            const std::string versus_fixed =
-                method == "budget-v3.2" && steps == 40
-                    ? "never"
-                    : break_even_rhs(
-                          setup, metric.average_solve_ms,
-                          fixed_setup, fixed_metric.average_solve_ms);
+            const std::string versus_fixed = break_even_rhs(
+                setup, metric.average_solve_ms,
+                fixed_setup, fixed_metric.average_solve_ms);
             rows.push_back({
                 std::to_string(item.fine), std::to_string(item.coarse),
                 experiment_support::scientific(item.contrast, 0),
@@ -247,10 +202,8 @@ int main(int argc, char** argv) {
         };
         append("geometric", 0, geometric_setup, geometric_metric);
         append("fixed", 40, fixed_setup, fixed_metric);
-        append("budget-v3.2", budget.report.selected_steps,
-               budget_setup, budget_metric);
-        append("staged-v3.1", staged.report.selected_steps,
-               staged_setup, staged_metric);
+        append("adaptive-v3.3", adaptive.report.selected_steps,
+               adaptive_setup, adaptive_metric);
     }
 
     experiment_support::Report report(

@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
     tgi::AdaptiveGlobalPcgOptions options;
     options.minimum_steps = 16;
     options.maximum_steps = 64;
-    options.maximum_confirmation_cycles = config.max_cycles;
+    options.maximum_cycles = config.max_cycles;
     options.thread_count = config.threads;
     const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
         grid, problem.matrix, geometric.prolongation, options,
@@ -46,34 +46,10 @@ int main(int argc, char** argv) {
         problem.field_name, problem.matrix, problem.rhs,
         adaptive_candidate, config));
 
-    auto staged_options = options;
-    staged_options.cost_aware_mode = false;
-    staged_options.maximum_screening_steps = 48;
-    staged_options.screening_increment = 16;
-    staged_options.screening_pilot_iterations = 32;
-    staged_options.screening_tail_window = 8;
-    staged_options.refinement_backtrack_steps = 10;
-    staged_options.refinement_stop_before_anchor_steps = 4;
-    staged_options.refinement_increment = 2;
-    staged_options.refinement_pilot_iterations = 64;
-    staged_options.refinement_tail_window = 16;
-    staged_options.confirmation_candidates = 2;
-    const auto staged = tgi::build_adaptive_global_pcg_interpolation(
-        grid, problem.matrix, geometric.prolongation, staged_options,
-        &problem.rhs);
-    experiment_support::StudyCandidate staged_candidate{
-        "PCG-staged",
-        "selected m=" + std::to_string(staged.report.selected_steps),
-        staged.prolongation,
-        geometric_ms + staged.report.selection_wall_ms};
-    rows.push_back(experiment_support::evaluate_candidate(
-        problem.field_name, problem.matrix, problem.rhs,
-        staged_candidate, config));
-
     const experiment_support::Row history_headers{
-        "m", "phase", "pilot", "rho_tail", "pilot residual",
-        "pred cycles", "confirmed", "P density %", "path ms",
-        "pilot ms", "confirm ms", "selected"};
+        "m", "phase", "pilot", "rho_tail", "uncertainty",
+        "pilot residual", "PCG energy residual", "pred cycles",
+        "P density %", "path ms", "pilot ms", "selected"};
     experiment_support::Rows history;
     for (const auto& item : adaptive.report.history) {
         history.push_back({
@@ -81,14 +57,15 @@ int main(int argc, char** argv) {
             item.phase,
             std::to_string(item.pilot_iterations),
             experiment_support::fixed(item.rho_rhs_pilot, 6),
+            experiment_support::fixed(
+                item.forecast_relative_uncertainty, 4),
             experiment_support::scientific(item.pilot_relative_residual, 3),
+            experiment_support::scientific(
+                item.preconditioned_pcg_residual, 3),
             std::to_string(item.predicted_cycles),
-            item.confirmed_cycles >= 0
-                ? std::to_string(item.confirmed_cycles) : "-",
             experiment_support::fixed(item.density_percent, 4),
             experiment_support::fixed(item.path_ms),
             experiment_support::fixed(item.pilot_ms),
-            experiment_support::fixed(item.confirmation_ms),
             item.selected ? "yes" : "no"});
     }
 
@@ -97,18 +74,15 @@ int main(int argc, char** argv) {
     report.add_summary(experiment_support::fixed_study_summary(
         config, "Selector", "cost-aware sparse screen"));
     report.add_note(
-        "The v3.2 selector pilots the geometric basis and at most two positive "
-        "PCG checkpoints on this large grid (m=16 and m=40). It does not run "
-        "finalists to the solve tolerance during selection. The selected "
-        "candidate is evaluated independently in the end-to-end table, so "
-        "forecast error is not hidden in the reported cycle count. The staged "
-        "row uses the v3.1 quality policy with the v3.2 hierarchy-reuse fix.");
+        "The v3.3 selector fits a robust tail model at the geometric basis and "
+        "one anchor, projects a data-dependent third checkpoint when needed, "
+        "and never confirms a candidate to the solve tolerance during setup.");
     report.add_table(
         "End-to-end verification", experiment_support::study_headers(),
         experiment_support::study_widths(), rows);
     report.add_table(
         "Adaptive decision trace", history_headers,
-        {5, 9, 7, 11, 15, 11, 11, 11, 10, 10, 11, 9}, history);
+        {5, 10, 7, 11, 12, 15, 18, 11, 11, 10, 10, 9}, history);
     report.save("experiment7");
     experiment_support::write_csv(
         "experiment7", experiment_support::study_headers(), rows);

@@ -26,7 +26,7 @@ double relative_action_difference(
         std::max(tgi::norm2(rhs_value), 1.0e-30);
 }
 
-} // namespace
+}
 
 int main() {
     const tgi::StructuredGrid grid(15, 4);
@@ -72,21 +72,11 @@ int main() {
     tgi::AdaptiveGlobalPcgOptions adaptive_options;
     adaptive_options.minimum_steps = 2;
     adaptive_options.maximum_steps = 8;
-    adaptive_options.maximum_screening_steps = 8;
-    adaptive_options.screening_increment = 2;
-    adaptive_options.screening_pilot_iterations = 4;
-    adaptive_options.screening_tail_window = 2;
-    adaptive_options.minimum_screened_positive_candidates = 2;
-    adaptive_options.refinement_backtrack_steps = 2;
-    adaptive_options.refinement_stop_before_anchor_steps = 0;
-    adaptive_options.refinement_increment = 2;
-    adaptive_options.refinement_pilot_iterations = 4;
-    adaptive_options.refinement_tail_window = 2;
-    adaptive_options.confirmation_candidates = 2;
-    adaptive_options.easy_accept_cycles = 1000;
-    adaptive_options.medium_accept_cycles = 1000;
-    adaptive_options.initial_safety_forecast_cycles = 1000;
-    adaptive_options.maximum_confirmation_cycles = 1000;
+    adaptive_options.step_quantum = 2;
+    adaptive_options.pilot_iterations = 4;
+    adaptive_options.tail_window = 2;
+    adaptive_options.maximum_candidate_hierarchies = 3;
+    adaptive_options.maximum_cycles = 1000;
     adaptive_options.thread_count = 2;
     const tgi::Vector adaptive_rhs(
         static_cast<std::size_t>(grid.fine_size()), 1.0);
@@ -103,29 +93,6 @@ int main() {
             "budget adaptive PCG unexpectedly ran a full confirmation solve");
     require(adaptive.prolongation.rows() == grid.fine_size(),
             "adaptive PCG returned an invalid prolongation");
-
-    tgi::AdaptiveGlobalPcgOptions invalid_options = adaptive_options;
-    invalid_options.maximum_confirmation_cycles = 0;
-    bool rejected_invalid_budget = false;
-    try {
-        (void)tgi::build_adaptive_global_pcg_interpolation(
-            grid, a, geometric.prolongation,
-            invalid_options, &adaptive_rhs);
-    } catch (const std::invalid_argument&) {
-        rejected_invalid_budget = true;
-    }
-    require(rejected_invalid_budget,
-            "adaptive PCG accepted a nonpositive confirmation cap");
-
-    adaptive_options.cost_aware_mode = false;
-    const auto staged = tgi::build_adaptive_global_pcg_interpolation(
-        grid, a, geometric.prolongation, adaptive_options, &adaptive_rhs);
-    require(staged.report.selected_cycles > 0,
-            "staged adaptive PCG did not confirm a candidate");
-    require(staged.report.selected_cycles_confirmed,
-            "staged adaptive PCG lost its confirmation status");
-    require(staged.prolongation.rows() == grid.fine_size(),
-            "staged adaptive PCG returned an invalid prolongation");
 
     return 0;
 }

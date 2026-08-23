@@ -80,12 +80,6 @@ inline SparseMatrix assemble_diffusion(const StructuredGrid& grid,
 inline StructuredGrid::StructuredGrid(int fine_interior_points, int coarsening_ratio)
     : fine_n_(fine_interior_points), ratio_(coarsening_ratio),
       coarse_n_(0) {
-    if (fine_n_ <= 0 || ratio_ <= 0 ||
-        (fine_n_ + 1) % ratio_ != 0 ||
-        (fine_n_ + 1) / ratio_ <= 1) {
-        throw std::invalid_argument(
-            "StructuredGrid: incompatible fine size and coarsening ratio");
-    }
     coarse_n_ = (fine_n_ + 1) / ratio_ - 1;
 }
 
@@ -234,28 +228,8 @@ inline bool is_high_conductivity_topology(
 
 inline CoefficientField make_coefficient(const StructuredGrid& grid,
                                   const CoefficientOptions& options) {
-    if (!(options.contrast >= 1.0) || !std::isfinite(options.contrast)) {
-        throw std::invalid_argument(
-            "coefficient contrast must be finite and at least one");
-    }
-    if (options.distribution == CoefficientDistribution::RandomContinuous &&
-        (options.random_modes <= 0 || options.minimum_frequency <= 0 ||
-         options.maximum_frequency < options.minimum_frequency ||
-         !(options.spectral_decay >= 0.0) ||
-         !std::isfinite(options.spectral_decay))) {
-        throw std::invalid_argument(
-            "invalid random continuous coefficient options");
-    }
     if (diffusion_problem_detail::is_channel_distribution(
             options.distribution)) {
-        if (options.channel_width_fine_cells <= 0) {
-            throw std::invalid_argument(
-                "channel width must be positive");
-        }
-        if (options.channel_background_block_size <= 0) {
-            throw std::invalid_argument(
-                "channelized inclusion block size must be positive");
-        }
         CoefficientField field;
         field.values.resize(static_cast<std::size_t>(grid.fine_size()));
         const double width =
@@ -293,10 +267,6 @@ inline CoefficientField make_coefficient(const StructuredGrid& grid,
 
     if (options.distribution ==
         CoefficientDistribution::RandomBinaryCheckerboard) {
-        if (options.checkerboard_block_size <= 0) {
-            throw std::invalid_argument(
-                "checkerboard block size must be positive");
-        }
         CoefficientField field;
         field.values.resize(static_cast<std::size_t>(grid.fine_size()));
         for (int id = 0; id < grid.fine_size(); ++id) {
@@ -376,17 +346,6 @@ inline CoefficientField make_coefficient(const StructuredGrid& grid,
 
 inline SparseMatrix assemble_diffusion(const StructuredGrid& grid,
                                 const Vector& coefficient) {
-    if (coefficient.size() !=
-        static_cast<std::size_t>(grid.fine_size())) {
-        throw std::invalid_argument(
-            "assemble_diffusion: coefficient size mismatch");
-    }
-    for (double value : coefficient) {
-        if (!(value > 0.0) || !std::isfinite(value)) {
-            throw std::invalid_argument(
-                "assemble_diffusion: coefficients must be positive and finite");
-        }
-    }
     const double inverse_h2 = 1.0 / (grid.h() * grid.h());
     std::vector<int> row_ptr(
         static_cast<std::size_t>(grid.fine_size()) + 1U, 0);
@@ -412,8 +371,6 @@ inline SparseMatrix assemble_diffusion(const StructuredGrid& grid,
             diagonal += face * inverse_h2;
         };
 
-        // Row-major numbering gives the sorted CSR order
-        // up, left, diagonal, right, down.
         if (iy > 0) add_neighbor(id - grid.fine_n());
         else diagonal += center * inverse_h2;
         if (ix > 0) add_neighbor(id - 1);

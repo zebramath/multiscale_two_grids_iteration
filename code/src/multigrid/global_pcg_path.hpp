@@ -21,15 +21,14 @@ struct GlobalPcgPathReport {
     int active_columns = 0;
     long long total_column_iterations = 0;
     double maximum_relative_residual = 0.0;
+    double rms_relative_residual = 0.0;
+    double relative_preconditioned_residual = 0.0;
     double assembly_ms = 0.0;
     double solve_ms = 0.0;
     double finalize_ms = 0.0;
     double total_ms = 0.0;
 };
 
-// Continues the same diagonally preconditioned CG trajectory at successive
-// checkpoints.  In contrast to repeated fixed-budget calls, no Krylov work is
-// discarded when the next checkpoint is requested.
 class GlobalEnergyPcgPath {
 public:
     GlobalEnergyPcgPath(
@@ -49,6 +48,7 @@ private:
         Vector residual;
         Vector direction;
         double residual_scale = 1.0;
+        double initial_rz = 1.0;
         double rz = 0.0;
         int iterations = 0;
         bool active = true;
@@ -69,13 +69,6 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& initial_prolongation, int thread_count)
     : grid_(grid), begin_(Clock::now()) {
-    if (a.rows() != grid.fine_size() || a.cols() != grid.fine_size() ||
-        initial_prolongation.rows() != grid.fine_size() ||
-        initial_prolongation.cols() != grid.coarse_size() ||
-        thread_count <= 0) {
-        throw std::invalid_argument(
-            "GlobalEnergyPcgPath: incompatible dimensions or thread count");
-    }
     system_ = energy_interpolation_detail::assemble_global_f_system(grid, a);
     thread_count_ = std::max(1, std::min(thread_count, grid.coarse_size()));
     columns_.resize(static_cast<std::size_t>(grid.coarse_size()));
@@ -117,6 +110,7 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
                 state.residual[index];
         }
         state.rz = dot(state.residual, state.direction);
+        state.initial_rz = std::max(state.rz, 1.0e-300);
         const double threshold = std::numeric_limits<double>::epsilon() *
             state.residual_scale;
         state.active = std::isfinite(state.rz) && state.rz > 0.0 &&
@@ -127,10 +121,6 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
 }
 
 inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
-    if (target_steps < steps_) {
-        throw std::invalid_argument(
-            "GlobalEnergyPcgPath cannot move to an earlier checkpoint");
-    }
     if (target_steps == steps_) return;
     const auto solve_begin = Clock::now();
     std::atomic<int> next_column{0};
@@ -203,10 +193,6 @@ inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
 
 inline SparseMatrix GlobalEnergyPcgPath::prolongation(
     double drop_tolerance) {
-    if (!(drop_tolerance >= 0.0)) {
-        throw std::invalid_argument(
-            "GlobalEnergyPcgPath: drop tolerance must be nonnegative");
-    }
     const auto finalize_begin = Clock::now();
     std::vector<Triplet> entries;
     entries.reserve(
@@ -237,15 +223,24 @@ inline GlobalPcgPathReport GlobalEnergyPcgPath::report() const {
     result.assembly_ms = system_.assembly_ms;
     result.solve_ms = solve_ms_;
     result.finalize_ms = finalize_ms_;
-    // Exclude checkpoint probes and coarse setups performed by a caller.
     result.total_ms = result.assembly_ms + result.solve_ms;
+    double squared_sum = 0.0;
+    double rz_sum = 0.0;
+    double initial_rz_sum = 0.0;
     for (const ColumnState& state : columns_) {
         if (state.active) ++result.active_columns;
+        const double relative = norm2(state.residual) / state.residual_scale;
         result.maximum_relative_residual = std::max(
-            result.maximum_relative_residual,
-            norm2(state.residual) / state.residual_scale);
+            result.maximum_relative_residual, relative);
+        squared_sum += relative * relative;
+        rz_sum += std::max(state.rz, 0.0);
+        initial_rz_sum += state.initial_rz;
     }
+    result.rms_relative_residual = std::sqrt(
+        squared_sum / static_cast<double>(columns_.size()));
+    result.relative_preconditioned_residual = std::sqrt(
+        rz_sum / initial_rz_sum);
     return result;
 }
 
-} // namespace tgi
+}

@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
             }
         }
         const auto solved = tgi::solve_two_grid(
-            problem.matrix, problem.rhs, cycle, 1.0e-6,
+            problem.rhs, cycle, 1.0e-6,
             config.max_cycles);
         rows.push_back({
             std::to_string(steps),

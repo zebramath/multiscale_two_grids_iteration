@@ -31,8 +31,6 @@ inline void parse_basic_argument(
         config.contrast = std::stod(argument.substr(11));
     } else if (argument.rfind("--max-cycles=", 0) == 0) {
         config.max_cycles = std::stoi(argument.substr(13));
-    } else {
-        throw std::invalid_argument("unknown argument: " + argument);
     }
 }
 
@@ -40,12 +38,6 @@ inline BasicConfig parse_config(int argc, char** argv) {
     BasicConfig config;
     for (int index = 1; index < argc; ++index) {
         parse_basic_argument(config, argv[index]);
-    }
-    if (config.fine_intervals <= 0 || config.coarse_intervals <= 0 ||
-        config.fine_intervals % config.coarse_intervals != 0 ||
-        config.threads <= 0 || config.max_cycles <= 0 ||
-        !(config.contrast >= 1.0)) {
-        throw std::invalid_argument("invalid experiment configuration");
     }
     return config;
 }
@@ -133,4 +125,4 @@ inline tgi::InterpolationResult build_global_reference(
     return tgi::build_interpolation(grid, matrix, options);
 }
 
-} // namespace experiment_support
+}

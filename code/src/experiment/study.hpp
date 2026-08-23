@@ -52,7 +52,7 @@ inline CycleMetrics evaluate_two_grid(
     const tgi::TwoGridCycle cycle(
         matrix, prolongation, 1, setup_threads);
     const auto result = tgi::solve_two_grid(
-        matrix, rhs, cycle, solve_tolerance, max_cycles);
+        rhs, cycle, solve_tolerance, max_cycles);
     const auto end = std::chrono::steady_clock::now();
     return {
         result.cycles,
@@ -108,4 +108,4 @@ inline Summary fixed_study_summary(
     return summary;
 }
 
-} // namespace experiment_support
+}

@@ -99,7 +99,7 @@ struct TwoGridIterationResult {
     bool converged = false;
 };
 
-inline TwoGridIterationResult solve_two_grid(const SparseMatrix& a, const Vector& rhs,
+inline TwoGridIterationResult solve_two_grid(const Vector& rhs,
                                       const TwoGridCycle& cycle,
                                       double relative_tolerance = 1e-8,
                                       int max_cycles = 40000);
@@ -339,21 +339,12 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
     const SparseMatrix& lhs, const SparseMatrix& rhs,
     double drop_tolerance, int thread_count,
     bool upper_triangle_only) {
-    if (lhs.cols() != rhs.rows() || !(drop_tolerance >= 0.0) ||
-        (upper_triangle_only && lhs.rows() != rhs.cols())) {
-        throw std::invalid_argument(
-            "sparse matrix product: incompatible dimensions or tolerance");
-    }
-
     unsigned int requested = thread_count > 0
         ? static_cast<unsigned int>(thread_count)
         : std::thread::hardware_concurrency();
     if (requested == 0U) requested = 1U;
     const int worker_count = std::max(
         1, std::min(lhs.rows(), static_cast<int>(requested)));
-    // The Galerkin coarse product is dense enough even for local P that the
-    // branch-free upper-triangular accumulator is faster than marker-based
-    // sparse discovery. General products still use the adaptive path below.
     const bool use_dense_upper_path = upper_triangle_only;
 
     struct RowBlockProduct {
@@ -613,11 +604,6 @@ inline SparseMatrix galerkin_sparse(const SparseMatrix& a,
 inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
                            int smoothing_steps, int setup_threads)
     : a_(a), p_(p), smoothing_steps_(smoothing_steps) {
-    if (a_.rows() != a_.cols() || p_.rows() != a_.rows() ||
-        p_.cols() <= 0 || smoothing_steps_ < 0) {
-        throw std::invalid_argument(
-            "TwoGridCycle: incompatible matrix dimensions or options");
-    }
     const auto setup_begin = two_grid_solver_detail::Clock::now();
     inverse_diagonal_.resize(static_cast<std::size_t>(a_.rows()));
     diagonal_position_.resize(static_cast<std::size_t>(a_.rows()));
@@ -791,10 +777,6 @@ inline Vector TwoGridCycle::apply(const Vector& residual) const {
 
 inline void TwoGridCycle::apply(const Vector& residual, Vector& correction,
                          Workspace& workspace) const {
-    if (residual.size() != static_cast<std::size_t>(a_.rows())) {
-        throw std::invalid_argument(
-            "TwoGridCycle::apply: incompatible residual size");
-    }
     workspace.current_residual = residual;
     apply_correction_cycle(
         workspace.current_residual, correction, workspace);
@@ -844,11 +826,6 @@ inline void TwoGridCycle::apply_correction_cycle(
 inline double TwoGridCycle::iterate(
     const Vector& rhs, Vector& solution, Vector& residual,
     Workspace& workspace) const {
-    if (rhs.size() != static_cast<std::size_t>(a_.rows()) ||
-        solution.size() != static_cast<std::size_t>(a_.rows())) {
-        throw std::invalid_argument(
-            "TwoGridCycle::iterate: incompatible vector size");
-    }
     for (int step = 0; step < smoothing_steps_; ++step) {
         solve_gauss_seidel_sweep(rhs, true, solution);
     }
@@ -882,10 +859,6 @@ inline Vector TwoGridCycle::apply_error(const Vector& error) const {
 
 inline double TwoGridCycle::estimate_convergence_factor(int iterations,
                                                  std::uint64_t seed) const {
-    if (iterations <= 0) {
-        throw std::invalid_argument(
-            "estimate_convergence_factor: iterations must be positive");
-    }
     std::mt19937_64 rng(seed);
     std::uniform_real_distribution<double> distribution(-1.0, 1.0);
     Vector x(static_cast<std::size_t>(a_.rows()));
@@ -898,9 +871,6 @@ inline double TwoGridCycle::estimate_convergence_factor(int iterations,
         Vector y = apply_error(x);
         const double y_norm = std::sqrt(std::max(0.0, dot(y, a_.multiply(y))));
         if (!(y_norm > std::numeric_limits<double>::epsilon())) return 0.0;
-        // x is A-normalized, so this is the observed energy contraction.
-        // For the symmetric pre/post cycle, power iteration converges to the
-        // magnitude of the dominant A-self-adjoint error-propagation mode.
         contraction = y_norm;
         scale(1.0 / y_norm, y);
         x.swap(y);
@@ -908,15 +878,9 @@ inline double TwoGridCycle::estimate_convergence_factor(int iterations,
     return contraction;
 }
 
-inline TwoGridIterationResult solve_two_grid(const SparseMatrix& a, const Vector& rhs,
+inline TwoGridIterationResult solve_two_grid(const Vector& rhs,
                                       const TwoGridCycle& cycle,
                                       double relative_tolerance, int max_cycles) {
-    if (a.rows() != static_cast<int>(rhs.size()) ||
-        a.cols() != static_cast<int>(rhs.size()) ||
-        !(relative_tolerance >= 0.0) || max_cycles < 0) {
-        throw std::invalid_argument(
-            "solve_two_grid: invalid dimensions or stopping options");
-    }
     TwoGridIterationResult result;
     result.solution.assign(rhs.size(), 0.0);
     Vector residual = rhs;
@@ -926,7 +890,6 @@ inline TwoGridIterationResult solve_two_grid(const SparseMatrix& a, const Vector
         result.converged = true;
         return result;
     }
-    // Zero-based loop avoids signed overflow when max_cycles == INT_MAX.
     for (int iteration = 0; iteration < max_cycles; ++iteration) {
         const double residual_squared =
             cycle.iterate(rhs, result.solution, residual, workspace);

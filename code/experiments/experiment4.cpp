@@ -65,7 +65,7 @@ experiment_support::StudyCandidate build_residual_budget_candidate(
         result.prolongation, build_ms};
 }
 
-} // namespace
+}
 
 int main(int argc, char** argv) {
     const auto config = experiment_support::parse_config(argc, argv);
@@ -126,3 +126,4 @@ int main(int argc, char** argv) {
         "experiment4", experiment_support::study_headers(), rows);
     return 0;
 }
+

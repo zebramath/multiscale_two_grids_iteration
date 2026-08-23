@@ -1,9 +1,9 @@
 1/h,1/H,Contrast,Seed,Topology,Selected m,Adaptive cycles,Adaptive setup ms,Oracle m,Oracle cycles,Gap %,Geometric cycles,Fixed-40 cycles,Forecast
-32,8,1e+04,101,parallel-channels,12,41,5.671,12,41,0.00,54,44,38
-32,8,1e+06,313,meandering-channel,24,69,13.926,24,69,0.00,failed,73,57
-64,8,1e+02,101,cross-channel,12,143,52.687,12,143,0.00,393,296,131
-64,8,1e+04,313,meandering-channel,40,354,73.644,48,332,6.63,failed,354,307
-64,16,1e+04,101,diagonal-channels,24,99,703.121,20,87,13.79,failed,297,78
-64,16,1e+06,313,parallel-channels,40,55,852.286,32,55,0.00,failed,55,48
-64,8,1e+04,701,continuous,40,138,51.737,44,134,2.99,368,138,121
-64,16,1e+06,907,checker,40,54,177.015,40,54,0.00,failed,54,45
+32,8,1e+04,101,parallel-channels,12,41,5.206,12,41,0.00,54,44,39
+32,8,1e+06,313,meandering-channel,24,69,18.215,24,69,0.00,failed,73,62
+64,8,1e+02,101,cross-channel,12,143,28.424,12,143,0.00,393,296,125
+64,8,1e+04,313,meandering-channel,46,372,54.267,48,332,12.05,failed,354,280
+64,16,1e+04,101,diagonal-channels,20,87,86.522,20,87,0.00,failed,297,67
+64,16,1e+06,313,parallel-channels,34,55,147.988,32,55,0.00,failed,55,50
+64,8,1e+04,701,continuous,34,143,34.652,44,134,6.72,368,138,122
+64,16,1e+06,907,checker,34,57,140.714,40,54,5.56,failed,54,56

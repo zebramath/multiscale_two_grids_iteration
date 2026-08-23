@@ -1,7 +1,7 @@
 Pilot residual ranking diagnostic
 =================================
 
-Version         : 3.2.0
+Version         : 3.3.0
 Fine grid       : h=1/128
 Coarse grid     : H=1/16
 Contrast        : 1e+04

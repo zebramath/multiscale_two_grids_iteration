@@ -174,24 +174,12 @@ inline void insert_candidate(
     }
 }
 
-} // namespace algebraic_interpolation_detail
+}
 
-// F-point weighted Jacobi applied to AP=0 while C rows remain exact injection.
-// Without dropping, the limit is the ideal interpolation
-// P_F=-A_FF^{-1}A_FC for the prescribed coarse variables.
 inline AlgebraicInterpolationResult build_jacobi_interpolation(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& initial,
     const JacobiInterpolationOptions& options = {}) {
-    if (a.rows() != grid.fine_size() || a.cols() != grid.fine_size() ||
-        initial.rows() != grid.fine_size() ||
-        initial.cols() != grid.coarse_size() || options.steps < 0 ||
-        !(options.damping > 0.0 && options.damping < 2.0) ||
-        options.relative_drop_tolerance < 0.0 ||
-        options.maximum_entries_per_row < 0) {
-        throw std::invalid_argument(
-            "build_jacobi_interpolation: invalid input or options");
-    }
     const auto begin = algebraic_interpolation_detail::Clock::now();
     const Vector diagonal = a.diagonal();
     SparseMatrix current = initial;
@@ -208,21 +196,9 @@ inline AlgebraicInterpolationResult build_jacobi_interpolation(
     return {std::move(current), report};
 }
 
-// Coarse variables are prescribed. Each F row selects the q nearest coarse
-// variables in the graph metric sqrt(A_ii A_jj)/|A_ij|. These row selections
-// define column supports; weights are then obtained by constrained local energy
-// minimization, rather than by an ad-hoc inverse-distance formula.
 inline AlgebraicInterpolationResult build_strength_distance_interpolation(
     const StructuredGrid& grid, const SparseMatrix& a,
     const StrengthDistanceOptions& options = {}) {
-    if (a.rows() != grid.fine_size() || a.cols() != grid.fine_size() ||
-        options.coarse_candidates_per_row <= 0 ||
-        !(options.minimum_strength > 0.0) ||
-        !(options.local_tolerance > 0.0) ||
-        options.local_max_iterations <= 0 || options.thread_count <= 0) {
-        throw std::invalid_argument(
-            "build_strength_distance_interpolation: invalid input or options");
-    }
     const auto begin = algebraic_interpolation_detail::Clock::now();
     const int candidate_count = std::min(
         options.coarse_candidates_per_row, grid.coarse_size());
@@ -313,4 +289,4 @@ inline AlgebraicInterpolationResult build_strength_distance_interpolation(
     return {std::move(prolongation), report};
 }
 
-} // namespace tgi
+}

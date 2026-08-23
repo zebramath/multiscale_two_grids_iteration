@@ -127,21 +127,6 @@ inline FixedSupportExpansionResult build_residual_strong_supports(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& base_prolongation,
     const ResidualStrongSupportOptions& options) {
-    if (a.rows() != grid.fine_size() ||
-        a.cols() != grid.fine_size() ||
-        base_prolongation.rows() != grid.fine_size() ||
-        base_prolongation.cols() != grid.coarse_size()) {
-        throw std::invalid_argument(
-            "build_residual_strong_supports: incompatible dimensions");
-    }
-    if (options.base_patch_layers <= 0 ||
-        options.maximum_extra_nodes_per_column < 0 ||
-        options.maximum_graph_hops < 0 ||
-        !(options.strong_edge_fraction >= 0.0)) {
-        throw std::invalid_argument(
-            "build_residual_strong_supports: invalid options");
-    }
-
     FixedSupportExpansionResult result;
     result.supports.resize(
         static_cast<std::size_t>(grid.coarse_size()));

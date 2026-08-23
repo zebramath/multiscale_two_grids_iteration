@@ -1,42 +1,26 @@
-# two_grids_iteration v3.2.0
+# two_grids_iteration v3.3.0
 
-本项目研究二维高对比扩散问题中，能量插值、有限步 PCG 与两网格收敛之间的
-非单调关系。v3.2.0 将自适应器的目标从“尽量命中最小循环数”改为“在循环数
-损失可接受时显著压缩选择 Setup”。
+## 当前算法
 
-## v3.2 的低预算选择器
+v3.3 使用同一条增量式全局能量 PCG 路径构造候选插值。选择器最多建立四个两网格层次：
 
-默认策略只做以下工作：
+1. 几何插值 `m=0`；
+2. 最小正检查点 `m_min`；
+3. 由前两个短 pilot 的对数收敛斜率投影出的检查点，投影上界为剩余区间中点；
+4. 仅在预测仍很差或 PCG 能量残差显示已越过快速衰减区时，向前探测或回到局部中点。
 
-1. 对几何插值运行短 pilot；预测循环数已经很小时直接接受；
-2. 沿同一个 `GlobalEnergyPcgPath` 依次产生少量检查点；
-3. 一般使用 `m_min`、`m_min+12` 和 `m=40`，大网格省略中间点；
-4. `H/h` 较大时适当延长 pilot，减轻慢瞬态造成的预测偏差；
-5. 不再把两个最终候选都运行到真实容差，真实循环数在独立评价阶段测量。
+候选位置不依赖系数场名称、对比度、种子或预设的 `m=40`。每个候选只运行24个两网格 pilot，不运行到真实求解容差。尾部模型使用重叠窗口中最慢的对数衰减率，并记录中位数绝对偏差给出的不确定度。选择时在最佳预测的8%松弛范围内取最小 `m`。
 
-`AdaptiveGlobalPcgOptions::cost_aware_mode=false` 可切回 v3.1 的
-“粗筛—回溯—加密—真实确认”高质量模式。v3.2 修复了该模式中的重复构造：
-候选两网格对象在 pilot 和 confirmation 之间复用。
+PCG 路径同时报告最大相对残差、RMS 相对残差和
 
-## 主要实测结论
+\[
+\eta_E=\left(\frac{\sum_j r_{j,m}^{T}D^{-1}r_{j,m}}
+{\sum_j r_{j,0}^{T}D^{-1}r_{j,0}}\right)^{1/2},
+\]
 
-- 原始 `128 x 128` 交叉通道：v3.2 选择 `m=40`，234次循环；离步长2
-  oracle 的231次仅差1.3%。同一进程中低预算 Setup 约496 ms，高质量 staged
-  模式约1495 ms，下降约66.8%。
-- 18问题矩阵：低预算模式总循环数1881，高质量模式1813，只增加3.75%；
-  低预算模式18/18均不超过高质量模式的1.3倍。
-- 同一18问题矩阵：低预算 Setup 总和约1052 ms，高质量模式约1926 ms，
-  下降约45.4%，18/18逐例更低。
-- 六问题步长2 oracle：平均差距约6.85%，最大20%，3/6精确命中。
-- 最终冻结验证的8个新种子/新系数场中，7例精确命中步长4 oracle；唯一困难
-  交叉通道差距33.8%。
-
-墙钟时间是单机单次或少量重复测量，只适合同机比较。完整数字见 `results/` 和
-研究方案 v3.2。
+后者与理论中的残差对偶能量指标直接对应，用于决定第四个候选的方向。
 
 ## 构建
-
-需要 C++17 编译器、CMake 3.16 以上版本和线程库；OpenMP 可选。
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
@@ -47,8 +31,8 @@ ctest --test-dir build --output-on-failure
 没有 CMake 时可直接编译：
 
 ```bash
-g++ -std=c++17 -O2 -pthread -fopenmp -Isrc \
-    experiments/experiment9.cpp -o experiment9
+g++ -std=c++17 -O3 -DNDEBUG -pthread -fopenmp -Wall -Wextra -Wpedantic \
+    -Isrc experiments/experiment7.cpp -o experiment7
 ```
 
 ## 验证
@@ -58,43 +42,24 @@ g++ -std=c++17 -O2 -pthread -fopenmp -Isrc \
 ./scripts/run_validation.sh full
 ```
 
-线程数通过 `TGI_THREADS` 设置。脚本会在每个构建、测试和实验步骤开始、结束时输出
-状态；experiment9、11--14 还会逐案例输出进度。每个步骤默认最多运行900秒，必要时
-可用 `TGI_STEP_TIMEOUT_SECONDS` 调整，例如：
+可通过 `TGI_THREADS` 和 `TGI_STEP_TIMEOUT_SECONDS` 调整线程数与单步超时。
 
-```bash
-TGI_STEP_TIMEOUT_SECONDS=1800 ./scripts/run_validation.sh full
-```
+## 实验索引
 
-核心两网格循环、局部 PCG、自适应候选和确认过程均有显式整数上界。源码中的
-`while (true)` 仅用于有限原子任务队列：索引达到预先确定的列数或支撑数后退出。
+| 脚本 | 研究角度 |
+|---|---|
+| experiment1 | 空间支撑半径与全局能量参考 |
+| experiment2 | 固定支撑上的局部 PCG 容差 |
+| experiment3 | 全局插值的幅值剪枝扰动 |
+| experiment4 | 固定与残差预算支撑扩张 |
+| experiment5 | 全局 Jacobi、有限 PCG 和精确能量插值 |
+| experiment6 | 通道问题的步长2密集扫描与独立粗解交叉验证 |
+| experiment7 | 原始大通道问题上的 v3.3 选择轨迹 |
+| experiment9 | 18问题鲁棒性矩阵 |
+| experiment10 | pilot 残差排序诊断 |
+| experiment11 | 六问题步长2 oracle |
+| experiment12 | 额外种子和系数场诊断 |
+| experiment13 | 额外策略压力测试 |
+| experiment14 | 五右端项摊销与 break-even |
 
-## v3.2 实验
-
-- `experiment7`：原始通道、固定候选和低预算轨迹；
-- `experiment9`：18问题矩阵以及低预算/高质量模式消融；
-- `experiment10`：不同 pilot 长度的残差诊断；
-- `experiment11`：六问题步长2 oracle；
-- `experiment12`：额外种子暴露失败后得到的诊断集；
-- `experiment13`：策略冻结后的新种子和非通道系数场验证；
-- `experiment14`：五种右端项、Setup 摊销和盈亏平衡实验。
-
-## 主要接口
-
-- `multigrid/global_pcg_path.hpp`：可继续推进并保存检查点的 PCG 路径；
-- `multigrid/adaptive_global_pcg.hpp`：低预算和高质量两种选择模式；
-- `build_adaptive_global_pcg_interpolation(...)`：统一入口。
-
-低预算模式报告中的 `estimated_selected_cycles` 是 pilot 预测，不是确认值；
-`selected_cycles_confirmed=false` 明确标识这一点。实验表中的 `Cycles` 均由选中
-候选重新求解到真实容差得到，不把预测值冒充实测值。
-
-## 结论边界
-
-当前范围仍是二维结构网格、固定几何粗点、一次前后向 Gauss--Seidel 与 Galerkin
-粗校正。默认候选位置和 pilot 长度是实验驱动参数。单个代表右端项上的选择不保证
-最坏情形谱半径最优，也不保证任意 SPD 系统上都在 oracle 的30%以内。
-
-若事先已经知道固定 `m=40` 合适，而自适应器最终也选择 `m=40`，自适应器无法
-回收额外选择成本；它的价值来自候选事先未知、几何方法可能失败或需要复用多个
-右端项的场景。
+所有公开循环数均由选中候选独立求解到 `1e-6` 得到；`estimated_selected_cycles` 仅是选择阶段预测。输入尺寸与选项检查已从计算路径移除，调用者应保证输入合法；SPD 分解失败、迭代不收敛等数学有效性检查仍保留。

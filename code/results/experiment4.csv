@@ -1,13 +1,13 @@
 Field,Method,Parameter,P density %,Setup ms,Total ms,Cycles
-continuous,base-local,layers=2,6.0922,42.157,77.549,104
-continuous,geometric-layer,2 -> 3,12.5471,103.474,145.762,91
-continuous,indicator-strong,K=64 one-shot,6.1082,52.314,94.384,104
-continuous,adaptive-budget,"R=8, B=128, q=16",6.2364,150.757,189.985,101
-channel,base-local,layers=2,6.0922,47.088,2837.432,6840
-channel,geometric-layer,2 -> 3,12.5471,115.322,3346.021,6050
-channel,indicator-strong,K=64 one-shot,6.4855,88.460,2345.895,5592
-channel,adaptive-budget,"R=8, B=128, q=16",6.2390,204.632,1631.328,3553
-checker,base-local,layers=2,6.0922,45.365,1679.545,4144
-checker,geometric-layer,2 -> 3,12.5471,133.914,277.175,243
-checker,indicator-strong,K=64 one-shot,6.4838,94.556,497.236,946
-checker,adaptive-budget,"R=8, B=128, q=16",6.2368,194.145,531.118,807
+continuous,base-local,layers=2,6.0922,44.987,89.386,104
+continuous,geometric-layer,2 -> 3,12.5471,112.218,162.291,91
+continuous,indicator-strong,K=64 one-shot,6.1082,57.066,96.464,104
+continuous,adaptive-budget,"R=8, B=128, q=16",6.2364,159.181,199.195,101
+channel,base-local,layers=2,6.0922,54.165,2747.800,6840
+channel,geometric-layer,2 -> 3,12.5471,130.841,3278.706,6050
+channel,indicator-strong,K=64 one-shot,6.4855,102.294,2417.931,5592
+channel,adaptive-budget,"R=8, B=128, q=16",6.2390,197.902,1632.941,3553
+checker,base-local,layers=2,6.0922,46.039,1662.176,4144
+checker,geometric-layer,2 -> 3,12.5471,113.745,236.010,243
+checker,indicator-strong,K=64 one-shot,6.4838,90.085,535.344,946
+checker,adaptive-budget,"R=8, B=128, q=16",6.2368,237.216,596.132,807

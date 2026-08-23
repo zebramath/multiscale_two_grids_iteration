@@ -17,19 +17,9 @@ struct RelativePruningResult {
     double pruning_ms = 0.0;
 };
 
-// Diagnostic post-processing of a computed global basis. Every C row is
-// preserved exactly. An F entry P_ij is retained when
-// |P_ij| > relative_threshold * max_k |P_kj|. No re-minimization is applied,
-// so the experiment isolates the perturbation caused by magnitude pruning.
 inline RelativePruningResult prune_global_interpolation_relative(
     const StructuredGrid& grid, const SparseMatrix& global_reference,
     double relative_threshold) {
-    if (global_reference.rows() != grid.fine_size() ||
-        global_reference.cols() != grid.coarse_size() ||
-        relative_threshold < 0.0) {
-        throw std::invalid_argument(
-            "prune_global_interpolation_relative: invalid input");
-    }
     const auto begin = std::chrono::steady_clock::now();
     Vector column_max(
         static_cast<std::size_t>(grid.coarse_size()), 0.0);
@@ -83,4 +73,4 @@ inline RelativePruningResult prune_global_interpolation_relative(
     return {std::move(prolongation), pruning_ms};
 }
 
-} // namespace tgi
+}

@@ -23,22 +23,18 @@ int cycles_for(
     const tgi::SparseMatrix& p, int threads, int maximum) {
     const tgi::TwoGridCycle cycle(a, p, 1, threads);
     const auto solved = tgi::solve_two_grid(
-        a, rhs, cycle, 1.0e-6, maximum);
+        rhs, cycle, 1.0e-6, maximum);
     return solved.converged ? solved.cycles : maximum + 1;
 }
 
-} // namespace
+}
 
 int main(int argc, char** argv) {
     int threads = 4;
-    if (argc == 2) {
-        const std::string argument = argv[1];
-        if (argument.rfind("--threads=", 0) != 0) {
-            throw std::invalid_argument("unknown argument: " + argument);
-        }
-        threads = std::stoi(argument.substr(10));
-    } else if (argc > 2) {
-        throw std::invalid_argument("experiment11 accepts only --threads");
+    for (int index = 1; index < argc; ++index) {
+        const std::string argument = argv[index];
+        if (argument.rfind("--threads=", 0) == 0)
+            threads = std::stoi(argument.substr(10));
     }
     const auto& topology = experiment_support::channel_topologies();
     const std::array<OracleCase, 6> cases{{
@@ -95,20 +91,7 @@ int main(int argc, char** argv) {
         tgi::AdaptiveGlobalPcgOptions options;
         options.minimum_steps = 12;
         options.maximum_steps = 56;
-        options.maximum_screening_steps = 44;
-        options.screening_increment = 16;
-        options.screening_pilot_iterations = 24;
-        options.screening_tail_window = 6;
-        options.minimum_screened_positive_candidates = 4;
-        options.refinement_backtrack_steps = 10;
-        options.refinement_stop_before_anchor_steps = 4;
-        options.refinement_increment = 2;
-        options.refinement_pilot_iterations = 48;
-        options.refinement_tail_window = 12;
-        options.confirmation_candidates = 2;
-        options.easy_accept_cycles = 48;
-        options.medium_accept_cycles = 64;
-        options.maximum_confirmation_cycles = maximum_cycles;
+        options.maximum_cycles = maximum_cycles;
         options.thread_count = threads;
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
             grid, problem.matrix, geometric.prolongation,

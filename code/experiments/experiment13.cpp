@@ -23,20 +23,15 @@ int reported_cycles(
     return metric.converged ? metric.cycles : maximum + 1;
 }
 
-} // namespace
+}
 
 int main(int argc, char** argv) {
     int threads = 4;
-    if (argc == 2) {
-        const std::string argument = argv[1];
-        if (argument.rfind("--threads=", 0) != 0) {
-            throw std::invalid_argument("unknown argument: " + argument);
-        }
-        threads = std::stoi(argument.substr(10));
-    } else if (argc > 2) {
-        throw std::invalid_argument("experiment13 accepts only --threads");
+    for (int index = 1; index < argc; ++index) {
+        const std::string argument = argv[index];
+        if (argument.rfind("--threads=", 0) == 0)
+            threads = std::stoi(argument.substr(10));
     }
-    if (threads <= 0) throw std::invalid_argument("invalid thread count");
 
     const auto& channels = experiment_support::channel_topologies();
     const auto& standard = experiment_support::standard_fields();
@@ -103,7 +98,7 @@ int main(int argc, char** argv) {
         tgi::AdaptiveGlobalPcgOptions options;
         options.minimum_steps = 12;
         options.maximum_steps = 56;
-        options.maximum_confirmation_cycles = maximum_cycles;
+        options.maximum_cycles = maximum_cycles;
         options.thread_count = threads;
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
             grid, problem.matrix, geometric.prolongation,
@@ -138,20 +133,20 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::Report report(
-        "Final frozen-policy validation on new seeds and fields");
+        "Additional policy stress test on seeds and coefficient fields");
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Cases", std::to_string(cases.size())},
-        {"Seeds", "1301, 1601, 1907, 2203 (held out)"},
+        {"Seeds", "1301, 1601, 1907, 2203"},
         {"Oracle", "m=0 and m=12,16,...,48"},
         {"Solve tolerance", "1e-6"}});
     report.add_note(
-        "The v3.2 candidate set and thresholds were frozen after experiment12 "
-        "and before these seeds were generated. Six cases use channel fields "
-        "and two use continuous/checkerboard fields. The oracle is "
-        "evaluation-only.");
+        "This set was held out for v3.2 but informed the v3.3 selector design, "
+        "so it is reported as a stress test rather than independent held-out "
+        "evidence. Six cases use channel fields and two use continuous or "
+        "checkerboard fields. The oracle is evaluation-only.");
     report.add_table(
-        "Held-out validation", headers,
+        "Policy stress test", headers,
         {5, 5, 10, 6, 20, 10, 16, 18, 9, 14, 8, 16, 15, 9}, rows);
     report.save("experiment13");
     experiment_support::write_csv("experiment13", headers, rows);

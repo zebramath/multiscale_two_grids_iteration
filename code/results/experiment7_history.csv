@@ -1,4 +1,4 @@
-m,phase,pilot,rho_tail,pilot residual,pred cycles,confirmed,P density %,path ms,pilot ms,confirm ms,selected
-0,budget,32,0.996561,5.500e+00,4538,-,1.3950,0.000,10.024,0.000,no
-16,budget,32,0.990804,2.196e+01,1862,-,9.1300,156.936,25.951,0.000,no
-40,budget,32,0.915679,1.699e+00,195,-,26.9969,317.802,59.286,0.000,yes
+m,phase,pilot,rho_tail,uncertainty,pilot residual,PCG energy residual,pred cycles,P density %,path ms,pilot ms,selected
+0,initial,24,0.994006,0.1079,5.654e+00,1.000e+00,2611,1.3950,0.000,8.270,no
+16,anchor,24,0.990369,0.0116,2.364e+01,1.101e-01,1779,9.1300,151.639,15.686,no
+40,projected,24,0.912467,0.0128,3.438e+00,1.112e-02,189,26.9969,289.676,42.487,yes

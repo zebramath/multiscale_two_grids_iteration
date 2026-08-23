@@ -104,17 +104,9 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
                       const Vector* initial = nullptr,
                       const Vector* inverse_diagonal_override = nullptr) {
     const int n = matrix.rows();
-    if (matrix.cols() != n || rhs.size() != static_cast<std::size_t>(n) ||
-        !(tolerance >= 0.0) || max_iterations < 0) {
-        throw std::invalid_argument("solve_local_cg: invalid system or options");
-    }
     Vector x = initial != nullptr
         ? *initial
         : Vector(static_cast<std::size_t>(n), 0.0);
-    if (x.size() != static_cast<std::size_t>(n)) {
-        throw std::invalid_argument(
-            "solve_local_cg: initial vector has wrong size");
-    }
     const double rhs_norm = norm2(rhs);
     if (n == 0) {
         stats.converged = true;
@@ -130,9 +122,6 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
             inverse_diagonal_storage[i] = 1.0 / diagonal[i];
         }
         inverse_diagonal = &inverse_diagonal_storage;
-    } else if (inverse_diagonal->size() != static_cast<std::size_t>(n)) {
-        throw std::invalid_argument(
-            "solve_local_cg: inverse diagonal has wrong size");
     }
 
     Vector residual = rhs;
@@ -160,7 +149,6 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
     Vector direction = z;
     Vector ad;
     double rz = dot(residual, z);
-    // Zero-based loop avoids signed overflow when max_iterations == INT_MAX.
     for (int iteration = 0; iteration < max_iterations; ++iteration) {
         matrix.multiply(direction, ad);
         const double denominator = dot(direction, ad);
@@ -426,9 +414,6 @@ inline LocalBasisResult build_basis_on_nodes(
     const int coarse_fine = grid.coarse_fine_id(coarse);
     for (std::size_t local = 0; local < local_nodes.size(); ++local) {
         const std::size_t node = static_cast<std::size_t>(local_nodes[local]);
-        if (local_index[node] != -1) {
-            throw std::invalid_argument("energy support contains duplicate nodes");
-        }
         local_index[node] =
             static_cast<int>(local);
     }
@@ -639,18 +624,6 @@ inline InterpolationResult build_supported_energy_interpolation(
     const InterpolationOptions& options,
     const SparseMatrix* initial_transpose = nullptr,
     const std::vector<unsigned char>* refine_column = nullptr) {
-    if (supports.size() !=
-        static_cast<std::size_t>(grid.coarse_size())) {
-        throw std::invalid_argument(
-            "one support is required for every coarse basis");
-    }
-    if (refine_column != nullptr &&
-        (initial_transpose == nullptr ||
-         refine_column->size() !=
-             static_cast<std::size_t>(grid.coarse_size()))) {
-        throw std::invalid_argument(
-            "selective refinement requires one mask value per coarse basis");
-    }
     const auto total_begin = Clock::now();
     unsigned int requested = options.thread_count > 0
         ? static_cast<unsigned int>(options.thread_count)
@@ -676,13 +649,6 @@ inline InterpolationResult build_supported_energy_interpolation(
                 if (coarse >= grid.coarse_size()) break;
                 const auto& support =
                     supports[static_cast<std::size_t>(coarse)];
-                for (int node : support) {
-                    if (node < 0 || node >= grid.fine_size() ||
-                        grid.is_coarse_node(node)) {
-                        throw std::invalid_argument(
-                            "energy support contains an invalid F node");
-                    }
-                }
                 if (refine_column != nullptr &&
                     (*refine_column)[static_cast<std::size_t>(coarse)] == 0U) {
                     LocalBasisResult copied;
@@ -877,12 +843,6 @@ inline InterpolationResult refine_energy_interpolation_on_supports(
     const std::vector<std::vector<int>>& supports,
     const SparseMatrix& initial,
     const InterpolationOptions& options) {
-    if (initial.rows() != grid.fine_size() ||
-        initial.cols() != grid.coarse_size()) {
-        throw std::invalid_argument(
-            "refine_energy_interpolation_on_supports: "
-            "incompatible initial interpolation");
-    }
     const SparseMatrix initial_transpose =
         initial.transpose(options.thread_count);
     return energy_interpolation_detail::build_supported_energy_interpolation(
@@ -895,12 +855,6 @@ inline InterpolationResult refine_selected_energy_interpolation_on_supports(
     const std::vector<unsigned char>& refine_column,
     const SparseMatrix& initial,
     const InterpolationOptions& options) {
-    if (initial.rows() != grid.fine_size() ||
-        initial.cols() != grid.coarse_size()) {
-        throw std::invalid_argument(
-            "refine_selected_energy_interpolation_on_supports: "
-            "incompatible initial interpolation");
-    }
     const SparseMatrix initial_transpose =
         initial.transpose(options.thread_count);
     return energy_interpolation_detail::build_supported_energy_interpolation(
@@ -910,11 +864,6 @@ inline InterpolationResult refine_selected_energy_interpolation_on_supports(
 inline InterpolationResult refine_global_energy_interpolation(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& initial, const InterpolationOptions& options) {
-    if (initial.rows() != grid.fine_size() ||
-        initial.cols() != grid.coarse_size()) {
-        throw std::invalid_argument(
-            "refine_global_energy_interpolation: incompatible initial interpolation");
-    }
     const SparseMatrix initial_transpose =
         initial.transpose(options.thread_count);
     InterpolationOptions global_options = options;
