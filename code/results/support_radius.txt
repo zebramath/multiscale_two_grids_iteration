@@ -1,0 +1,33 @@
+Spatial localization: local support radius and global reference
+===============================================================
+
+Fine grid              : h=1/64
+Coarse grid            : H=1/8
+Contrast               : 1e+04
+Smoother               : one forward + one backward Gauss-Seidel
+Outer tolerance        : 1e-6
+Spectral iterations    : 80 (excluded from timing)
+Timing                 : single build; median of 3 two-grid runs
+Energy solve tolerance : 1e-10 for every support
+
+Note: Only the support radius changes. The tight common PCG tolerance makes algebraic stopping error negligible relative to localization.
+
+Support radius study
+--------------------
+Field                    Method      Parameter      P nnz   Density %     Ac nnz    F residual  Energy error    Build ms  TG setup ms    Setup ms    Solve ms    Total ms     Cycles       Rho  Construct iters
+-----------  ------------------  -------------  ---------  ----------  ---------  ------------  ------------  ----------  -----------  ----------  ----------  ----------  ---------  --------  ---------------
+continuous         local-energy       layers=2      43729     22.4850       1813     9.381e+01     3.895e-02      10.644        0.793      11.437      13.526      26.042        112    0.9104            121.5
+continuous         local-energy       layers=3      82201     42.2669       2397     1.174e+01     5.123e-03      28.173        1.461      29.635      21.288      50.859        111    0.9105            155.8
+continuous         local-energy       layers=4     121401     62.4231       2401     1.652e+00     7.002e-04      48.851        2.647      51.498      26.713      78.647        111    0.9105            174.5
+continuous        global-energy     layers=inf     192129     98.7906       2401     8.996e-07     0.000e+00      70.121        3.798      73.919      37.320     110.533        111    0.9105            187.1
+
+channel            local-energy       layers=2      43729     22.4850       1813     5.457e+02     5.229e-02      12.709        0.971      13.681      27.536      41.217        232    0.9488            123.2
+channel            local-energy       layers=3      82201     42.2669       2397     1.122e+02     1.092e-02      25.431        1.813      27.244      37.144      64.089        230    0.9488            153.1
+channel            local-energy       layers=4     121401     62.4231       2401     2.346e+01     2.293e-03      40.501        2.607      43.108      53.734      97.106        230    0.9488            170.5
+channel           global-energy     layers=inf     192129     98.7906       2401     2.849e-06     0.000e+00      70.617        4.017      74.634      78.526     153.760        230    0.9488            186.1
+
+checker            local-energy       layers=2      43729     22.4850       1813     4.891e+02     4.913e-02      10.438        1.240      11.678      29.730      41.409        231    0.9490            119.0
+checker            local-energy       layers=3      82201     42.2669       2397     1.086e+02     1.087e-02      26.029        1.820      27.849      35.801      64.529        231    0.9490            146.2
+checker            local-energy       layers=4     121401     62.4231       2401     2.288e+01     2.283e-03      42.650        2.634      45.284      54.074      99.358        231    0.9490            161.1
+checker           global-energy     layers=inf     192129     98.7906       2401     3.132e-06     0.000e+00      73.725        4.629      78.354      64.049     142.280        231    0.9490            173.9
+

@@ -80,6 +80,9 @@ inline InterpolationResult refine_selected_energy_interpolation_on_supports(
     const std::vector<unsigned char>& refine_column,
     const SparseMatrix& initial,
     const InterpolationOptions& options);
+inline InterpolationResult refine_global_energy_interpolation(
+    const StructuredGrid& grid, const SparseMatrix& a,
+    const SparseMatrix& initial, const InterpolationOptions& options);
 
 
 namespace energy_interpolation_detail {
@@ -98,7 +101,8 @@ struct ConjugateGradientStats {
 
 inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
                       double tolerance, int max_iterations, ConjugateGradientStats& stats,
-                      const Vector* initial = nullptr) {
+                      const Vector* initial = nullptr,
+                      const Vector* inverse_diagonal_override = nullptr) {
     const int n = matrix.rows();
     Vector x = initial != nullptr
         ? *initial
@@ -113,10 +117,18 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
         return x;
     }
 
-    const Vector diagonal = matrix.diagonal();
-    Vector inverse_diagonal(diagonal.size());
-    for (std::size_t i = 0; i < diagonal.size(); ++i) {
-        inverse_diagonal[i] = 1.0 / diagonal[i];
+    Vector inverse_diagonal_storage;
+    const Vector* inverse_diagonal = inverse_diagonal_override;
+    if (inverse_diagonal == nullptr) {
+        const Vector diagonal = matrix.diagonal();
+        inverse_diagonal_storage.resize(diagonal.size());
+        for (std::size_t i = 0; i < diagonal.size(); ++i) {
+            inverse_diagonal_storage[i] = 1.0 / diagonal[i];
+        }
+        inverse_diagonal = &inverse_diagonal_storage;
+    } else if (inverse_diagonal->size() != static_cast<std::size_t>(n)) {
+        throw std::invalid_argument(
+            "solve_local_cg: inverse diagonal has wrong size");
     }
 
     Vector residual = rhs;
@@ -137,7 +149,7 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
     }
     Vector z(residual.size());
     for (std::size_t i = 0; i < z.size(); ++i) {
-        z[i] = inverse_diagonal[i] * residual[i];
+        z[i] = (*inverse_diagonal)[i] * residual[i];
     }
     Vector direction = z;
     Vector ad;
@@ -156,7 +168,7 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
             break;
         }
         for (std::size_t i = 0; i < z.size(); ++i) {
-            z[i] = inverse_diagonal[i] * residual[i];
+            z[i] = (*inverse_diagonal)[i] * residual[i];
         }
         const double rz_new = dot(residual, z);
         const double beta = rz_new / rz;
@@ -177,6 +189,225 @@ struct LocalBasisResult {
     double local_solve_ms = 0.0;
     double scatter_ms = 0.0;
 };
+
+struct GlobalFSystem {
+    SparseMatrix matrix;
+    std::vector<int> f_nodes;
+    std::vector<int> local_index;
+    Vector inverse_diagonal;
+    std::vector<std::vector<std::pair<int, double>>> rhs_entries;
+    double assembly_ms = 0.0;
+};
+
+inline int coarse_id_from_fine_node(
+    const StructuredGrid& grid, int fine) {
+    const auto [ix, iy] = grid.fine_coords(fine);
+    return grid.coarse_id(
+        (ix + 1) / grid.ratio() - 1,
+        (iy + 1) / grid.ratio() - 1);
+}
+
+inline GlobalFSystem assemble_global_f_system(
+    const StructuredGrid& grid, const SparseMatrix& a) {
+    const auto begin = Clock::now();
+    GlobalFSystem system;
+    system.f_nodes = grid.all_f_nodes();
+    system.rhs_entries.resize(
+        static_cast<std::size_t>(grid.coarse_size()));
+    system.local_index.assign(
+        static_cast<std::size_t>(grid.fine_size()), -1);
+    for (std::size_t local = 0; local < system.f_nodes.size(); ++local) {
+        system.local_index[static_cast<std::size_t>(system.f_nodes[local])] =
+            static_cast<int>(local);
+    }
+
+    std::vector<int> row_ptr(system.f_nodes.size() + 1U, 0);
+    std::vector<int> col_idx;
+    Vector values;
+    col_idx.reserve(system.f_nodes.size() * 5U);
+    values.reserve(system.f_nodes.size() * 5U);
+    for (std::size_t local_row = 0;
+         local_row < system.f_nodes.size(); ++local_row) {
+        const int global_row = system.f_nodes[local_row];
+        for (int position =
+                 a.row_ptr()[static_cast<std::size_t>(global_row)];
+             position <
+                 a.row_ptr()[static_cast<std::size_t>(global_row) + 1U];
+             ++position) {
+            const int global_col =
+                a.col_idx()[static_cast<std::size_t>(position)];
+            const double value =
+                a.values()[static_cast<std::size_t>(position)];
+            const int local_col =
+                system.local_index[static_cast<std::size_t>(global_col)];
+            if (local_col >= 0) {
+                col_idx.push_back(local_col);
+                values.push_back(value);
+            } else if (grid.is_coarse_node(global_col)) {
+                const int coarse =
+                    coarse_id_from_fine_node(grid, global_col);
+                system.rhs_entries[static_cast<std::size_t>(coarse)]
+                    .push_back({static_cast<int>(local_row), -value});
+            }
+        }
+        row_ptr[local_row + 1U] = static_cast<int>(values.size());
+    }
+    system.matrix = SparseMatrix(
+        static_cast<int>(system.f_nodes.size()),
+        static_cast<int>(system.f_nodes.size()), std::move(row_ptr),
+        std::move(col_idx), std::move(values));
+    const Vector diagonal = system.matrix.diagonal();
+    system.inverse_diagonal.resize(diagonal.size());
+    for (std::size_t index = 0; index < diagonal.size(); ++index) {
+        system.inverse_diagonal[index] = 1.0 / diagonal[index];
+    }
+    system.assembly_ms = milliseconds(begin, Clock::now());
+    return system;
+}
+
+inline InterpolationResult build_global_energy_interpolation(
+    const StructuredGrid& grid, const SparseMatrix& a,
+    const InterpolationOptions& options,
+    const SparseMatrix* initial_transpose = nullptr) {
+    const auto total_begin = Clock::now();
+    const GlobalFSystem system = assemble_global_f_system(grid, a);
+    unsigned int requested = options.thread_count > 0
+        ? static_cast<unsigned int>(options.thread_count)
+        : std::thread::hardware_concurrency();
+    if (requested == 0U) requested = 1U;
+    const int thread_count = std::max(
+        1, std::min(grid.coarse_size(), static_cast<int>(requested)));
+    std::vector<LocalBasisResult> bases(
+        static_cast<std::size_t>(grid.coarse_size()));
+    std::atomic<int> next_coarse{0};
+    std::exception_ptr worker_error;
+    std::mutex error_mutex;
+
+    const auto solve_begin = Clock::now();
+    auto worker = [&]() {
+        Vector rhs(system.f_nodes.size(), 0.0);
+        Vector initial(system.f_nodes.size(), 0.0);
+        try {
+            while (true) {
+                const int coarse = next_coarse.fetch_add(
+                    1, std::memory_order_relaxed);
+                if (coarse >= grid.coarse_size()) break;
+                std::fill(rhs.begin(), rhs.end(), 0.0);
+                for (const auto& [row, value] :
+                     system.rhs_entries[static_cast<std::size_t>(coarse)]) {
+                    rhs[static_cast<std::size_t>(row)] += value;
+                }
+                const Vector* initial_pointer = nullptr;
+                if (initial_transpose != nullptr) {
+                    std::fill(initial.begin(), initial.end(), 0.0);
+                    for (int position =
+                             initial_transpose->row_ptr()[
+                                 static_cast<std::size_t>(coarse)];
+                         position <
+                             initial_transpose->row_ptr()[
+                                 static_cast<std::size_t>(coarse) + 1U];
+                         ++position) {
+                        const int fine = initial_transpose->col_idx()[
+                            static_cast<std::size_t>(position)];
+                        if (grid.is_coarse_node(fine)) continue;
+                        const int local = system.local_index[
+                            static_cast<std::size_t>(fine)];
+                        if (local >= 0) {
+                            initial[static_cast<std::size_t>(local)] =
+                                initial_transpose->values()[
+                                    static_cast<std::size_t>(position)];
+                        }
+                    }
+                    initial_pointer = &initial;
+                }
+                LocalBasisResult basis;
+                const Vector weights = solve_local_cg(
+                    system.matrix, rhs, options.local_tolerance,
+                    options.local_max_iterations, basis.solve,
+                    initial_pointer, &system.inverse_diagonal);
+                basis.triplets.reserve(weights.size() + 1U);
+                basis.triplets.push_back(
+                    {grid.coarse_fine_id(coarse), coarse, 1.0});
+                for (std::size_t local = 0; local < weights.size(); ++local) {
+                    if (std::abs(weights[local]) > options.drop_tolerance) {
+                        basis.triplets.push_back(
+                            {system.f_nodes[local], coarse, weights[local]});
+                    }
+                }
+                bases[static_cast<std::size_t>(coarse)] = std::move(basis);
+            }
+        } catch (...) {
+            std::lock_guard<std::mutex> lock(error_mutex);
+            if (!worker_error) worker_error = std::current_exception();
+            next_coarse.store(grid.coarse_size());
+        }
+    };
+    if (thread_count == 1) {
+        worker();
+    } else {
+        std::vector<std::thread> workers;
+        workers.reserve(static_cast<std::size_t>(thread_count));
+        for (int index = 0; index < thread_count; ++index) {
+            workers.emplace_back(worker);
+        }
+        for (auto& thread : workers) thread.join();
+    }
+    if (worker_error) std::rethrow_exception(worker_error);
+    const auto solve_end = Clock::now();
+
+    InterpolationReport report;
+    report.threads_used = thread_count;
+    report.timing.patch_assembly_work_ms = system.assembly_ms;
+    report.timing.parallel_wall_ms = milliseconds(solve_begin, solve_end);
+    std::size_t total_entries = 0;
+    for (const LocalBasisResult& basis : bases) {
+        ++report.local_solves.systems;
+        report.local_solves.total_iterations += basis.solve.iterations;
+        report.local_solves.max_iterations = std::max(
+            report.local_solves.max_iterations, basis.solve.iterations);
+        report.local_solves.sum_relative_residual +=
+            basis.solve.relative_residual;
+        report.local_solves.max_relative_residual = std::max(
+            report.local_solves.max_relative_residual,
+            basis.solve.relative_residual);
+        if (!basis.solve.converged) ++report.local_solves.failed_systems;
+        total_entries += basis.triplets.size();
+    }
+    if (options.require_convergence &&
+        report.local_solves.failed_systems != 0) {
+        throw std::runtime_error(
+            "one or more global energy solves did not converge");
+    }
+
+    const auto finalize_begin = Clock::now();
+    std::vector<int> row_ptr(
+        static_cast<std::size_t>(grid.fine_size()) + 1U, 0);
+    for (const LocalBasisResult& basis : bases) {
+        for (const Triplet& entry : basis.triplets) {
+            ++row_ptr[static_cast<std::size_t>(entry.row) + 1U];
+        }
+    }
+    for (int row = 0; row < grid.fine_size(); ++row) {
+        row_ptr[static_cast<std::size_t>(row) + 1U] +=
+            row_ptr[static_cast<std::size_t>(row)];
+    }
+    std::vector<int> next = row_ptr;
+    std::vector<int> col_idx(total_entries);
+    Vector values(total_entries);
+    for (const LocalBasisResult& basis : bases) {
+        for (const Triplet& entry : basis.triplets) {
+            const int target = next[static_cast<std::size_t>(entry.row)]++;
+            col_idx[static_cast<std::size_t>(target)] = entry.column;
+            values[static_cast<std::size_t>(target)] = entry.value;
+        }
+    }
+    SparseMatrix prolongation(
+        grid.fine_size(), grid.coarse_size(), std::move(row_ptr),
+        std::move(col_idx), std::move(values));
+    report.timing.finalize_ms = milliseconds(finalize_begin, Clock::now());
+    report.timing.total_ms = milliseconds(total_begin, Clock::now());
+    return {std::move(prolongation), report};
+}
 
 inline LocalBasisResult build_basis_on_nodes(
     const StructuredGrid& grid, const SparseMatrix& a, int coarse,
@@ -437,7 +668,7 @@ inline InterpolationResult build_supported_energy_interpolation(
                     if (node < 0 || node >= grid.fine_size() ||
                         grid.is_coarse_node(node)) {
                         throw std::invalid_argument(
-                            "adaptive support contains an invalid F node");
+                            "energy support contains an invalid F node");
                     }
                 }
                 if (refine_column != nullptr &&
@@ -614,7 +845,7 @@ inline InterpolationResult build_interpolation(const StructuredGrid& grid,
     if (options.strategy == InterpolationStrategy::GlobalEnergyMinimum) {
         InterpolationOptions global_options = options;
         global_options.patch_layers = 0;
-        return energy_interpolation_detail::build_local_energy_interpolation(
+        return energy_interpolation_detail::build_global_energy_interpolation(
             grid, a, global_options);
     }
     return energy_interpolation_detail::build_local_energy_interpolation(
@@ -662,6 +893,23 @@ inline InterpolationResult refine_selected_energy_interpolation_on_supports(
         initial.transpose(options.thread_count);
     return energy_interpolation_detail::build_supported_energy_interpolation(
         grid, a, supports, options, &initial_transpose, &refine_column);
+}
+
+inline InterpolationResult refine_global_energy_interpolation(
+    const StructuredGrid& grid, const SparseMatrix& a,
+    const SparseMatrix& initial, const InterpolationOptions& options) {
+    if (initial.rows() != grid.fine_size() ||
+        initial.cols() != grid.coarse_size()) {
+        throw std::invalid_argument(
+            "refine_global_energy_interpolation: incompatible initial interpolation");
+    }
+    const SparseMatrix initial_transpose =
+        initial.transpose(options.thread_count);
+    InterpolationOptions global_options = options;
+    global_options.strategy = InterpolationStrategy::GlobalEnergyMinimum;
+    global_options.patch_layers = 0;
+    return energy_interpolation_detail::build_global_energy_interpolation(
+        grid, a, global_options, &initial_transpose);
 }
 
 }

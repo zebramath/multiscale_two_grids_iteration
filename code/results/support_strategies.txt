@@ -1,0 +1,33 @@
+Fixed support expansion strategies without adaptive rounds
+==========================================================
+
+Fine grid              : h=1/64
+Coarse grid            : H=1/8
+Contrast               : 1e+04
+Smoother               : one forward + one backward Gauss-Seidel
+Outer tolerance        : 1e-6
+Spectral iterations    : 80 (excluded from timing)
+Timing                 : single build; median of 3 two-grid runs
+Energy solve tolerance : 1e-10
+
+Note: All strategies use fixed rules and a single construction pass. Residual-strong adds at most 64 graph nodes per column once; strength-distance chooses eight coarse candidates per F row before energy minimization. No residual-budget iteration is used.
+
+Fixed support strategy study
+----------------------------
+Field                    Method      Parameter      P nnz   Density %     Ac nnz    F residual  Energy error    Build ms  TG setup ms    Setup ms    Solve ms    Total ms     Cycles       Rho  Construct iters
+-----------  ------------------  -------------  ---------  ----------  ---------  ------------  ------------  ----------  -----------  ----------  ----------  ----------  ---------  --------  ---------------
+continuous           base-local       layers=2      43729     22.4850       1813     9.381e+01     3.895e-02      13.422        0.924      14.347      14.080      28.427        112    0.9104            121.5
+continuous      geometric-layer         2 -> 3      82201     42.2669       2397     1.174e+01     5.123e-03      31.922        1.516      33.438      17.709      51.148        111    0.9105            155.8
+continuous      residual-strong  K=64 one-shot      43783     22.5127       1813     9.462e+01     3.885e-02      17.348        1.036      18.383      15.271      33.569        112    0.9105             90.0
+continuous    strength-distance            q=8      31409     16.1502       1263     3.023e+02     1.392e-01      27.803        0.686      28.489      14.427      42.917        135    0.9193            100.4
+
+channel              base-local       layers=2      43729     22.4850       1813     5.457e+02     5.229e-02      10.963        0.970      11.933      27.865      39.804        232    0.9488            123.2
+channel         geometric-layer         2 -> 3      82201     42.2669       2397     1.122e+02     1.092e-02      25.351        1.523      26.874      40.315      67.117        230    0.9488            153.1
+channel         residual-strong  K=64 one-shot      46862     24.0959       2045     3.909e+02     3.563e-02      27.013        0.971      27.984      30.437      58.421        231    0.9488            109.6
+channel       strength-distance            q=8      31408     16.1496       1213     6.019e+02     5.001e-02      35.135        0.705      35.840      24.779      60.620        231    0.9489             97.9
+
+checker              base-local       layers=2      43729     22.4850       1813     4.891e+02     4.913e-02      12.813        0.869      13.682      27.843      41.449        231    0.9490            119.0
+checker         geometric-layer         2 -> 3      82201     42.2669       2397     1.086e+02     1.087e-02      24.203        1.479      25.683      37.415      63.099        231    0.9490            146.2
+checker         residual-strong  K=64 one-shot      46864     24.0970       2025     3.115e+02     2.844e-02      26.973        1.273      28.246      31.839      61.124        231    0.9490            103.2
+checker       strength-distance            q=8      31403     16.1471       1343     5.287e+02     3.680e-02      32.760        0.749      33.509      25.851      59.385        231    0.9491            100.8
+

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 2.3.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 2.4.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -38,9 +38,11 @@ function(tgi_add_program target source)
 endfunction()
 
 set(TGI_PROGRAMS
-    support_comparison
-    interpolation_comparison
-    robustness)
+    support_radius
+    solver_tolerance
+    global_pruning
+    support_strategies
+    iterative_construction)
 foreach(program IN LISTS TGI_PROGRAMS)
     tgi_add_program(${program} test/${program}.cpp)
 endforeach()

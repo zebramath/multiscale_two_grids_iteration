@@ -1,9 +1,8 @@
 #include "experiment/test_problem.hpp"
-#include "multigrid/adaptive_support.hpp"
+#include "multigrid/support_expansion.hpp"
 #include "multigrid/algebraic_interpolation.hpp"
 #include "multigrid/energy_interpolation.hpp"
 #include "multigrid/reference_pruning.hpp"
-#include "multigrid/residual_budget_support.hpp"
 #include "multigrid/two_grid_solver.hpp"
 #include "pde/diffusion_problem.hpp"
 
@@ -99,15 +98,10 @@ int main() {
     global_options.patch_layers = 0;
     global_options.local_tolerance = 1.0e-10;
     const auto global = tgi::build_interpolation(grid, a, global_options);
-    const auto matched = tgi::build_budget_matched_reference(
-        grid, a, global.prolongation, local.prolongation,
-        local_options);
-    require(
-        tgi::interpolation_f_entries_per_column(
-            grid, matched.prolongation, 2) ==
-        tgi::interpolation_f_entries_per_column(
-            grid, local.prolongation, 2),
-        "budget-matched reference changed per-column support counts");
+    const auto pruned = tgi::prune_global_interpolation_relative(
+        grid, global.prolongation, 1.0e-2);
+    require(pruned.prolongation.nnz() <= global.prolongation.nnz(),
+            "relative pruning increased interpolation density");
 
     tgi::ResidualStrongSupportOptions strong_options;
     strong_options.base_patch_layers = 1;
@@ -119,18 +113,15 @@ int main() {
                 static_cast<std::size_t>(grid.coarse_size()),
             "strong support count is wrong");
 
-    tgi::ResidualBudgetSupportOptions budget_options;
-    budget_options.base_patch_layers = 1;
-    budget_options.maximum_rounds = 2;
-    budget_options.maximum_extra_nodes_per_column = 8;
-    budget_options.maximum_nodes_per_round = 4;
-    budget_options.strength_scaling =
-        tgi::StrengthScaling::SymmetricDiagonal;
-    budget_options.thread_count = 2;
-    const auto budget = tgi::build_residual_budget_interpolation(
-        grid, a, local.prolongation, local_options, budget_options);
-    require(budget.prolongation.rows() == grid.fine_size(),
-            "residual-budget interpolation dimension is wrong");
+    tgi::InterpolationOptions fixed_step_options = global_options;
+    fixed_step_options.local_tolerance = 1.0e-300;
+    fixed_step_options.local_max_iterations = 2;
+    fixed_step_options.require_convergence = false;
+    fixed_step_options.drop_tolerance = 0.0;
+    const auto pcg2 = tgi::refine_global_energy_interpolation(
+        grid, a, geometric.prolongation, fixed_step_options);
+    require(pcg2.report.local_solves.max_iterations == 2,
+            "fixed-step PCG did not honor the iteration budget");
 
     const tgi::Vector exact =
         experiment_support::manufactured_solution(grid);

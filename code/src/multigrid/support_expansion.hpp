@@ -27,7 +27,7 @@ struct ResidualStrongSupportOptions {
     int thread_count = 1;
 };
 
-struct AdaptiveSupportReport {
+struct FixedSupportExpansionReport {
     double selection_ms = 0.0;
     double maximum_off_diagonal = 0.0;
     double strong_edge_threshold = 0.0;
@@ -38,17 +38,17 @@ struct AdaptiveSupportReport {
     double maximum_scaled_column_residual = 0.0;
 };
 
-struct AdaptiveSupportResult {
+struct FixedSupportExpansionResult {
     std::vector<std::vector<int>> supports;
-    AdaptiveSupportReport report;
+    FixedSupportExpansionReport report;
 };
 
-inline AdaptiveSupportResult build_residual_strong_supports(
+inline FixedSupportExpansionResult build_residual_strong_supports(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& base_prolongation,
     const ResidualStrongSupportOptions& options = {});
 
-namespace adaptive_support_detail {
+namespace support_expansion_detail {
 
 using Clock = std::chrono::steady_clock;
 
@@ -123,7 +123,7 @@ inline SparseMatrix build_strong_graph(
 }
 
 
-inline AdaptiveSupportResult build_residual_strong_supports(
+inline FixedSupportExpansionResult build_residual_strong_supports(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& base_prolongation,
     const ResidualStrongSupportOptions& options) {
@@ -142,12 +142,12 @@ inline AdaptiveSupportResult build_residual_strong_supports(
             "build_residual_strong_supports: invalid options");
     }
 
-    AdaptiveSupportResult result;
+    FixedSupportExpansionResult result;
     result.supports.resize(
         static_cast<std::size_t>(grid.coarse_size()));
-    const auto begin = adaptive_support_detail::Clock::now();
+    const auto begin = support_expansion_detail::Clock::now();
     result.report.maximum_off_diagonal =
-        adaptive_support_detail::maximum_off_diagonal(a);
+        support_expansion_detail::maximum_off_diagonal(a);
     result.report.strong_edge_threshold =
         options.strong_edge_fraction *
         result.report.maximum_off_diagonal;
@@ -156,7 +156,7 @@ inline AdaptiveSupportResult build_residual_strong_supports(
             "build_residual_strong_supports: matrix has no graph edges");
     }
     const SparseMatrix strong_graph =
-        adaptive_support_detail::build_strong_graph(
+        support_expansion_detail::build_strong_graph(
             a, result.report.strong_edge_threshold);
 
     const SparseMatrix ap = sparse_multiply(
@@ -260,10 +260,10 @@ inline AdaptiveSupportResult build_residual_strong_supports(
                         0.0 &&
                     options.maximum_extra_nodes_per_column > 0) {
                     std::priority_queue<
-                        adaptive_support_detail::QueueEntry,
+                        support_expansion_detail::QueueEntry,
                         std::vector<
-                            adaptive_support_detail::QueueEntry>,
-                        adaptive_support_detail::QueueLess> queue;
+                            support_expansion_detail::QueueEntry>,
+                        support_expansion_detail::QueueLess> queue;
 
                     for (int node : support) {
                         const double source_score = std::abs(
@@ -400,8 +400,8 @@ inline AdaptiveSupportResult build_residual_strong_supports(
             result.report.maximum_extra_nodes, extras);
     }
     result.report.selection_ms =
-        adaptive_support_detail::milliseconds(
-            begin, adaptive_support_detail::Clock::now());
+        support_expansion_detail::milliseconds(
+            begin, support_expansion_detail::Clock::now());
     return result;
 }
 

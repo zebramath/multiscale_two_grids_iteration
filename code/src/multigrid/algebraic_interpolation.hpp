@@ -19,6 +19,7 @@ namespace tgi {
 struct AlgebraicInterpolationReport {
     double build_ms = 0.0;
     double final_f_residual = 0.0;
+    double mean_construction_iterations = 0.0;
 };
 
 struct AlgebraicInterpolationResult {
@@ -203,6 +204,8 @@ inline AlgebraicInterpolationResult build_jacobi_interpolation(
     report.final_f_residual =
         algebraic_interpolation_detail::scaled_f_residual(
             grid, a, current, options.thread_count);
+    report.mean_construction_iterations =
+        static_cast<double>(options.steps);
     report.build_ms = algebraic_interpolation_detail::milliseconds(
         begin, algebraic_interpolation_detail::Clock::now());
     return {std::move(current), report};
@@ -308,6 +311,13 @@ inline AlgebraicInterpolationResult build_strength_distance_interpolation(
     report.final_f_residual =
         algebraic_interpolation_detail::scaled_f_residual(
             grid, a, prolongation, 1);
+    if (interpolation.report.local_solves.systems > 0) {
+        report.mean_construction_iterations =
+            static_cast<double>(
+                interpolation.report.local_solves.total_iterations) /
+            static_cast<double>(
+                interpolation.report.local_solves.systems);
+    }
     report.build_ms = algebraic_interpolation_detail::milliseconds(
         begin, algebraic_interpolation_detail::Clock::now());
     return {std::move(prolongation), report};
