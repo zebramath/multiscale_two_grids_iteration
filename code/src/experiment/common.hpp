@@ -60,8 +60,11 @@ inline tgi::InterpolationResult geometric_interpolation(
 }
 
 struct BasicConfig {
-    int fine_intervals = 64;
-    int coarse_intervals = 8;
+    // The v2.5 baseline is deliberately fixed at H/h = 8 while doubling
+    // both grids relative to v2.4.  This makes the localization trade-offs
+    // visible without changing the coefficient-field or solver settings.
+    int fine_intervals = 128;
+    int coarse_intervals = 16;
     int threads = 4;
     int max_cycles = 4000;
     double contrast = 1.0e4;

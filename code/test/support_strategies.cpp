@@ -1,4 +1,5 @@
 #include "experiment/study.hpp"
+#include "multigrid/residual_budget_support.hpp"
 #include "multigrid/support_expansion.hpp"
 
 #include <string>
@@ -28,7 +29,7 @@ experiment_support::StudyCandidate build_fixed_strong_candidate(
             ++changed_count;
         }
     }
-    auto options = experiment_support::energy_options(2, threads, 1.0e-10);
+    auto options = experiment_support::energy_options(2, threads, 1.0e-6);
     options.drop_tolerance = 0.0;
     auto interpolation = tgi::refine_selected_energy_interpolation_on_supports(
         grid, a, support.supports, changed, local2.prolongation, options);
@@ -43,6 +44,33 @@ experiment_support::StudyCandidate build_fixed_strong_candidate(
     candidate.build_ms = local2.report.timing.total_ms +
         experiment_support::milliseconds(begin, experiment_support::Clock::now());
     return candidate;
+}
+
+experiment_support::StudyCandidate build_residual_budget_candidate(
+    const tgi::StructuredGrid& grid, const tgi::SparseMatrix& a,
+    const tgi::InterpolationResult& local2, int threads) {
+    tgi::ResidualBudgetSupportOptions support_options;
+    support_options.base_patch_layers = 2;
+    support_options.maximum_rounds = 8;
+    support_options.maximum_extra_nodes_per_column = 128;
+    support_options.maximum_nodes_per_round = 16;
+    support_options.marking_fraction = 0.70;
+    support_options.target_residual_ratio = 0.25;
+    support_options.refinement_tolerance = 1.0e-6;
+    support_options.strength_scaling = tgi::StrengthScaling::SymmetricDiagonal;
+    support_options.strong_edge_fraction = 0.10;
+    support_options.thread_count = threads;
+
+    const auto begin = experiment_support::Clock::now();
+    const auto result = tgi::build_residual_budget_interpolation(
+        grid, a, local2.prolongation, experiment_support::energy_options(
+            2, threads, 1.0e-6), support_options);
+    const double build_ms = local2.report.timing.total_ms +
+        experiment_support::milliseconds(
+            begin, experiment_support::Clock::now());
+    return {
+        "residual-budget", "R=8, B=128, q=16",
+        result.prolongation, build_ms, 0.0};
 }
 
 } // namespace
@@ -66,7 +94,7 @@ int main(int argc, char** argv) {
             grid, a, config.threads);
 
         auto local2_options = experiment_support::energy_options(
-            2, config.threads, 1.0e-10);
+            2, config.threads, 1.0e-6);
         local2_options.drop_tolerance = 0.0;
         auto local2 = tgi::build_interpolation(grid, a, local2_options);
         auto local2_candidate = experiment_support::make_candidate(
@@ -76,7 +104,7 @@ int main(int argc, char** argv) {
             local2_candidate, config));
 
         auto local3_options = experiment_support::energy_options(
-            3, config.threads, 1.0e-10);
+            3, config.threads, 1.0e-6);
         local3_options.drop_tolerance = 0.0;
         auto layer_candidate = experiment_support::make_candidate(
             "geometric-layer", "2 -> 3",
@@ -91,9 +119,15 @@ int main(int argc, char** argv) {
             field.name, grid, a, rhs, global.prolongation,
             strong_candidate, config));
 
+        auto residual_budget_candidate = build_residual_budget_candidate(
+            grid, a, local2, config.threads);
+        rows.push_back(experiment_support::evaluate_candidate(
+            field.name, grid, a, rhs, global.prolongation,
+            residual_budget_candidate, config));
+
         tgi::StrengthDistanceOptions distance_options;
         distance_options.coarse_candidates_per_row = 8;
-        distance_options.local_tolerance = 1.0e-10;
+        distance_options.local_tolerance = 1.0e-6;
         distance_options.local_max_iterations = 20000;
         distance_options.thread_count = config.threads;
         const auto distance = tgi::build_strength_distance_interpolation(
@@ -108,14 +142,16 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::Report report(
-        "Fixed support expansion strategies without adaptive rounds");
+        "Support expansion strategies: fixed residual and residual-budget");
     report.add_summary(experiment_support::fixed_study_summary(
-        config, "Energy solve tolerance", "1e-10"));
+        config, "Energy solve tolerance", "1e-6"));
     report.add_note(
-        "All strategies use fixed rules and a single construction pass. "
-        "Residual-strong adds at most 64 graph nodes per column once; "
-        "strength-distance chooses eight coarse candidates per F row before "
-        "energy minimization. No residual-budget iteration is used.");
+        "The base, geometric-layer, fixed residual-strong, and strength-distance "
+        "rows use one construction pass. Residual-budget is the retained "
+        "error-driven variant: it marks 70% of the current residual energy, "
+        "adds at most 16 strong-graph nodes per round and 128 per column, and "
+        "re-solves only marked columns. The reported build time includes all "
+        "support selection and refinement rounds.");
     report.add_table(
         "Fixed support strategy study", experiment_support::study_headers(),
         experiment_support::study_widths(), rows, true);

@@ -3,8 +3,6 @@
 #include "experiment/common.hpp"
 #include "multigrid/algebraic_interpolation.hpp"
 
-#include <algorithm>
-#include <array>
 #include <cstddef>
 #include <string>
 #include <utility>
@@ -68,25 +66,18 @@ inline Row evaluate_candidate(
     const double f_residual =
         tgi::algebraic_interpolation_detail::scaled_f_residual(
             grid, a, candidate.prolongation, config.threads);
-    std::array<CycleMetrics, 3> trials;
-    for (std::size_t trial = 0; trial < trials.size(); ++trial) {
-        trials[trial] = evaluate_two_grid(
-            a, rhs, candidate.prolongation, config.threads,
-            1.0e-6, config.max_cycles,
-            trial == 0U ? spectral_iterations : 0);
-    }
-    const auto median = [&](auto member) {
-        std::array<double, 3> values{
-            trials[0].*member, trials[1].*member, trials[2].*member};
-        std::sort(values.begin(), values.end());
-        return values[1];
-    };
-    const double coarse_setup_ms = median(&CycleMetrics::coarse_setup_ms);
-    const double solve_ms = median(&CycleMetrics::solve_ms);
-    const double cycle_total_ms = median(&CycleMetrics::total_ms);
+    // One timed run is intentional in v2.5: the table reports a reproducible
+    // workload estimate without hiding setup/solve costs behind repeated
+    // measurements.  The first run still performs the optional spectral
+    // estimate, which is explicitly excluded by evaluate_two_grid.
+    const CycleMetrics cycle = evaluate_two_grid(
+        a, rhs, candidate.prolongation, config.threads,
+        1.0e-6, config.max_cycles, spectral_iterations);
+    const double coarse_setup_ms = cycle.coarse_setup_ms;
+    const double solve_ms = cycle.solve_ms;
+    const double cycle_total_ms = cycle.total_ms;
     const double setup_ms = candidate.build_ms + coarse_setup_ms;
     const double total_ms = candidate.build_ms + cycle_total_ms;
-    const CycleMetrics& cycle = trials.front();
     return {
         field,
         candidate.method,
@@ -118,7 +109,7 @@ inline Summary fixed_study_summary(
         {"Smoother", "one forward + one backward Gauss-Seidel"},
         {"Outer tolerance", "1e-6"},
         {"Spectral iterations", "80 (excluded from timing)"}};
-    summary.push_back({"Timing", "single build; median of 3 two-grid runs"});
+    summary.push_back({"Timing", "single two-grid run (no median/repetition)"});
     if (!extra_label.empty()) {
         summary.push_back({extra_label, extra_value});
     }
