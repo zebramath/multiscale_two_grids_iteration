@@ -864,6 +864,10 @@ inline Vector TwoGridCycle::apply_error(const Vector& error) const {
 
 inline double TwoGridCycle::estimate_convergence_factor(int iterations,
                                                  std::uint64_t seed) const {
+    if (iterations <= 0) {
+        throw std::invalid_argument(
+            "estimate_convergence_factor: iterations must be positive");
+    }
     std::mt19937_64 rng(seed);
     std::uniform_real_distribution<double> distribution(-1.0, 1.0);
     Vector x(static_cast<std::size_t>(a_.rows()));
@@ -871,17 +875,19 @@ inline double TwoGridCycle::estimate_convergence_factor(int iterations,
     double energy_norm = std::sqrt(dot(x, a_.multiply(x)));
     scale(1.0 / energy_norm, x);
 
-    double rayleigh = 0.0;
+    double contraction = 0.0;
     for (int iteration = 0; iteration < iterations; ++iteration) {
         Vector y = apply_error(x);
-        const Vector ax = a_.multiply(x);
-        rayleigh = dot(ax, y);
         const double y_norm = std::sqrt(std::max(0.0, dot(y, a_.multiply(y))));
         if (!(y_norm > std::numeric_limits<double>::epsilon())) return 0.0;
+        // x is A-normalized, so this is the observed energy contraction.
+        // For the symmetric pre/post cycle, power iteration converges to the
+        // magnitude of the dominant A-self-adjoint error-propagation mode.
+        contraction = y_norm;
         scale(1.0 / y_norm, y);
         x.swap(y);
     }
-    return std::clamp(rayleigh, 0.0, 1.0);
+    return std::clamp(contraction, 0.0, 1.0);
 }
 
 inline TwoGridIterationResult solve_two_grid(const SparseMatrix& a, const Vector& rhs,

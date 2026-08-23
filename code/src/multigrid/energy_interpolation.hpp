@@ -127,10 +127,12 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
     }
     const double residual_scale = std::max(rhs_norm, 1.0e-30);
     const double target = tolerance * residual_scale;
-    if (norm2(residual) <= target) {
+    const double target_squared = target * target;
+    double residual_squared = dot(residual, residual);
+    if (residual_squared <= target_squared) {
         stats.converged = true;
         stats.relative_residual =
-            norm2(residual) / residual_scale;
+            std::sqrt(residual_squared) / residual_scale;
         return x;
     }
     Vector z(residual.size());
@@ -148,7 +150,8 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
         axpy(alpha, direction, x);
         axpy(-alpha, ad, residual);
         stats.iterations = iteration;
-        if (norm2(residual) <= target) {
+        residual_squared = dot(residual, residual);
+        if (residual_squared <= target_squared) {
             stats.converged = true;
             break;
         }
@@ -162,7 +165,8 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
         }
         rz = rz_new;
     }
-    stats.relative_residual = norm2(residual) / residual_scale;
+    stats.relative_residual =
+        std::sqrt(residual_squared) / residual_scale;
     return x;
 }
 

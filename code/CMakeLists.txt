@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 2.1.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 2.2.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -42,7 +42,17 @@ set(TGI_PROGRAMS
     experiment1
     experiment2
     experiment3
-    experiment4)
+    experiment4
+    experiment5
+    experiment6
+    experiment7)
 foreach(program IN LISTS TGI_PROGRAMS)
     tgi_add_program(${program} test/${program}.cpp)
 endforeach()
+
+include(CTest)
+if(BUILD_TESTING)
+    add_executable(unit_core test/unit_core.cpp)
+    target_link_libraries(unit_core PRIVATE tgi_headers)
+    add_test(NAME unit_core COMMAND unit_core)
+endif()

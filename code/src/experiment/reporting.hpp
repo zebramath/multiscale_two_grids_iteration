@@ -57,6 +57,42 @@ inline std::filesystem::path write_result(
     return path;
 }
 
+inline std::filesystem::path write_csv(
+    const std::string& name, const Row& headers, const Rows& rows) {
+    const std::filesystem::path directory = TGI_RESULTS_DIR;
+    std::filesystem::create_directories(directory);
+    const std::filesystem::path path = directory / (name + ".csv");
+    std::ofstream stream(path);
+    const auto write_cell = [&](const std::string& cell) {
+        const bool quote = cell.find_first_of(",\"\n\r") !=
+            std::string::npos;
+        if (!quote) {
+            stream << cell;
+            return;
+        }
+        stream << '"';
+        for (char character : cell) {
+            if (character == '"') stream << '"';
+            stream << character;
+        }
+        stream << '"';
+    };
+    const auto write_row = [&](const Row& row) {
+        for (std::size_t index = 0; index < row.size(); ++index) {
+            if (index != 0U) stream << ',';
+            write_cell(row[index]);
+        }
+        stream << '\n';
+    };
+    write_row(headers);
+    for (const Row& row : rows) write_row(row);
+    if (!stream) {
+        throw std::runtime_error(
+            "cannot write CSV result file " + path.string());
+    }
+    return path;
+}
+
 class Report {
 public:
     explicit Report(const std::string& title) {
