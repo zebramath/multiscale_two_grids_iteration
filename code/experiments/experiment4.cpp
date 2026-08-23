@@ -21,26 +21,18 @@ experiment_support::StudyCandidate build_fixed_strong_candidate(
         grid, a, local2.prolongation, support_options);
     std::vector<unsigned char> changed(
         static_cast<std::size_t>(grid.coarse_size()), 0U);
-    int changed_count = 0;
     for (int coarse = 0; coarse < grid.coarse_size(); ++coarse) {
         if (support.supports[static_cast<std::size_t>(coarse)].size() >
             grid.patch_f_nodes(coarse, 2).size()) {
             changed[static_cast<std::size_t>(coarse)] = 1U;
-            ++changed_count;
         }
     }
     auto options = experiment_support::energy_options(2, threads, 1.0e-6);
     options.drop_tolerance = 0.0;
     auto interpolation = tgi::refine_selected_energy_interpolation_on_supports(
         grid, a, support.supports, changed, local2.prolongation, options);
-    const int total_iterations =
-        interpolation.report.local_solves.total_iterations;
     auto candidate = experiment_support::make_candidate(
         "indicator-strong", "K=64 one-shot", std::move(interpolation));
-    candidate.mean_construction_iterations = changed_count > 0
-        ? static_cast<double>(total_iterations) /
-              static_cast<double>(changed_count)
-        : 0.0;
     candidate.build_ms = local2.report.timing.total_ms +
         experiment_support::milliseconds(begin, experiment_support::Clock::now());
     return candidate;
@@ -70,7 +62,7 @@ experiment_support::StudyCandidate build_residual_budget_candidate(
             begin, experiment_support::Clock::now());
     return {
         "adaptive-budget", "R=8, B=128, q=16",
-        result.prolongation, build_ms, 0.0};
+        result.prolongation, build_ms};
 }
 
 } // namespace

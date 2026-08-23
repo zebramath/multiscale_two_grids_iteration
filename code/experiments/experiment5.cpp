@@ -24,11 +24,11 @@ int main(int argc, char** argv) {
         const double geometric_ms = geometric.report.timing.total_ms;
 
         // P_G is the common initial guess; every finite-step row targets the
-        // same global F-point equation AP=0 and is evaluated against the
-        // separately computed global reference basis.
+        // same global F-point equation AP=0. The exact global basis supplies
+        // the limiting reference row.
         experiment_support::StudyCandidate initial{
             "geometric", "P_G", geometric.prolongation,
-            geometric_ms, 0.0};
+            geometric_ms};
         rows.push_back(experiment_support::evaluate_candidate(
             field.name, a, rhs, initial, config));
 
@@ -44,8 +44,7 @@ int main(int argc, char** argv) {
             experiment_support::StudyCandidate candidate{
                 "Jacobi-global", "m=" + std::to_string(count),
                 std::move(interpolation.prolongation),
-                geometric_ms + interpolation.report.build_ms,
-                static_cast<double>(count)};
+                geometric_ms + interpolation.report.build_ms};
             rows.push_back(experiment_support::evaluate_candidate(
                 field.name, a, rhs, candidate, config));
         }

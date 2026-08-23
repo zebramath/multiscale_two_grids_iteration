@@ -1,5 +1,4 @@
-#include "experiment/evaluation.hpp"
-#include "experiment/problem.hpp"
+#include "experiment/study.hpp"
 #include "multigrid/support_expansion.hpp"
 #include "multigrid/algebraic_interpolation.hpp"
 #include "multigrid/energy_interpolation.hpp"
@@ -34,7 +33,12 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 } // namespace
 
 int main() {
-    require(tgi::version == "2.7.0", "wrong package version");
+    require(tgi::version == "2.8.0", "wrong package version");
+    const experiment_support::Row expected_headers{
+        "Field", "Method", "Parameter", "P density %",
+        "Setup ms", "Total ms", "Cycles"};
+    require(experiment_support::study_headers() == expected_headers,
+            "public output schema is not the v2.8 compact schema");
     for (const auto& header : experiment_support::study_headers()) {
         std::string lower = header;
         std::transform(

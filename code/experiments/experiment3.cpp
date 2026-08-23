@@ -18,12 +18,6 @@ int main(int argc, char** argv) {
         const auto& rhs = problem.rhs;
         const auto global = experiment_support::build_global_reference(
             grid, a, config.threads);
-        const int systems = global.report.local_solves.systems;
-        const double mean_iterations = systems > 0
-            ? static_cast<double>(global.report.local_solves.total_iterations) /
-                  static_cast<double>(systems)
-            : 0.0;
-
         for (double threshold : thresholds) {
             auto pruned = tgi::prune_global_interpolation_relative(
                 grid, global.prolongation, threshold);
@@ -31,8 +25,7 @@ int main(int argc, char** argv) {
                 "global-pruned",
                 "drop=" + experiment_support::scientific(threshold, 0),
                 std::move(pruned.prolongation),
-                global.report.timing.total_ms + pruned.pruning_ms,
-                mean_iterations};
+                global.report.timing.total_ms + pruned.pruning_ms};
             rows.push_back(experiment_support::evaluate_candidate(
                 field.name, a, rhs, candidate, config));
         }
