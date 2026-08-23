@@ -1,7 +1,7 @@
 Global-target iterative construction: Jacobi and PCG
 ====================================================
 
-Version               : 2.10.0
+Version               : 2.11.0
 Fine grid             : h=1/128
 Coarse grid           : H=1/16
 Contrast              : 1e+04
@@ -16,41 +16,42 @@ Global-target fixed-step construction
 -------------------------------------
 Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
 -----------  ------------------  --------------------  -----------  ----------  ----------  ------------
-continuous            geometric                   P_G       1.3950       1.916      29.833            87
-continuous        Jacobi-global                   m=4       2.8455      16.190      38.315            69
-continuous        Jacobi-global                   m=8       4.7096      35.791      58.920            65
-continuous        Jacobi-global                  m=16       9.1300     120.120     169.291            63
-continuous        Jacobi-global                  m=32      20.4547     429.260     479.934            64
-continuous        Jacobi-global                  m=64      48.1166    1973.266    2070.809            67
-continuous           PCG-global                   m=4       2.8455      45.993      65.914            61
-continuous           PCG-global                   m=8       4.7096      72.634     108.292            66
-continuous           PCG-global                  m=16       9.1300     139.589     189.243           103
-continuous           PCG-global                  m=32      20.4547     274.264     335.394            86
-continuous           PCG-global                  m=64      48.1166     637.909     768.592            86
-continuous         global-exact             tol=1e-10      95.7222    1648.725    1855.459            86
+continuous            geometric                   P_G       1.3950       2.749      49.761           131
+continuous        Jacobi-global                   m=4       2.8455      16.789      68.563           112
+continuous        Jacobi-global                   m=8       4.7096      38.569      82.368           100
+continuous        Jacobi-global                  m=16       9.1300     116.985     168.682            91
+continuous        Jacobi-global                  m=32      20.4547     508.525     573.848            86
+continuous        Jacobi-global                  m=64      48.1166    2005.076    2116.975            83
+continuous           PCG-global                   m=4       2.8455      44.709      73.982            90
+continuous           PCG-global                   m=8       4.7096      93.887     123.564            86
+continuous           PCG-global                  m=16       9.1300     152.939     214.620           116
+continuous           PCG-global                  m=32      20.4547     331.212     393.960            93
+continuous           PCG-global                  m=64      48.1166     599.376     719.806            90
+continuous         global-exact             tol=1e-10      95.7222    1602.170    1827.152            90
 
-channel               geometric                   P_G       1.3950       1.954    6784.469         16142
-channel           Jacobi-global                   m=4       2.8455      17.197    4629.088         11604
-channel           Jacobi-global                   m=8       4.7096      32.019    3624.501          9092
-channel           Jacobi-global                  m=16       9.1300     109.241    4168.438          7471
-channel           Jacobi-global                  m=32      20.4547     360.327    4537.855          5176
-channel           Jacobi-global                  m=64      48.1166    1786.436    4702.974          1885
-channel              PCG-global                   m=4       2.8455      49.565    1939.103          5341
-channel              PCG-global                   m=8       4.7096      83.828    1697.014          3734
-channel              PCG-global                  m=16       9.1300     150.085     696.926          1125
-channel              PCG-global                  m=32      20.4547     268.758     412.039           210
-channel              PCG-global                  m=64      48.1166     551.607     954.107           299
-channel            global-exact             tol=1e-10      97.8420    2284.719    8730.914          2416
+channel               geometric                   P_G       1.3950       1.222   15137.524  failed@40000
+channel           Jacobi-global                   m=4       2.8455      14.235   21691.285  failed@40000
+channel           Jacobi-global                   m=8       4.7096     300.130   17543.662  failed@40000
+channel           Jacobi-global                  m=16       9.1300      97.705   21883.742         39142
+channel           Jacobi-global                  m=32      20.4547     374.848   14466.273         18220
+channel           Jacobi-global                  m=64      48.1166    1673.239    8384.070          4704
+channel              PCG-global                   m=4       2.8455      42.216    8136.200         19397
+channel              PCG-global                   m=8       4.7096      76.794    3790.210          9058
+channel              PCG-global                  m=16       9.1300     163.501    2464.865          4043
+channel              PCG-global                  m=32      20.4547     266.572     537.370           347
+channel              PCG-global                  m=64      48.1166     528.332    1004.407           366
+channel            global-exact             tol=1e-10      97.8420    2256.744    9304.493          3227
 
-checker               geometric                   P_G       1.3950       1.241    5321.773         16392
-checker           Jacobi-global                   m=4       2.8455      14.141    4512.721         11949
-checker           Jacobi-global                   m=8       4.7096      35.979    4242.885          9402
-checker           Jacobi-global                  m=16       9.1300     106.586    3826.757          7349
-checker           Jacobi-global                  m=32      20.4547     357.379    4492.106          5095
-checker           Jacobi-global                  m=64      48.1166    1701.946    3532.932          1227
-checker              PCG-global                   m=4       2.8455      50.434    1812.500          4556
-checker              PCG-global                   m=8       4.7096      88.622    1711.251          3184
-checker              PCG-global                  m=16       9.1300     154.732     629.204           962
-checker              PCG-global                  m=32      20.4547     305.067     456.419           211
-checker              PCG-global                  m=64      48.1166     680.593     984.625           217
-checker            global-exact             tol=1e-10      96.9969    1831.299    2419.839           217
+checker               geometric                   P_G       1.3950       1.697   14855.917  failed@40000
+checker           Jacobi-global                   m=4       2.8455      16.561   17549.612  failed@40000
+checker           Jacobi-global                   m=8       4.7096      38.942   18199.683  failed@40000
+checker           Jacobi-global                  m=16       9.1300     102.816   22096.312         39538
+checker           Jacobi-global                  m=32      20.4547     397.255   14657.253         18555
+checker           Jacobi-global                  m=64      48.1166    1707.928    7173.420          3974
+checker              PCG-global                   m=4       2.8455      42.749    8243.533         19695
+checker              PCG-global                   m=8       4.7096      80.468    3437.367          7360
+checker              PCG-global                  m=16       9.1300     147.681    2247.120          4040
+checker              PCG-global                  m=32      20.4547     347.851     623.238           347
+checker              PCG-global                  m=64      48.1166     694.808    1058.916           226
+checker            global-exact             tol=1e-10      96.9969    1759.960    2356.540           228
+

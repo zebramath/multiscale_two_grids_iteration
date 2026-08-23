@@ -1,7 +1,7 @@
 Sparse localization: relative magnitude pruning of the global basis
 ===================================================================
 
-Version                : 2.10.0
+Version                : 2.11.0
 Fine grid              : h=1/128
 Coarse grid            : H=1/16
 Contrast               : 1e+04
@@ -16,32 +16,33 @@ Global pruning study
 --------------------
 Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
 -----------  ------------------  --------------------  -----------  ----------  ----------  ------------
-continuous        global-pruned            drop=0e+00      95.7222    1627.466    1843.339            86
-continuous        global-pruned            drop=1e-04      16.3928    1423.633    1476.747            86
-continuous        global-pruned            drop=1e-03       9.0549    1413.445    1453.698            86
-continuous        global-pruned            drop=3e-03       6.2830    1409.074    1457.077            86
-continuous        global-pruned            drop=1e-02       3.8930    1412.339    1442.715            86
-continuous        global-pruned            drop=2e-02       2.8038    1409.665    1440.536            86
-continuous        global-pruned            drop=3e-02       2.2598    1405.734    1436.996            89
-continuous        global-pruned            drop=5e-02       1.6492    1405.327    1457.098           155
-continuous        global-pruned            drop=1e-01       0.9962    1404.469    1570.664           468
+continuous        global-pruned            drop=0e+00      95.7222    1745.703    1945.865            90
+continuous        global-pruned            drop=1e-04      16.3928    1487.092    1547.665            90
+continuous        global-pruned            drop=1e-03       9.0549    1478.718    1523.397            92
+continuous        global-pruned            drop=3e-03       6.2830    1480.349    1523.972            94
+continuous        global-pruned            drop=1e-02       3.8930    1469.801    1513.910           100
+continuous        global-pruned            drop=2e-02       2.8038    1475.611    1516.805           111
+continuous        global-pruned            drop=3e-02       2.2598    1468.609    1512.401           118
+continuous        global-pruned            drop=5e-02       1.6492    1473.685    1540.734           206
+continuous        global-pruned            drop=1e-01       0.9962    1468.007    1716.977           633
 
-channel           global-pruned            drop=0e+00      97.8420    2236.668    7894.336          2416
-channel           global-pruned            drop=1e-04       8.4467    1952.558    3144.370          2412
-channel           global-pruned            drop=1e-03       5.6410    1947.095    3010.062          2584
-channel           global-pruned            drop=3e-03       4.4629    1945.440    2953.636          2588
-channel           global-pruned            drop=1e-02       3.1815    1947.925    2917.461          2589
-channel           global-pruned            drop=2e-02       2.4593    1945.965    2850.514          2594
-channel           global-pruned            drop=3e-02       2.0604    1947.893    3046.201          3091
-channel           global-pruned            drop=5e-02       1.5799    1948.319    4963.369          8689
-channel           global-pruned            drop=1e-01       0.9935    1943.756   15168.056         31953
+channel           global-pruned            drop=0e+00      97.8420    2179.299    9652.533          3227
+channel           global-pruned            drop=1e-04       8.4467    1948.641    3462.674          3226
+channel           global-pruned            drop=1e-03       5.6410    1948.042    3430.613          3481
+channel           global-pruned            drop=3e-03       4.4629    1946.125    3274.254          3486
+channel           global-pruned            drop=1e-02       3.1815    1944.195    3145.762          3488
+channel           global-pruned            drop=2e-02       2.4593    1945.649    3092.763          3504
+channel           global-pruned            drop=3e-02       2.0604    1944.052    3992.833          6391
+channel           global-pruned            drop=5e-02       1.5799    1940.802    7938.412         18888
+channel           global-pruned            drop=1e-01       0.9935    1942.111   16325.998  failed@40000
 
-checker           global-pruned            drop=0e+00      96.9969    1956.652    2457.160           217
-checker           global-pruned            drop=1e-04       7.7556    1667.442    1762.680           218
-checker           global-pruned            drop=1e-03       5.4953    1666.769    1753.852           218
-checker           global-pruned            drop=3e-03       4.4253    1671.132    1750.930           218
-checker           global-pruned            drop=1e-02       3.1966    1663.258    1818.126           426
-checker           global-pruned            drop=2e-02       2.4822    1664.078    2188.690          1497
-checker           global-pruned            drop=3e-02       2.0837    1661.766    2818.570          3210
-checker           global-pruned            drop=5e-02       1.6022    1660.591    4767.240          9044
-checker           global-pruned            drop=1e-01       1.0059    1660.223   15580.245         33270
+checker           global-pruned            drop=0e+00      96.9969    1795.121    2287.725           228
+checker           global-pruned            drop=1e-04       7.7556    1549.971    1647.217           231
+checker           global-pruned            drop=1e-03       5.4953    1547.347    1643.060           234
+checker           global-pruned            drop=3e-03       4.4253    1546.284    1630.915           235
+checker           global-pruned            drop=1e-02       3.1966    1544.463    1810.148           815
+checker           global-pruned            drop=2e-02       2.4822    1545.050    2550.116          3044
+checker           global-pruned            drop=3e-02       2.0837    1544.911    3707.782          6648
+checker           global-pruned            drop=5e-02       1.6022    1543.214    7577.987         19649
+checker           global-pruned            drop=1e-01       1.0059    1542.387   15910.564  failed@40000
+

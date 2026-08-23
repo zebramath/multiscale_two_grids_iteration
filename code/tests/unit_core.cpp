@@ -43,7 +43,7 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 } // namespace
 
 int main() {
-    require(tgi::version == "2.10.0", "wrong package version");
+    require(tgi::version == "2.11.0", "wrong package version");
     const experiment_support::Row expected_headers{
         "Field", "Method", "Parameter", "P density %",
         "Setup ms", "Total ms", "Cycles"};
@@ -70,6 +70,15 @@ int main() {
     const tgi::SparseMatrix a = tgi::assemble_diffusion(
         grid, coefficient.values);
     require(a.rows() == grid.fine_size(), "wrong matrix dimension");
+    experiment_support::BasicConfig problem_config;
+    problem_config.fine_intervals = 16;
+    problem_config.coarse_intervals = 4;
+    const auto problem = experiment_support::make_problem(
+        grid, experiment_support::standard_fields().front(), problem_config);
+    require(std::all_of(
+                problem.rhs.begin(), problem.rhs.end(),
+                [](double value) { return value == 1.0; }),
+            "experiment right-hand side is not constant one");
     for (double diagonal : a.diagonal()) {
         require(diagonal > 0.0, "diffusion diagonal is not positive");
     }
@@ -185,9 +194,8 @@ int main() {
                 2 * pcg2.report.local_solves.systems,
             "fixed-step PCG stopped before its explicit budget");
 
-    const tgi::Vector exact =
-        experiment_support::manufactured_solution(grid);
-    const tgi::Vector rhs = a.multiply(exact);
+    const tgi::Vector rhs(
+        static_cast<std::size_t>(grid.fine_size()), 1.0);
     const tgi::TwoGridCycle cycle(a, global.prolongation, 1, 2);
     tgi::Vector coarse_rhs(
         static_cast<std::size_t>(cycle.coarse_size()), 1.0);

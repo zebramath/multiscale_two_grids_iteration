@@ -1,8 +1,8 @@
-# 研究方案与完整阶段报告 v2.10
+# 研究方案与完整阶段报告 v2.11
 
 ## 高对比多尺度扩散问题中的局部化能量插值与高效自适应策略
 
-**对应代码：** `two_grids_iteration` v2.10.0  
+**对应代码：** `two_grids_iteration` v2.11.0  
 **统一基线：** $h=1/128$，$H=1/16$，$H/h=8$，对比度 $\kappa=10^4$，随机种子 1  
 **两网格框架：** 一次前向 Gauss--Seidel、Galerkin 粗校正、一次后向 Gauss--Seidel
 
@@ -12,16 +12,16 @@
 
 本研究考察高对比多尺度扩散方程中，如何在插值稀疏性、构造成本和两网格收敛之间取得平衡。以全局能量极小插值为参照，研究三类近似：限制基函数支撑的空间局部化、使用有限迭代的代数局部化，以及删除小幅值条目的稀疏局部化。
 
-v2.10 延续局部化能量插值主题和通道场有限步 PCG 密集扫描，并针对算法核查中发现的边界行为做了小范围修正。全部数值结果只保留四类指标：`P density %`、`Setup ms`、`Total ms` 和 `Cycles`。六组实验共 134 个候选，均在 40000 次循环上限内收敛。主要发现如下：
+v2.11 将六组实验统一改为常数右端项 $b=\mathbf 1$，不再通过预设解析真解制造右端项；三类高对比系数场下的真解一般没有可用的解析表达式。全部数值结果只保留四类指标：`P density %`、`Setup ms`、`Total ms` 和 `Cycles`。六组实验共 134 个候选，其中 124 个在 40000 次循环内达到相对残差 $10^{-6}$，10 个以 `failed@40000` 明确标记。主要发现如下：
 
-1. 连续随机场中，扩大支撑几乎不减少循环数，低成本几何插值已经足够；
-2. 通道和棋盘场明显需要能量修正，但精确全局能量基并不一定带来最小总时间；
-3. 全局基存在大量可删除尾部：阈值 $10^{-4}$ 可把密度由约 96%--98% 降至 8%--16%，循环数基本不变；
-4. 固定四层支撑中，PCG 容差很快进入性能平台，过度求精只增加 setup；
-5. 通道场中，预算式自适应扩展在约 6.24% 密度下，把总时间由 2642 ms 降至 1241 ms；
-6. 以全局方程为目标时存在明显有限步窗口：粗扫描中通道场 PCG 32 步为 210 次循环，而精确全局基为 2416 次循环；
-7. 密集扫描进一步把当前最佳循环数定位到 PCG 30 步的 202 次，约 28--44 步形成稳定窗口，之后继续逼近精确全局基反而逐步退化；
-8. 所有密集扫描候选的粗矩阵求解均通过独立长双精度稠密 Cholesky 交叉检查；结合随机 SPD、Galerkin 稠密参考和两网格算子一致性测试，没有发现能够解释该非单调现象的数值求解错误。
+1. 连续随机场相对容易，空间局部化从几何插值的 131 次逐步降至约 90 次，但复杂构造在单次求解总时间上并不占优；
+2. 通道场和棋盘场在几何插值下均在 40000 次上限内未收敛，说明常数右端项仍能充分暴露高对比难模态；
+3. 全局基存在大量可删除尾部：通道场阈值 $10^{-4}$ 将密度由 97.84% 降到 8.45%，循环数从 3227 变为 3226；
+4. 固定四层支撑中，PCG 容差进入明显平台；通道场从 $10^{-2}$ 到 $10^{-10}$ 仅由 5449 次降到 5275 次；
+5. 通道场中，预算式自适应支撑在约 6.24% 密度下把两层局部基的 6840 次降到 3553 次；
+6. 全局目标有限步 PCG 仍存在强烈非单调性：通道场粗扫描 $m=32$ 为 347 次，而全局精确能量基为 3227 次；
+7. 密集扫描进一步把当前最小循环数定位到 $m=38$ 的 231 次，约 $m=36$--50 形成低循环平台，继续逼近全局精确基反而显著退化；
+8. experiment6 的全部候选均通过独立长双精度稠密 Cholesky 粗解交叉检查，没有发现能够解释该非单调现象的粗矩阵数值求解问题。
 
 这些结果说明，后续方法不应无条件追求更精确或更大的插值，而应按列判断“继续迭代、扩展支撑、剪枝或停止”，并把判断本身的成本纳入优化目标。
 
@@ -83,7 +83,7 @@ $$
 
 ### 1.3 当前边界
 
-当前结论来自二维结构网格、固定几何粗点、固定 GS 光滑器、单个 $H/h$、单个对比度、单个随机种子和一个制造右端项。它们构成方法设计依据，但尚不能直接外推到三维、非结构网格、多层 AMG、任意随机介质或任意右端项。特别地，表中的 `Cycles` 是当前右端项下的有限步表现，不等同于最坏模态的渐近收敛因子。
+当前结论来自二维结构网格、固定几何粗点、固定 GS 光滑器、单个 $H/h$、单个对比度、单个随机种子和固定常数右端项 $b=\mathbf1$。它们构成方法设计依据，但尚不能直接外推到三维、非结构网格、多层 AMG、任意随机介质或任意右端项。特别地，表中的 `Cycles` 是当前右端项下的有限步表现，不等同于最坏模态的渐近收敛因子。
 
 ---
 
@@ -182,7 +182,9 @@ $$
 
 取 $z=w_{S_j}-v$ 并展开平方得到第一式。又因 $V_{S_j}\subseteq V_{T_j}$，在更大空间中的最小误差不会增大。证毕。
 
-标准 LOD 理论在稳定分解和局部 Poincaré 条件下可得到指数衰减，但当前节点注入空间尚未验证这些条件。因此，本文只使用严格的投影和单调性结论，不把指数衰减当作已证明事实。
+这里与 LOD（Localized Orthogonal Decomposition）有直接的离散对应。若定义节点型粗插值 $I_Hv=v_C$，则 $\ker I_H=V_F$；全局能量空间 $\operatorname{range}(P_\star)$ 正是 $V_F$ 的 $A$-正交补。因此 $P_\star$ 可视为节点型框架下的理想多尺度基，而把 $w_\star$ 限制到 $S_j$ 上求解，与 LOD 把全局校正子截断到有限层 patch 上具有相同的“全局正交对象局部化”结构。
+
+两者也有关键差别。经典 LOD 通常借助稳定拟插值、局部 Poincaré 不等式等条件证明校正子的指数衰减；当前简单 C/F 节点注入尚未验证这些条件，因此本文不直接移植对比度无关的指数衰减结论。另一方面，有限步 PCG 还给出一种隐式代数局部化：从局部几何初值出发，第 $m$ 步信息至多传播到矩阵图的 $m$ 跳邻域，可与 LOD 的显式 patch 层数形成对应。更重要的是，LOD 主要关注多尺度空间的解逼近，而本研究还要同时匹配固定 GS 光滑器；这正是全局能量最优与两网格最优可能分离的来源。
 
 ### 2.4 代数局部化
 
@@ -406,7 +408,7 @@ $$
 
 **证明。** 由 $A$-自伴性可取 $A$-标准正交特征基，且 $e_k=E_{TG}^ke_0=\sum_i c_i\mu_i^kq_i$。利用正交性和 $r_k=Ae_k$ 立即得到等式。证毕。
 
-因此，若当前制造右端项几乎不激发最慢模态，某个候选即使最坏模态因子稍差，也可能用更少循环达到当前停止条件。反之，可复用预条件器的设计不能只按一个右端项选步数。欧氏残差与上述对偶能量残差满足由 $\lambda_{\min}(A)$、$\lambda_{\max}(A)$ 给出的范数等价，但排序仍可能受模态系数影响。后续自适应方法必须明确优化目标：单次给定右端项采用当前残差探针；多右端项或通用求解器采用随机子空间估计的近最坏模态指标。
+因此，即使当前常数右端项没有显著激发某个最慢模态，某个候选仍可能在最坏模态因子稍差时用更少循环达到当前停止条件。反之，可复用预条件器的设计不能只按一个右端项选步数。欧氏残差与上述对偶能量残差满足由 $\lambda_{\min}(A)$、$\lambda_{\max}(A)$ 给出的范数等价，但排序仍可能受模态系数影响。后续自适应方法必须明确优化目标：单次给定右端项采用当前残差探针；多右端项或通用求解器采用随机子空间估计的近最坏模态指标。
 
 ### 2.8 三类近似的统一关系
 
@@ -446,16 +448,13 @@ $$
 | 最大循环 | 40000 |
 | 线程数 | 4 |
 
-制造解为
+所有实验统一直接取
 
 $$
-u_\star(x,y)=
-\sin(\pi x)\sin(\pi y)
-+0.23\sin(3\pi x)\sin(2\pi y)
-+0.11\sin(7\pi x)\sin(5\pi y),
+b=\mathbf1,
 $$
 
-右端项取 $b=Au_\star$。
+对应连续模型中的常数源项 $f\equiv1$。对于随机连续场、通道场和随机棋盘场，真解一般没有解析表达式，因此本研究不再使用制造解误差评价候选，而统一以 $\|r_k\|_2/\|r_0\|_2\le10^{-6}$ 作为求解停止条件。这样也避免了右端项由同一离散算子反向制造而可能引入的特殊模态偏置。
 
 ### 3.2 输出指标
 
@@ -479,201 +478,183 @@ Field、Method 和 Parameter 仅用于标识实验行，不属于评价指标。
 | experiment5 | 有限步构造 | Jacobi/PCG 的 4/8/16/32/64 步及精确全局参考 |
 | experiment6 | 通道密集扫描 | PCG 的 16--64 偶数步及精确全局参考；逐行交叉检查粗求解 |
 
-### 3.4 v2.10 的算法边界修正
+### 3.4 v2.11 的数值问题口径
 
-本版只修正会造成歧义或错误行为的入口，不改变两网格、Galerkin 或 PCG 主体：
-
-1. `local_tolerance=0` 明确定义为固定迭代预算模式，experiment5--6 不再依赖极小容差平方下溢来关闭提前停止；
-2. 局部能量构造统一遵守 `require_convergence`：为真时失败即报错，为假时返回有限步结果并记录失败系统数；
-3. 收敛因子估计不再截断到 1，从而保留发散候选的真实信号；
-4. 稀疏矩阵、Cholesky 排列、向量维数、系数场和重复支撑节点增加了集中且必要的合法性检查；
-5. 没有新增包装模块，校验直接放在原有数据结构和算法入口，以保持调用链简洁。
-
-默认通道问题上，固定步模式的 225 个列系统在 $m=16,32,48,64$ 均完整执行指定步数。v2.10 的 experiment6 与 v2.9 逐行比较后，26 行的 `P density %` 和 `Cycles` 完全一致，说明这些修正没有改变有限步窗口及其主要结论。
+v2.11 只改变统一数值右端项，不改变插值、Galerkin、PCG、Gauss--Seidel 或粗网格直接解算法。六组实验均从头完整运行，文中的所有数值均直接来自 v2.11.0 的对应 CSV。由于 `Setup ms` 与 `Total ms` 是单次墙钟计时，毫秒级小差异只作参考；主要机制判断优先依据循环数、密度和数量级差异。
 
 ---
 
 ## 4. 完整数值结果
 
-以下六张表与 v2.10.0 代码包中的 CSV 完全一致，共 134 行。时间单位为 ms。experiment1--5 保留 v2.8 基线结果；experiment6 由 v2.10.0 独立完整运行，因此不同表之间的毫秒级时间不用于细小差异比较。
+以下六张表与 v2.11.0 代码包中的 CSV 完全一致，共 134 个候选。时间单位为 ms；六个实验均在常数右端项 $b=\mathbf1$ 下重新完整运行。`failed@40000` 表示达到循环上限仍未满足统一停止条件，并非缺失数据。
 
 ### 4.1 experiment1：支撑半径
 
 | Field | Method | Parameter | P density % | Setup ms | Total ms | Cycles |
 | --- | --- | --- | --- | --- | --- | --- |
-| continuous | geometric | P_G | 1.3950 | 4.218 | 43.629 | 87 |
-| continuous | local-energy | layers=2 | 6.0922 | 61.634 | 114.611 | 86 |
-| continuous | local-energy | layers=3 | 12.5471 | 142.231 | 199.178 | 86 |
-| continuous | local-energy | layers=4 | 20.5466 | 271.560 | 346.589 | 86 |
-| continuous | global-energy | layers=inf | 95.7222 | 1744.830 | 1979.923 | 86 |
-| channel | geometric | P_G | 1.3950 | 1.516 | 6133.290 | 16142 |
-| channel | local-energy | layers=2 | 6.0922 | 90.965 | 2767.845 | 4768 |
-| channel | local-energy | layers=3 | 12.5471 | 179.230 | 3098.187 | 4262 |
-| channel | local-energy | layers=4 | 20.5466 | 384.787 | 3245.251 | 3742 |
-| channel | global-energy | layers=inf | 97.8420 | 2306.043 | 8587.365 | 2416 |
-| checker | geometric | P_G | 1.3950 | 1.442 | 6154.071 | 16392 |
-| checker | local-energy | layers=2 | 6.0922 | 75.971 | 685.850 | 1475 |
-| checker | local-energy | layers=3 | 12.5471 | 184.507 | 328.809 | 217 |
-| checker | local-energy | layers=4 | 20.5466 | 315.108 | 501.694 | 217 |
-| checker | global-energy | layers=inf | 96.9969 | 1886.739 | 2469.773 | 217 |
-
-continuous 中所有能量基均为 86 次循环，扩大支撑没有求解收益。channel 中循环数随支撑增大而下降，但全局基 setup 过高，总时间反而最大。checker 的三层基已经达到 217 次，继续扩大支撑没有收益。
+| continuous | geometric | P_G | 1.3950 | 2.918 | 66.027 | 131 |
+| continuous | local-energy | layers=2 | 6.0922 | 60.108 | 115.514 | 104 |
+| continuous | local-energy | layers=3 | 12.5471 | 139.666 | 192.608 | 91 |
+| continuous | local-energy | layers=4 | 20.5466 | 285.609 | 354.571 | 90 |
+| continuous | global-energy | layers=inf | 95.7222 | 1593.209 | 1798.406 | 90 |
+| channel | geometric | P_G | 1.3950 | 2.278 | 16219.045 | failed@40000 |
+| channel | local-energy | layers=2 | 6.0922 | 85.922 | 3584.638 | 6840 |
+| channel | local-energy | layers=3 | 12.5471 | 193.244 | 4062.275 | 6050 |
+| channel | local-energy | layers=4 | 20.5466 | 324.920 | 4269.254 | 5275 |
+| channel | global-energy | layers=inf | 97.8420 | 2097.170 | 8976.755 | 3227 |
+| checker | geometric | P_G | 1.3950 | 1.627 | 14088.300 | failed@40000 |
+| checker | local-energy | layers=2 | 6.0922 | 87.602 | 1959.464 | 4144 |
+| checker | local-energy | layers=3 | 12.5471 | 182.956 | 336.425 | 243 |
+| checker | local-energy | layers=4 | 20.5466 | 350.787 | 533.075 | 229 |
+| checker | global-energy | layers=inf | 96.9969 | 1767.620 | 2314.558 | 228 |
 
 ### 4.2 experiment2：固定四层上的 PCG 容差
 
 | Field | Method | Parameter | P density % | Setup ms | Total ms | Cycles |
 | --- | --- | --- | --- | --- | --- | --- |
-| continuous | local-energy-4 | tol=1e-02 | 11.1357 | 80.890 | 129.096 | 86 |
-| continuous | local-energy-4 | tol=3e-03 | 15.7941 | 92.998 | 143.636 | 86 |
-| continuous | local-energy-4 | tol=1e-03 | 18.4505 | 120.350 | 180.682 | 86 |
-| continuous | local-energy-4 | tol=3e-04 | 20.0343 | 124.559 | 191.429 | 86 |
-| continuous | local-energy-4 | tol=1e-04 | 20.4964 | 124.478 | 186.096 | 86 |
-| continuous | local-energy-4 | tol=1e-10 | 20.5466 | 302.569 | 380.085 | 86 |
-| channel | local-energy-4 | tol=1e-02 | 14.8391 | 86.067 | 2571.511 | 3855 |
-| channel | local-energy-4 | tol=3e-03 | 18.2800 | 115.697 | 2657.862 | 3757 |
-| channel | local-energy-4 | tol=1e-03 | 19.6917 | 124.007 | 2743.392 | 3748 |
-| channel | local-energy-4 | tol=3e-04 | 20.1398 | 147.525 | 2868.174 | 3745 |
-| channel | local-energy-4 | tol=1e-04 | 20.2876 | 147.437 | 2874.532 | 3745 |
-| channel | local-energy-4 | tol=1e-10 | 20.5466 | 340.613 | 3281.375 | 3742 |
-| checker | local-energy-4 | tol=1e-02 | 14.2278 | 73.766 | 399.724 | 550 |
-| checker | local-energy-4 | tol=3e-03 | 17.8336 | 94.448 | 238.840 | 217 |
-| checker | local-energy-4 | tol=1e-03 | 19.4081 | 111.316 | 265.056 | 217 |
-| checker | local-energy-4 | tol=3e-04 | 19.9827 | 125.084 | 272.762 | 217 |
-| checker | local-energy-4 | tol=1e-04 | 20.1788 | 145.665 | 300.953 | 217 |
-| checker | local-energy-4 | tol=1e-10 | 20.5466 | 333.019 | 480.579 | 217 |
-
-continuous 的循环数对全部容差都相同。channel 在 $10^{-3}$ 后已接近平台。checker 在 $3\times10^{-3}$ 时已达到严格参考的 217 次循环。$10^{-10}$ 适合作为参考，不适合作为默认构造精度。
+| continuous | local-energy-4 | tol=1e-02 | 11.1357 | 84.160 | 136.501 | 111 |
+| continuous | local-energy-4 | tol=3e-03 | 15.7941 | 88.578 | 142.356 | 95 |
+| continuous | local-energy-4 | tol=1e-03 | 18.4505 | 133.075 | 191.073 | 91 |
+| continuous | local-energy-4 | tol=3e-04 | 20.0343 | 145.929 | 206.800 | 90 |
+| continuous | local-energy-4 | tol=1e-04 | 20.4964 | 148.874 | 213.587 | 90 |
+| continuous | local-energy-4 | tol=1e-10 | 20.5466 | 289.415 | 346.116 | 90 |
+| channel | local-energy-4 | tol=1e-02 | 14.8391 | 100.559 | 3177.548 | 5449 |
+| channel | local-energy-4 | tol=3e-03 | 18.2800 | 99.799 | 3364.605 | 5296 |
+| channel | local-energy-4 | tol=1e-03 | 19.6917 | 117.920 | 3595.122 | 5283 |
+| channel | local-energy-4 | tol=3e-04 | 20.1398 | 141.754 | 3662.380 | 5278 |
+| channel | local-energy-4 | tol=1e-04 | 20.2876 | 152.816 | 3741.426 | 5277 |
+| channel | local-energy-4 | tol=1e-10 | 20.5466 | 329.279 | 3989.239 | 5275 |
+| checker | local-energy-4 | tol=1e-02 | 14.2278 | 78.080 | 719.112 | 1186 |
+| checker | local-energy-4 | tol=3e-03 | 17.8336 | 95.384 | 259.308 | 265 |
+| checker | local-energy-4 | tol=1e-03 | 19.4081 | 113.542 | 263.329 | 231 |
+| checker | local-energy-4 | tol=3e-04 | 19.9827 | 126.201 | 276.556 | 229 |
+| checker | local-energy-4 | tol=1e-04 | 20.1788 | 142.166 | 307.816 | 229 |
+| checker | local-energy-4 | tol=1e-10 | 20.5466 | 319.186 | 467.406 | 229 |
 
 ### 4.3 experiment3：全局基剪枝
 
 | Field | Method | Parameter | P density % | Setup ms | Total ms | Cycles |
 | --- | --- | --- | --- | --- | --- | --- |
-| continuous | global-pruned | drop=0e+00 | 95.7222 | 1627.466 | 1843.339 | 86 |
-| continuous | global-pruned | drop=1e-04 | 16.3928 | 1423.633 | 1476.747 | 86 |
-| continuous | global-pruned | drop=1e-03 | 9.0549 | 1413.445 | 1453.698 | 86 |
-| continuous | global-pruned | drop=3e-03 | 6.2830 | 1409.074 | 1457.077 | 86 |
-| continuous | global-pruned | drop=1e-02 | 3.8930 | 1412.339 | 1442.715 | 86 |
-| continuous | global-pruned | drop=2e-02 | 2.8038 | 1409.665 | 1440.536 | 86 |
-| continuous | global-pruned | drop=3e-02 | 2.2598 | 1405.734 | 1436.996 | 89 |
-| continuous | global-pruned | drop=5e-02 | 1.6492 | 1405.327 | 1457.098 | 155 |
-| continuous | global-pruned | drop=1e-01 | 0.9962 | 1404.469 | 1570.664 | 468 |
-| channel | global-pruned | drop=0e+00 | 97.8420 | 2236.668 | 7894.336 | 2416 |
-| channel | global-pruned | drop=1e-04 | 8.4467 | 1952.558 | 3144.370 | 2412 |
-| channel | global-pruned | drop=1e-03 | 5.6410 | 1947.095 | 3010.062 | 2584 |
-| channel | global-pruned | drop=3e-03 | 4.4629 | 1945.440 | 2953.636 | 2588 |
-| channel | global-pruned | drop=1e-02 | 3.1815 | 1947.925 | 2917.461 | 2589 |
-| channel | global-pruned | drop=2e-02 | 2.4593 | 1945.965 | 2850.514 | 2594 |
-| channel | global-pruned | drop=3e-02 | 2.0604 | 1947.893 | 3046.201 | 3091 |
-| channel | global-pruned | drop=5e-02 | 1.5799 | 1948.319 | 4963.369 | 8689 |
-| channel | global-pruned | drop=1e-01 | 0.9935 | 1943.756 | 15168.056 | 31953 |
-| checker | global-pruned | drop=0e+00 | 96.9969 | 1956.652 | 2457.160 | 217 |
-| checker | global-pruned | drop=1e-04 | 7.7556 | 1667.442 | 1762.680 | 218 |
-| checker | global-pruned | drop=1e-03 | 5.4953 | 1666.769 | 1753.852 | 218 |
-| checker | global-pruned | drop=3e-03 | 4.4253 | 1671.132 | 1750.930 | 218 |
-| checker | global-pruned | drop=1e-02 | 3.1966 | 1663.258 | 1818.126 | 426 |
-| checker | global-pruned | drop=2e-02 | 2.4822 | 1664.078 | 2188.690 | 1497 |
-| checker | global-pruned | drop=3e-02 | 2.0837 | 1661.766 | 2818.570 | 3210 |
-| checker | global-pruned | drop=5e-02 | 1.6022 | 1660.591 | 4767.240 | 9044 |
-| checker | global-pruned | drop=1e-01 | 1.0059 | 1660.223 | 15580.245 | 33270 |
-
-$\delta=10^{-4}$ 后，三类场的密度分别降至 16.39%、8.45% 和 7.76%，循环数几乎不变。continuous 可继续剪至约 2.80% 而保持 86 次；channel 在 2% 左右仍较稳定；checker 对阈值更敏感，$10^{-2}$ 已从 217 次增至 426 次。由于 setup 仍包含全局基构造，该实验是稀疏性上限分析，不是最终高效算法。
+| continuous | global-pruned | drop=0e+00 | 95.7222 | 1745.703 | 1945.865 | 90 |
+| continuous | global-pruned | drop=1e-04 | 16.3928 | 1487.092 | 1547.665 | 90 |
+| continuous | global-pruned | drop=1e-03 | 9.0549 | 1478.718 | 1523.397 | 92 |
+| continuous | global-pruned | drop=3e-03 | 6.2830 | 1480.349 | 1523.972 | 94 |
+| continuous | global-pruned | drop=1e-02 | 3.8930 | 1469.801 | 1513.910 | 100 |
+| continuous | global-pruned | drop=2e-02 | 2.8038 | 1475.611 | 1516.805 | 111 |
+| continuous | global-pruned | drop=3e-02 | 2.2598 | 1468.609 | 1512.401 | 118 |
+| continuous | global-pruned | drop=5e-02 | 1.6492 | 1473.685 | 1540.734 | 206 |
+| continuous | global-pruned | drop=1e-01 | 0.9962 | 1468.007 | 1716.977 | 633 |
+| channel | global-pruned | drop=0e+00 | 97.8420 | 2179.299 | 9652.533 | 3227 |
+| channel | global-pruned | drop=1e-04 | 8.4467 | 1948.641 | 3462.674 | 3226 |
+| channel | global-pruned | drop=1e-03 | 5.6410 | 1948.042 | 3430.613 | 3481 |
+| channel | global-pruned | drop=3e-03 | 4.4629 | 1946.125 | 3274.254 | 3486 |
+| channel | global-pruned | drop=1e-02 | 3.1815 | 1944.195 | 3145.762 | 3488 |
+| channel | global-pruned | drop=2e-02 | 2.4593 | 1945.649 | 3092.763 | 3504 |
+| channel | global-pruned | drop=3e-02 | 2.0604 | 1944.052 | 3992.833 | 6391 |
+| channel | global-pruned | drop=5e-02 | 1.5799 | 1940.802 | 7938.412 | 18888 |
+| channel | global-pruned | drop=1e-01 | 0.9935 | 1942.111 | 16325.998 | failed@40000 |
+| checker | global-pruned | drop=0e+00 | 96.9969 | 1795.121 | 2287.725 | 228 |
+| checker | global-pruned | drop=1e-04 | 7.7556 | 1549.971 | 1647.217 | 231 |
+| checker | global-pruned | drop=1e-03 | 5.4953 | 1547.347 | 1643.060 | 234 |
+| checker | global-pruned | drop=3e-03 | 4.4253 | 1546.284 | 1630.915 | 235 |
+| checker | global-pruned | drop=1e-02 | 3.1966 | 1544.463 | 1810.148 | 815 |
+| checker | global-pruned | drop=2e-02 | 2.4822 | 1545.050 | 2550.116 | 3044 |
+| checker | global-pruned | drop=3e-02 | 2.0837 | 1544.911 | 3707.782 | 6648 |
+| checker | global-pruned | drop=5e-02 | 1.6022 | 1543.214 | 7577.987 | 19649 |
+| checker | global-pruned | drop=1e-01 | 1.0059 | 1542.387 | 15910.564 | failed@40000 |
 
 ### 4.4 experiment4：支撑选择策略
 
 | Field | Method | Parameter | P density % | Setup ms | Total ms | Cycles |
 | --- | --- | --- | --- | --- | --- | --- |
-| continuous | base-local | layers=2 | 6.0922 | 49.183 | 83.813 | 86 |
-| continuous | geometric-layer | 2 -> 3 | 12.5471 | 103.457 | 163.579 | 86 |
-| continuous | indicator-strong | K=64 one-shot | 6.1082 | 62.285 | 110.827 | 86 |
-| continuous | adaptive-budget | R=8, B=128, q=16 | 6.2364 | 177.051 | 227.120 | 86 |
-| channel | base-local | layers=2 | 6.0922 | 54.348 | 2641.911 | 4768 |
-| channel | geometric-layer | 2 -> 3 | 12.5471 | 124.103 | 3186.308 | 4262 |
-| channel | indicator-strong | K=64 one-shot | 6.4855 | 101.633 | 2322.201 | 3960 |
-| channel | adaptive-budget | R=8, B=128, q=16 | 6.2390 | 184.846 | 1240.756 | 2582 |
-| checker | base-local | layers=2 | 6.0922 | 48.490 | 646.755 | 1475 |
-| checker | geometric-layer | 2 -> 3 | 12.5471 | 116.814 | 224.596 | 217 |
-| checker | indicator-strong | K=64 one-shot | 6.4838 | 89.523 | 249.296 | 358 |
-| checker | adaptive-budget | R=8, B=128, q=16 | 6.2368 | 175.675 | 264.834 | 219 |
-
-continuous 中最简单的两层基最好。checker 中统一三层总时间最低。channel 中 adaptive-budget 以 6.239% 密度将总时间从两层基的 2642 ms 降至 1241 ms，降低约 53.0%。这表明自适应扩展的价值高度依赖系数拓扑，必须包含低成本退出机制。
+| continuous | base-local | layers=2 | 6.0922 | 42.157 | 77.549 | 104 |
+| continuous | geometric-layer | 2 -> 3 | 12.5471 | 103.474 | 145.762 | 91 |
+| continuous | indicator-strong | K=64 one-shot | 6.1082 | 52.314 | 94.384 | 104 |
+| continuous | adaptive-budget | R=8, B=128, q=16 | 6.2364 | 150.757 | 189.985 | 101 |
+| channel | base-local | layers=2 | 6.0922 | 47.088 | 2837.432 | 6840 |
+| channel | geometric-layer | 2 -> 3 | 12.5471 | 115.322 | 3346.021 | 6050 |
+| channel | indicator-strong | K=64 one-shot | 6.4855 | 88.460 | 2345.895 | 5592 |
+| channel | adaptive-budget | R=8, B=128, q=16 | 6.2390 | 204.632 | 1631.328 | 3553 |
+| checker | base-local | layers=2 | 6.0922 | 45.365 | 1679.545 | 4144 |
+| checker | geometric-layer | 2 -> 3 | 12.5471 | 133.914 | 277.175 | 243 |
+| checker | indicator-strong | K=64 one-shot | 6.4838 | 94.556 | 497.236 | 946 |
+| checker | adaptive-budget | R=8, B=128, q=16 | 6.2368 | 194.145 | 531.118 | 807 |
 
 ### 4.5 experiment5：有限步全局目标
 
 | Field | Method | Parameter | P density % | Setup ms | Total ms | Cycles |
 | --- | --- | --- | --- | --- | --- | --- |
-| continuous | geometric | P_G | 1.3950 | 1.916 | 29.833 | 87 |
-| continuous | Jacobi-global | m=4 | 2.8455 | 16.190 | 38.315 | 69 |
-| continuous | Jacobi-global | m=8 | 4.7096 | 35.791 | 58.920 | 65 |
-| continuous | Jacobi-global | m=16 | 9.1300 | 120.120 | 169.291 | 63 |
-| continuous | Jacobi-global | m=32 | 20.4547 | 429.260 | 479.934 | 64 |
-| continuous | Jacobi-global | m=64 | 48.1166 | 1973.266 | 2070.809 | 67 |
-| continuous | PCG-global | m=4 | 2.8455 | 45.993 | 65.914 | 61 |
-| continuous | PCG-global | m=8 | 4.7096 | 72.634 | 108.292 | 66 |
-| continuous | PCG-global | m=16 | 9.1300 | 139.589 | 189.243 | 103 |
-| continuous | PCG-global | m=32 | 20.4547 | 274.264 | 335.394 | 86 |
-| continuous | PCG-global | m=64 | 48.1166 | 637.909 | 768.592 | 86 |
-| continuous | global-exact | tol=1e-10 | 95.7222 | 1648.725 | 1855.459 | 86 |
-| channel | geometric | P_G | 1.3950 | 1.954 | 6784.469 | 16142 |
-| channel | Jacobi-global | m=4 | 2.8455 | 17.197 | 4629.088 | 11604 |
-| channel | Jacobi-global | m=8 | 4.7096 | 32.019 | 3624.501 | 9092 |
-| channel | Jacobi-global | m=16 | 9.1300 | 109.241 | 4168.438 | 7471 |
-| channel | Jacobi-global | m=32 | 20.4547 | 360.327 | 4537.855 | 5176 |
-| channel | Jacobi-global | m=64 | 48.1166 | 1786.436 | 4702.974 | 1885 |
-| channel | PCG-global | m=4 | 2.8455 | 49.565 | 1939.103 | 5341 |
-| channel | PCG-global | m=8 | 4.7096 | 83.828 | 1697.014 | 3734 |
-| channel | PCG-global | m=16 | 9.1300 | 150.085 | 696.926 | 1125 |
-| channel | PCG-global | m=32 | 20.4547 | 268.758 | 412.039 | 210 |
-| channel | PCG-global | m=64 | 48.1166 | 551.607 | 954.107 | 299 |
-| channel | global-exact | tol=1e-10 | 97.8420 | 2284.719 | 8730.914 | 2416 |
-| checker | geometric | P_G | 1.3950 | 1.241 | 5321.773 | 16392 |
-| checker | Jacobi-global | m=4 | 2.8455 | 14.141 | 4512.721 | 11949 |
-| checker | Jacobi-global | m=8 | 4.7096 | 35.979 | 4242.885 | 9402 |
-| checker | Jacobi-global | m=16 | 9.1300 | 106.586 | 3826.757 | 7349 |
-| checker | Jacobi-global | m=32 | 20.4547 | 357.379 | 4492.106 | 5095 |
-| checker | Jacobi-global | m=64 | 48.1166 | 1701.946 | 3532.932 | 1227 |
-| checker | PCG-global | m=4 | 2.8455 | 50.434 | 1812.500 | 4556 |
-| checker | PCG-global | m=8 | 4.7096 | 88.622 | 1711.251 | 3184 |
-| checker | PCG-global | m=16 | 9.1300 | 154.732 | 629.204 | 962 |
-| checker | PCG-global | m=32 | 20.4547 | 305.067 | 456.419 | 211 |
-| checker | PCG-global | m=64 | 48.1166 | 680.593 | 984.625 | 217 |
-| checker | global-exact | tol=1e-10 | 96.9969 | 1831.299 | 2419.839 | 217 |
-
-continuous 中 Jacobi 4 步只需 38 ms，进一步逼近全局基没有意义。channel 中 PCG 32 步为 210 次、412 ms，明显优于精确全局基的 2416 次、8731 ms。checker 中 PCG 32 步为 211 次、456 ms，PCG 64 步和精确基虽然循环数接近，但总时间更高。有限步最佳窗口是后续自适应停止器的直接研究对象。
+| continuous | geometric | P_G | 1.3950 | 2.749 | 49.761 | 131 |
+| continuous | Jacobi-global | m=4 | 2.8455 | 16.789 | 68.563 | 112 |
+| continuous | Jacobi-global | m=8 | 4.7096 | 38.569 | 82.368 | 100 |
+| continuous | Jacobi-global | m=16 | 9.1300 | 116.985 | 168.682 | 91 |
+| continuous | Jacobi-global | m=32 | 20.4547 | 508.525 | 573.848 | 86 |
+| continuous | Jacobi-global | m=64 | 48.1166 | 2005.076 | 2116.975 | 83 |
+| continuous | PCG-global | m=4 | 2.8455 | 44.709 | 73.982 | 90 |
+| continuous | PCG-global | m=8 | 4.7096 | 93.887 | 123.564 | 86 |
+| continuous | PCG-global | m=16 | 9.1300 | 152.939 | 214.620 | 116 |
+| continuous | PCG-global | m=32 | 20.4547 | 331.212 | 393.960 | 93 |
+| continuous | PCG-global | m=64 | 48.1166 | 599.376 | 719.806 | 90 |
+| continuous | global-exact | tol=1e-10 | 95.7222 | 1602.170 | 1827.152 | 90 |
+| channel | geometric | P_G | 1.3950 | 1.222 | 15137.524 | failed@40000 |
+| channel | Jacobi-global | m=4 | 2.8455 | 14.235 | 21691.285 | failed@40000 |
+| channel | Jacobi-global | m=8 | 4.7096 | 300.130 | 17543.662 | failed@40000 |
+| channel | Jacobi-global | m=16 | 9.1300 | 97.705 | 21883.742 | 39142 |
+| channel | Jacobi-global | m=32 | 20.4547 | 374.848 | 14466.273 | 18220 |
+| channel | Jacobi-global | m=64 | 48.1166 | 1673.239 | 8384.070 | 4704 |
+| channel | PCG-global | m=4 | 2.8455 | 42.216 | 8136.200 | 19397 |
+| channel | PCG-global | m=8 | 4.7096 | 76.794 | 3790.210 | 9058 |
+| channel | PCG-global | m=16 | 9.1300 | 163.501 | 2464.865 | 4043 |
+| channel | PCG-global | m=32 | 20.4547 | 266.572 | 537.370 | 347 |
+| channel | PCG-global | m=64 | 48.1166 | 528.332 | 1004.407 | 366 |
+| channel | global-exact | tol=1e-10 | 97.8420 | 2256.744 | 9304.493 | 3227 |
+| checker | geometric | P_G | 1.3950 | 1.697 | 14855.917 | failed@40000 |
+| checker | Jacobi-global | m=4 | 2.8455 | 16.561 | 17549.612 | failed@40000 |
+| checker | Jacobi-global | m=8 | 4.7096 | 38.942 | 18199.683 | failed@40000 |
+| checker | Jacobi-global | m=16 | 9.1300 | 102.816 | 22096.312 | 39538 |
+| checker | Jacobi-global | m=32 | 20.4547 | 397.255 | 14657.253 | 18555 |
+| checker | Jacobi-global | m=64 | 48.1166 | 1707.928 | 7173.420 | 3974 |
+| checker | PCG-global | m=4 | 2.8455 | 42.749 | 8243.533 | 19695 |
+| checker | PCG-global | m=8 | 4.7096 | 80.468 | 3437.367 | 7360 |
+| checker | PCG-global | m=16 | 9.1300 | 147.681 | 2247.120 | 4040 |
+| checker | PCG-global | m=32 | 20.4547 | 347.851 | 623.238 | 347 |
+| checker | PCG-global | m=64 | 48.1166 | 694.808 | 1058.916 | 226 |
+| checker | global-exact | tol=1e-10 | 96.9969 | 1759.960 | 2356.540 | 228 |
 
 ### 4.6 experiment6：通道场 PCG 密集扫描
 
 | Field | Method | Parameter | P density % | Setup ms | Total ms | Cycles |
 | --- | --- | --- | --- | --- | --- | --- |
-| channel | PCG-global | m=16 | 9.1300 | 159.244 | 661.981 | 1125 |
-| channel | PCG-global | m=18 | 10.3088 | 156.144 | 946.721 | 1645 |
-| channel | PCG-global | m=20 | 11.6236 | 207.679 | 758.508 | 1045 |
-| channel | PCG-global | m=22 | 13.0007 | 188.298 | 528.024 | 663 |
-| channel | PCG-global | m=24 | 14.4398 | 228.534 | 527.793 | 521 |
-| channel | PCG-global | m=26 | 15.8038 | 222.705 | 414.919 | 311 |
-| channel | PCG-global | m=28 | 17.3034 | 240.341 | 426.855 | 250 |
-| channel | PCG-global | m=30 | 18.8537 | 275.928 | 406.427 | 202 |
-| channel | PCG-global | m=32 | 20.4547 | 275.093 | 408.704 | 210 |
-| channel | PCG-global | m=34 | 21.9609 | 296.477 | 452.990 | 228 |
-| channel | PCG-global | m=36 | 23.5999 | 301.033 | 467.084 | 214 |
-| channel | PCG-global | m=38 | 25.2786 | 327.495 | 515.558 | 214 |
-| channel | PCG-global | m=40 | 26.9969 | 370.518 | 544.746 | 215 |
-| channel | PCG-global | m=42 | 28.6040 | 382.728 | 578.558 | 215 |
-| channel | PCG-global | m=44 | 30.3389 | 401.862 | 595.273 | 216 |
-| channel | PCG-global | m=46 | 32.1029 | 472.432 | 685.769 | 218 |
-| channel | PCG-global | m=48 | 33.8960 | 419.013 | 631.800 | 216 |
-| channel | PCG-global | m=50 | 35.5642 | 413.324 | 626.296 | 217 |
-| channel | PCG-global | m=52 | 37.3532 | 442.614 | 660.735 | 218 |
-| channel | PCG-global | m=54 | 39.1612 | 457.087 | 685.031 | 222 |
-| channel | PCG-global | m=56 | 40.9881 | 479.448 | 735.779 | 233 |
-| channel | PCG-global | m=58 | 42.6795 | 479.576 | 767.822 | 256 |
-| channel | PCG-global | m=60 | 44.4826 | 509.763 | 836.568 | 280 |
-| channel | PCG-global | m=62 | 46.2950 | 523.162 | 874.204 | 294 |
-| channel | PCG-global | m=64 | 48.1166 | 534.240 | 891.429 | 299 |
-| channel | global-exact | tol=1e-10 | 97.8420 | 2056.243 | 7050.817 | 2416 |
+| channel | PCG-global | m=16 | 9.1300 | 181.620 | 2873.227 | 4043 |
+| channel | PCG-global | m=18 | 10.3088 | 162.560 | 3463.399 | 3291 |
+| channel | PCG-global | m=20 | 11.6236 | 184.544 | 1294.552 | 1861 |
+| channel | PCG-global | m=22 | 13.0007 | 218.540 | 934.971 | 1148 |
+| channel | PCG-global | m=24 | 14.4398 | 220.927 | 838.038 | 926 |
+| channel | PCG-global | m=26 | 15.8038 | 256.735 | 737.212 | 644 |
+| channel | PCG-global | m=28 | 17.3034 | 238.089 | 583.501 | 441 |
+| channel | PCG-global | m=30 | 18.8537 | 273.400 | 533.431 | 336 |
+| channel | PCG-global | m=32 | 20.4547 | 264.775 | 527.054 | 347 |
+| channel | PCG-global | m=34 | 21.9609 | 305.936 | 600.780 | 367 |
+| channel | PCG-global | m=36 | 23.5999 | 301.991 | 524.300 | 268 |
+| channel | PCG-global | m=38 | 25.2786 | 346.370 | 559.545 | 231 |
+| channel | PCG-global | m=40 | 26.9969 | 342.108 | 568.008 | 234 |
+| channel | PCG-global | m=42 | 28.6040 | 352.662 | 591.283 | 238 |
+| channel | PCG-global | m=44 | 30.3389 | 377.080 | 632.433 | 244 |
+| channel | PCG-global | m=46 | 32.1029 | 398.410 | 663.274 | 252 |
+| channel | PCG-global | m=48 | 33.8960 | 419.569 | 706.833 | 256 |
+| channel | PCG-global | m=50 | 35.5642 | 423.573 | 733.491 | 263 |
+| channel | PCG-global | m=52 | 37.3532 | 461.425 | 835.872 | 276 |
+| channel | PCG-global | m=54 | 39.1612 | 458.902 | 817.514 | 288 |
+| channel | PCG-global | m=56 | 40.9881 | 481.286 | 809.324 | 276 |
+| channel | PCG-global | m=58 | 42.6795 | 520.740 | 927.034 | 324 |
+| channel | PCG-global | m=60 | 44.4826 | 533.322 | 980.107 | 360 |
+| channel | PCG-global | m=62 | 46.2950 | 538.426 | 1027.878 | 364 |
+| channel | PCG-global | m=64 | 48.1166 | 622.702 | 1172.805 | 366 |
+| channel | global-exact | tol=1e-10 | 97.8420 | 2442.930 | 10025.241 | 3227 |
 
-密集扫描表明，循环数不是 PCG 步数的单调函数。当前最低点位于 $m=30$，为 202 次；$m=28$--44 构成相对稳定的有效窗口。$m=18$ 的局部反弹说明仅凭相邻检查点的单次下降不能立即停止，实际决策器需要短暂耐心窗口或保留历史最优候选。$m>50$ 后循环数和 setup 同时上升，继续逼近精确全局基已无收益。
+密集扫描显示 PCG 步数与两网格循环数具有明显非单调关系。通道场当前最小循环数位于 $m=38$，为 231 次；$m=36$--50 均低于 300 次，构成较稳定的低循环窗口。$m=30$--34 出现局部反弹，而随后 $m=36$--38 又继续改善，说明自适应停止不能依赖一次相邻检查点变差，必须保留历史最优并设置耐心窗口。与精确全局能量基的 3227 次相比，$m=38$ 的循环数减少约 92.8%，同时 $P$ 密度仅 25.28%。
 
-experiment6 对每个候选都用独立的长双精度稠密 Cholesky 求解一个确定性测试右端项，并与生产稀疏 Cholesky 比较；全部候选通过预设精度阈值。交叉检查成本不计入表中时间，生产粗求解代码未修改。该检查不是对所有右端项的形式证明，但结合生产解残差、随机 SPD 压力测试以及 Galerkin 稠密参考，没有发现粗矩阵直接求解异常；因此它不能解释精确全局结果的 2416 次循环。
+experiment6 对每个候选都用独立的长双精度稠密 Cholesky 求解确定性粗网格测试系统，并与生产稀疏 Cholesky 结果交叉检查；全部候选通过预设精度阈值。验证工作不计入 `Setup ms` 与 `Total ms`，生产粗求解代码保持不变。因此，在当前测试覆盖范围内，没有证据表明有限步 PCG 的优势来自粗矩阵数值求解错误。
 
 ---
 
@@ -681,11 +662,11 @@ experiment6 对每个候选都用独立的长双精度稠密 Cholesky 求解一�
 
 ### 5.1 主要规律
 
-1. **支撑扩展存在场依赖。** 平滑场无需复杂基，通道场需要针对困难区域扩展，棋盘场更适合统一的中等支撑。
+1. **支撑扩展存在场依赖。** 连续场只需较低复杂度，通道场需要沿长程强连接传播信息，棋盘场更适合统一的中等支撑。
 2. **局部求解存在精度平台。** 达到足够精度后，继续迭代不会改善循环数。
 3. **全局基具有长尾。** 大量条目可删，但直接构造全局基再剪枝的 setup 代价过高。
 4. **全局极小不等于两网格最优。** 固定光滑器下，有限步构造可以形成更匹配的粗空间。
-5. **有限步存在宽窗口和局部反弹。** 通道场当前有效区间约为 28--44 步，单点贪心停止不足以可靠识别窗口。
+5. **有限步存在宽窗口和局部反弹。** 通道场当前 $m=36$--50 均低于 300 次循环，最低点为 $m=38$ 的 231 次；$m=30$--34 的局部反弹表明单点贪心停止不足以可靠识别窗口。
 6. **未发现粗矩阵求解异常。** 独立长双精度交叉检查和稀疏因子压力测试支持“光滑器--粗空间失配”的解释，同时避免把有限个测试右端项夸大为形式证明。
 7. **单一固定策略不可能普遍最优。** 自适应方法必须能识别简单场并提前退出，也必须能为少数困难列增加预算。
 
@@ -693,11 +674,11 @@ experiment6 对每个候选都用独立的长双精度稠密 Cholesky 求解一�
 
 | 场景 | 当前建议基线 | 原因 |
 |---|---|---|
-| continuous | 几何或低步 Jacobi | setup 极低，循环数已经稳定 |
-| channel | PCG 30--32 步或预算式支撑扩展 | 密集扫描最低为 30 步；28--44 步形成有效窗口 |
-| checker | 三层局部基或 PCG 32 步 | 达到约 217 次循环且成本可控 |
+| continuous | 几何插值 | 单次求解总时间最低，额外构造收益有限 |
+| channel | PCG 36--40 步 | $m=38$ 循环数最低为 231；$m=36$ 的本次总时间最低 |
+| checker | 三层局部能量基 | 243 次循环且 setup 明显低于全局基和高步 PCG |
 
-这些建议只针对当前 $H/h$、对比度和制造右端项，不应固化为最终规则。若目标是可复用预条件器，应优先比较随机子空间估计的近最坏模态因子，而不是直接把当前右端项下的 202 次循环视为普适最优。
+这些建议只针对当前 $H/h$、对比度和常数右端项，不应固化为最终规则。若目标是可复用预条件器，应优先比较随机子空间估计的近最坏模态因子，而不是直接把当前右端项下的 231 次循环视为普适最优。
 
 ---
 
@@ -928,7 +909,7 @@ $$
 
 能量最小插值、局部化、Krylov 构造和自适应 AMG 都有成熟基础。本研究不把“使用 PCG”本身作为创新，而是进一步研究经典能量插值目标与固定光滑器之间的失配：PCG 迭代精度持续提高时，两网格性能可以先改善、形成窗口、随后退化。
 
-当前结果最清楚地说明三点：第一，逼近全局能量基的精度与固定 GS 两网格性能并非单调对应；第二，通道场在当前制造右端项下的有效窗口约为 28--44 步，最低循环数出现在 30 步，但通用预条件器的最优点还需按近最坏模态重新判断；第三，独立粗矩阵求解交叉检查、稠密 Galerkin 对照和随机 SPD 测试均未发现能够解释该现象的实现错误。下一阶段的核心任务是按使用场景选择实际残差或随机子空间探针，自动识别窗口，并在额外 setup 成本超过预期收益之前返回历史最佳候选。
+当前结果最清楚地说明三点：第一，逼近全局能量基的精度与固定 GS 两网格性能并非单调对应；第二，把右端项改为与离散算子无关的常数向量后，通道场仍出现清晰的有限步 PCG 窗口，$m=38$ 为 231 次，而全局精确基为 3227 次，这显著削弱了“现象来自制造右端项”的解释；第三，experiment6 的逐候选长双精度稠密 Cholesky 交叉检查没有发现能够解释该现象的粗矩阵求解错误。下一阶段的核心任务是按使用场景选择实际残差或随机子空间探针，自动识别窗口，并在额外 setup 成本超过预期收益之前返回历史最佳候选。
 
 在高完成度下，本研究的定位是经典 AMG 插值问题上的机制发现、目标修正和实质性增量创新：不是追求对所有问题都最复杂的插值，而是得到一个在简单问题上迅速退出、在困难通道上找到有限步窗口、在失效时能够转向支撑、粗点或光滑器设计的高效自适应两网格方法。
 

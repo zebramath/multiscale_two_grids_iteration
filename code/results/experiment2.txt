@@ -1,7 +1,7 @@
 Algebraic localization: PCG tolerance on a fixed local support
 ==============================================================
 
-Version         : 2.10.0
+Version         : 2.11.0
 Fine grid       : h=1/128
 Coarse grid     : H=1/16
 Contrast        : 1e+04
@@ -16,23 +16,24 @@ PCG tolerance study
 -------------------
 Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
 -----------  ------------------  --------------------  -----------  ----------  ----------  ------------
-continuous       local-energy-4             tol=1e-02      11.1357      80.890     129.096            86
-continuous       local-energy-4             tol=3e-03      15.7941      92.998     143.636            86
-continuous       local-energy-4             tol=1e-03      18.4505     120.350     180.682            86
-continuous       local-energy-4             tol=3e-04      20.0343     124.559     191.429            86
-continuous       local-energy-4             tol=1e-04      20.4964     124.478     186.096            86
-continuous       local-energy-4             tol=1e-10      20.5466     302.569     380.085            86
+continuous       local-energy-4             tol=1e-02      11.1357      84.160     136.501           111
+continuous       local-energy-4             tol=3e-03      15.7941      88.578     142.356            95
+continuous       local-energy-4             tol=1e-03      18.4505     133.075     191.073            91
+continuous       local-energy-4             tol=3e-04      20.0343     145.929     206.800            90
+continuous       local-energy-4             tol=1e-04      20.4964     148.874     213.587            90
+continuous       local-energy-4             tol=1e-10      20.5466     289.415     346.116            90
 
-channel          local-energy-4             tol=1e-02      14.8391      86.067    2571.511          3855
-channel          local-energy-4             tol=3e-03      18.2800     115.697    2657.862          3757
-channel          local-energy-4             tol=1e-03      19.6917     124.007    2743.392          3748
-channel          local-energy-4             tol=3e-04      20.1398     147.525    2868.174          3745
-channel          local-energy-4             tol=1e-04      20.2876     147.437    2874.532          3745
-channel          local-energy-4             tol=1e-10      20.5466     340.613    3281.375          3742
+channel          local-energy-4             tol=1e-02      14.8391     100.559    3177.548          5449
+channel          local-energy-4             tol=3e-03      18.2800      99.799    3364.605          5296
+channel          local-energy-4             tol=1e-03      19.6917     117.920    3595.122          5283
+channel          local-energy-4             tol=3e-04      20.1398     141.754    3662.380          5278
+channel          local-energy-4             tol=1e-04      20.2876     152.816    3741.426          5277
+channel          local-energy-4             tol=1e-10      20.5466     329.279    3989.239          5275
 
-checker          local-energy-4             tol=1e-02      14.2278      73.766     399.724           550
-checker          local-energy-4             tol=3e-03      17.8336      94.448     238.840           217
-checker          local-energy-4             tol=1e-03      19.4081     111.316     265.056           217
-checker          local-energy-4             tol=3e-04      19.9827     125.084     272.762           217
-checker          local-energy-4             tol=1e-04      20.1788     145.665     300.953           217
-checker          local-energy-4             tol=1e-10      20.5466     333.019     480.579           217
+checker          local-energy-4             tol=1e-02      14.2278      78.080     719.112          1186
+checker          local-energy-4             tol=3e-03      17.8336      95.384     259.308           265
+checker          local-energy-4             tol=1e-03      19.4081     113.542     263.329           231
+checker          local-energy-4             tol=3e-04      19.9827     126.201     276.556           229
+checker          local-energy-4             tol=1e-04      20.1788     142.166     307.816           229
+checker          local-energy-4             tol=1e-10      20.5466     319.186     467.406           229
+
