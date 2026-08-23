@@ -20,6 +20,16 @@ void require(bool condition, const std::string& message) {
     if (!condition) throw std::runtime_error(message);
 }
 
+template <class Action>
+void require_throws(Action&& action, const std::string& message) {
+    try {
+        action();
+    } catch (const std::exception&) {
+        return;
+    }
+    throw std::runtime_error(message);
+}
+
 double row_sum(const tgi::SparseMatrix& matrix, int row) {
     double sum = 0.0;
     for (int position = matrix.row_ptr()[static_cast<std::size_t>(row)];
@@ -33,7 +43,7 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 } // namespace
 
 int main() {
-    require(tgi::version == "2.9.0", "wrong package version");
+    require(tgi::version == "2.10.0", "wrong package version");
     const experiment_support::Row expected_headers{
         "Field", "Method", "Parameter", "P density %",
         "Setup ms", "Total ms", "Cycles"};
@@ -63,6 +73,23 @@ int main() {
     for (double diagonal : a.diagonal()) {
         require(diagonal > 0.0, "diffusion diagonal is not positive");
     }
+    require_throws(
+        [&]() {
+            tgi::CoefficientOptions invalid = coefficient_options;
+            invalid.contrast = 0.0;
+            (void)tgi::make_coefficient(grid, invalid);
+        },
+        "invalid coefficient contrast was accepted");
+    require_throws(
+        [&]() { (void)a.multiply(tgi::Vector(1, 0.0)); },
+        "matrix-vector size mismatch was accepted");
+    require_throws(
+        [&]() {
+            (void)tgi::SparseMatrix(
+                2, 2, std::vector<int>{0, 2, 2},
+                std::vector<int>{1, 0}, tgi::Vector{1.0, 1.0});
+        },
+        "unsorted CSR input was accepted");
 
     tgi::InterpolationOptions geometric_options;
     geometric_options.strategy =
@@ -79,6 +106,18 @@ int main() {
     const auto local = tgi::build_interpolation(grid, a, local_options);
     require(local.prolongation.cols() == grid.coarse_size(),
             "wrong local interpolation dimension");
+    tgi::InterpolationOptions unfinished_local = local_options;
+    unfinished_local.local_tolerance = 0.0;
+    unfinished_local.local_max_iterations = 0;
+    unfinished_local.require_convergence = false;
+    const auto unfinished = tgi::build_interpolation(
+        grid, a, unfinished_local);
+    require(unfinished.report.local_solves.failed_systems > 0,
+            "nonconverged local solves were not reported");
+    unfinished_local.require_convergence = true;
+    require_throws(
+        [&]() { (void)tgi::build_interpolation(grid, a, unfinished_local); },
+        "required local convergence was not enforced");
 
     tgi::JacobiInterpolationOptions jacobi_options;
     jacobi_options.steps = 1;
@@ -134,7 +173,7 @@ int main() {
             "strong support count is wrong");
 
     tgi::InterpolationOptions fixed_step_options = global_options;
-    fixed_step_options.local_tolerance = 1.0e-300;
+    fixed_step_options.local_tolerance = 0.0;
     fixed_step_options.local_max_iterations = 2;
     fixed_step_options.require_convergence = false;
     fixed_step_options.drop_tolerance = 0.0;
@@ -142,6 +181,9 @@ int main() {
         grid, a, geometric.prolongation, fixed_step_options);
     require(pcg2.report.local_solves.max_iterations == 2,
             "fixed-step PCG did not honor the iteration budget");
+    require(pcg2.report.local_solves.total_iterations ==
+                2 * pcg2.report.local_solves.systems,
+            "fixed-step PCG stopped before its explicit budget");
 
     const tgi::Vector exact =
         experiment_support::manufactured_solution(grid);
@@ -160,6 +202,13 @@ int main() {
         tgi::norm2(coarse_rhs);
     require(coarse_relative_residual < 1.0e-10,
             "coarse direct solve is not numerically accurate");
+    require_throws(
+        [&]() {
+            tgi::SparseCholesky invalid_solver(
+                cycle.coarse_matrix(), std::vector<int>(
+                    static_cast<std::size_t>(cycle.coarse_size()), 0));
+        },
+        "invalid Cholesky permutation was accepted");
     const auto solved = tgi::solve_two_grid(a, rhs, cycle, 1.0e-6, 1000);
     require(solved.converged, "two-grid solve did not converge");
     return 0;

@@ -50,8 +50,9 @@ int main(int argc, char** argv) {
         }
 
         for (int count : steps) {
+            // Zero tolerance selects an explicit fixed PCG budget.
             auto options = experiment_support::energy_options(
-                0, config.threads, 1.0e-300);
+                0, config.threads, 0.0);
             options.local_max_iterations = count;
             options.require_convergence = false;
             options.drop_tolerance = 0.0;

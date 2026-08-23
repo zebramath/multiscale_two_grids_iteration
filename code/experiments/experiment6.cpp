@@ -162,8 +162,9 @@ int main(int argc, char** argv) {
     auto geometric = experiment_support::geometric_interpolation(grid, a);
     const double geometric_ms = geometric.report.timing.total_ms;
     for (int steps = 16; steps <= 64; steps += 2) {
+        // Zero tolerance selects an explicit fixed PCG budget.
         auto options = experiment_support::energy_options(
-            0, config.threads, 1.0e-300);
+            0, config.threads, 0.0);
         options.local_max_iterations = steps;
         options.require_convergence = false;
         options.drop_tolerance = 0.0;

@@ -197,6 +197,18 @@ inline bool is_high_conductivity_channel(double x, double y,
 
 inline CoefficientField make_coefficient(const StructuredGrid& grid,
                                   const CoefficientOptions& options) {
+    if (!(options.contrast >= 1.0) || !std::isfinite(options.contrast)) {
+        throw std::invalid_argument(
+            "coefficient contrast must be finite and at least one");
+    }
+    if (options.distribution == CoefficientDistribution::RandomContinuous &&
+        (options.random_modes <= 0 || options.minimum_frequency <= 0 ||
+         options.maximum_frequency < options.minimum_frequency ||
+         !(options.spectral_decay >= 0.0) ||
+         !std::isfinite(options.spectral_decay))) {
+        throw std::invalid_argument(
+            "invalid random continuous coefficient options");
+    }
     if (options.distribution ==
         CoefficientDistribution::ChannelizedBinary) {
         if (options.channel_width_fine_cells <= 0) {
@@ -304,6 +316,10 @@ inline CoefficientField make_coefficient(const StructuredGrid& grid,
     const auto [minimum_it, maximum_it] =
         std::minmax_element(raw.begin(), raw.end());
     const double raw_range = *maximum_it - *minimum_it;
+    if (!(raw_range > 0.0) || !std::isfinite(raw_range)) {
+        throw std::runtime_error(
+            "coefficient field has zero or invalid dynamic range");
+    }
 
     CoefficientField field;
     field.values.resize(raw.size());
@@ -326,6 +342,12 @@ inline SparseMatrix assemble_diffusion(const StructuredGrid& grid,
         static_cast<std::size_t>(grid.fine_size())) {
         throw std::invalid_argument(
             "assemble_diffusion: coefficient size mismatch");
+    }
+    for (double value : coefficient) {
+        if (!(value > 0.0) || !std::isfinite(value)) {
+            throw std::invalid_argument(
+                "assemble_diffusion: coefficients must be positive and finite");
+        }
     }
     const double inverse_h2 = 1.0 / (grid.h() * grid.h());
     std::vector<int> row_ptr(

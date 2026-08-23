@@ -1,7 +1,7 @@
 Global-target iterative construction: Jacobi and PCG
 ====================================================
 
-Version               : 2.9.0
+Version               : 2.10.0
 Fine grid             : h=1/128
 Coarse grid           : H=1/16
 Contrast              : 1e+04

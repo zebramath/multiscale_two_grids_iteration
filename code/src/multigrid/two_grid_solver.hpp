@@ -339,6 +339,11 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
     const SparseMatrix& lhs, const SparseMatrix& rhs,
     double drop_tolerance, int thread_count,
     bool upper_triangle_only) {
+    if (lhs.cols() != rhs.rows() || !(drop_tolerance >= 0.0) ||
+        (upper_triangle_only && lhs.rows() != rhs.cols())) {
+        throw std::invalid_argument(
+            "sparse matrix product: incompatible dimensions or tolerance");
+    }
 
     unsigned int requested = thread_count > 0
         ? static_cast<unsigned int>(thread_count)
@@ -786,6 +791,10 @@ inline Vector TwoGridCycle::apply(const Vector& residual) const {
 
 inline void TwoGridCycle::apply(const Vector& residual, Vector& correction,
                          Workspace& workspace) const {
+    if (residual.size() != static_cast<std::size_t>(a_.rows())) {
+        throw std::invalid_argument(
+            "TwoGridCycle::apply: incompatible residual size");
+    }
     workspace.current_residual = residual;
     apply_correction_cycle(
         workspace.current_residual, correction, workspace);
@@ -835,6 +844,11 @@ inline void TwoGridCycle::apply_correction_cycle(
 inline double TwoGridCycle::iterate(
     const Vector& rhs, Vector& solution, Vector& residual,
     Workspace& workspace) const {
+    if (rhs.size() != static_cast<std::size_t>(a_.rows()) ||
+        solution.size() != static_cast<std::size_t>(a_.rows())) {
+        throw std::invalid_argument(
+            "TwoGridCycle::iterate: incompatible vector size");
+    }
     for (int step = 0; step < smoothing_steps_; ++step) {
         solve_gauss_seidel_sweep(rhs, true, solution);
     }
@@ -891,16 +905,17 @@ inline double TwoGridCycle::estimate_convergence_factor(int iterations,
         scale(1.0 / y_norm, y);
         x.swap(y);
     }
-    return std::clamp(contraction, 0.0, 1.0);
+    return contraction;
 }
 
 inline TwoGridIterationResult solve_two_grid(const SparseMatrix& a, const Vector& rhs,
                                       const TwoGridCycle& cycle,
                                       double relative_tolerance, int max_cycles) {
     if (a.rows() != static_cast<int>(rhs.size()) ||
-        a.cols() != static_cast<int>(rhs.size())) {
+        a.cols() != static_cast<int>(rhs.size()) ||
+        !(relative_tolerance >= 0.0) || max_cycles < 0) {
         throw std::invalid_argument(
-            "solve_two_grid: matrix and right-hand side sizes differ");
+            "solve_two_grid: invalid dimensions or stopping options");
     }
     TwoGridIterationResult result;
     result.solution.assign(rhs.size(), 0.0);

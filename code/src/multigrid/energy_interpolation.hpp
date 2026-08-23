@@ -104,6 +104,10 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
                       const Vector* initial = nullptr,
                       const Vector* inverse_diagonal_override = nullptr) {
     const int n = matrix.rows();
+    if (matrix.cols() != n || rhs.size() != static_cast<std::size_t>(n) ||
+        !(tolerance >= 0.0) || max_iterations < 0) {
+        throw std::invalid_argument("solve_local_cg: invalid system or options");
+    }
     Vector x = initial != nullptr
         ? *initial
         : Vector(static_cast<std::size_t>(n), 0.0);
@@ -138,8 +142,10 @@ inline Vector solve_local_cg(const SparseMatrix& matrix, const Vector& rhs,
         axpy(-1.0, product, residual);
     }
     const double residual_scale = std::max(rhs_norm, 1.0e-30);
+    const bool fixed_iteration_budget = tolerance == 0.0;
     const double target = tolerance * residual_scale;
-    const double target_squared = target * target;
+    const double target_squared =
+        fixed_iteration_budget ? -1.0 : target * target;
     double residual_squared = dot(residual, residual);
     if (residual_squared <= target_squared) {
         stats.converged = true;
@@ -418,7 +424,11 @@ inline LocalBasisResult build_basis_on_nodes(
     const auto patch_begin = Clock::now();
     const int coarse_fine = grid.coarse_fine_id(coarse);
     for (std::size_t local = 0; local < local_nodes.size(); ++local) {
-        local_index[static_cast<std::size_t>(local_nodes[local])] =
+        const std::size_t node = static_cast<std::size_t>(local_nodes[local]);
+        if (local_index[node] != -1) {
+            throw std::invalid_argument("energy support contains duplicate nodes");
+        }
+        local_index[node] =
             static_cast<int>(local);
     }
 
@@ -586,7 +596,8 @@ inline InterpolationResult build_local_energy_interpolation(
         report.timing.basis_scatter_work_ms += basis.scatter_ms;
         total_entries += basis.triplets.size();
     }
-    if (report.local_solves.failed_systems != 0) {
+    if (options.require_convergence &&
+        report.local_solves.failed_systems != 0) {
         throw std::runtime_error("one or more local energy solves did not converge");
     }
 
