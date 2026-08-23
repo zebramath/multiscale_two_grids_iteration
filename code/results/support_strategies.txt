@@ -10,27 +10,24 @@ Spectral iterations    : 80 (excluded from timing)
 Timing                 : single two-grid run (no median/repetition)
 Energy solve tolerance : 1e-6
 
-Note: The base, geometric-layer, fixed residual-strong, and strength-distance rows use one construction pass. Residual-budget is the retained error-driven variant: it marks 70% of the current residual energy, adds at most 16 strong-graph nodes per round and 128 per column, and re-solves only marked columns. The reported build time includes all support selection and refinement rounds.
+Note: The base, geometric-layer and fixed residual-strong rows use one construction pass. Residual-budget is the retained error-driven variant: it marks 70% of the current residual energy, adds at most 16 strong-graph nodes per round and 128 per column, and re-solves only marked columns. The reported build time includes all support selection and refinement rounds.
 
 Fixed support strategy study
 ----------------------------
-Field                    Method      Parameter      P nnz   Density %     Ac nnz    F residual  Energy error    Build ms  TG setup ms    Setup ms    Solve ms    Total ms     Cycles       Rho  Construct iters
------------  ------------------  -------------  ---------  ----------  ---------  ------------  ------------  ----------  -----------  ----------  ----------  ----------  ---------  --------  ---------------
-continuous           base-local       layers=2     221089      6.0922      12741     4.270e+02     3.786e-02      34.120        4.883      39.002      35.016      74.020         86    0.8745             76.1
-continuous      geometric-layer         2 -> 3     455337     12.5471      23085     5.990e+01     5.231e-03      80.970        9.635      90.604      45.520     136.125         86    0.8742             89.1
-continuous      residual-strong  K=64 one-shot     221669      6.1082      12755     4.287e+02     3.780e-02      46.569        4.012      50.581      37.696      88.278         86    0.8745             39.8
-continuous      residual-budget  R=8, B=128, q=16     226321      6.2364      12903     3.037e+02     2.637e-02     151.580        4.431     156.011      36.842     192.854         86    0.8744              0.0
-continuous    strength-distance            q=8     127439      3.5117       7207     1.536e+03     1.258e-01     407.456        2.882     410.339      67.235     477.575        168    0.9167             60.8
+Field                    Method             Parameter   Density %     Ac nnz    F residual    Build ms  TG setup ms    Setup ms    Solve ms    Total ms        Cycles       Rho  Construct iters
+-----------  ------------------  --------------------  ----------  ---------  ------------  ----------  -----------  ----------  ----------  ----------  ------------  --------  ---------------
+continuous           base-local              layers=2      6.0922      12741     4.270e+02      39.910        4.443      44.353      33.763      78.212            86    0.8745             76.1
+continuous      geometric-layer                2 -> 3     12.5471      23085     5.990e+01      90.005        8.988      98.993      38.850     138.080            86    0.8742             89.1
+continuous      residual-strong         K=64 one-shot      6.1082      12755     4.287e+02      52.562        5.845      58.406      35.272      93.679            86    0.8745             39.8
+continuous      residual-budget      R=8, B=128, q=16      6.2364      12903     3.037e+02     144.137        4.741     148.878      35.056     183.934            86    0.8744              0.0
 
-channel              base-local       layers=2     221089      6.0922      12741     2.175e+03     5.856e-02      38.953        4.067      43.020    2131.379    2174.399  failed@4000    0.9935             92.2
-channel         geometric-layer         2 -> 3     455337     12.5471      23085     5.903e+02     2.018e-02     105.594        9.235     114.829    2648.382    2763.212  failed@4000    0.9882            111.4
-channel         residual-strong  K=64 one-shot     235360      6.4855      14525     1.393e+03     3.590e-02      83.389        5.148      88.537    2094.602    2183.139       3960    0.9843             65.7
-channel         residual-budget  R=8, B=128, q=16     226416      6.2390      13197     1.168e+03     2.785e-02     153.184        4.041     157.225    1371.535    1528.761       2582    0.9843              0.0
-channel       strength-distance            q=8     126522      3.4864       8519     3.309e+03     5.660e-02     557.165        2.850     560.014    1594.352    2154.367  failed@4000    0.9897             72.1
+channel              base-local              layers=2      6.0922      12741     2.175e+03      50.388        4.031      54.419    1963.030    2017.451          4768    0.9935             92.2
+channel         geometric-layer                2 -> 3     12.5471      23085     5.903e+02     118.337        7.685     126.022    2303.138    2429.351          4262    0.9882            111.4
+channel         residual-strong         K=64 one-shot      6.4855      14525     1.393e+03     106.188        4.130     110.318    1874.412    1984.731          3960    0.9843             65.7
+channel         residual-budget      R=8, B=128, q=16      6.2390      13197     1.168e+03     197.244        5.072     202.317    1121.021    1323.338          2582    0.9843              0.0
 
-checker              base-local       layers=2     221089      6.0922      12741     1.805e+03     4.597e-02      38.414        2.805      41.219     700.933     742.153       1475    0.9955             89.1
-checker         geometric-layer         2 -> 3     455337     12.5471      23085     3.313e+02     8.518e-03      92.265       10.229     102.494     138.544     241.038        217    0.9384            104.9
-checker         residual-strong  K=64 one-shot     235298      6.4838      14125     1.107e+03     2.606e-02      77.552        5.414      82.966     191.920     274.887        358    0.9815             59.6
-checker         residual-budget  R=8, B=128, q=16     226336      6.2368      13127     9.321e+02     2.195e-02     177.054        5.232     182.287     118.438     300.726        219    0.9783              0.0
-checker       strength-distance            q=8     127058      3.5012       8713     3.344e+03     5.492e-02     551.815        3.265     555.080    1971.337    2526.418  failed@4000    0.9961             71.4
+checker              base-local              layers=2      6.0922      12741     1.805e+03      40.847        4.720      45.567     731.959     777.527          1475    0.9955             89.1
+checker         geometric-layer                2 -> 3     12.5471      23085     3.313e+02      97.394       12.692     110.086     127.744     238.021           217    0.9384            104.9
+checker         residual-strong         K=64 one-shot      6.4838      14125     1.107e+03      80.997        6.109      87.106     176.204     263.311           358    0.9815             59.6
+checker         residual-budget      R=8, B=128, q=16      6.2368      13127     9.321e+02     171.506        8.078     179.583     109.376     288.960           219    0.9783              0.0
 

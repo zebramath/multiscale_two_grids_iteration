@@ -11,8 +11,8 @@ int main(int argc, char** argv) {
     const tgi::StructuredGrid grid = experiment_support::make_grid(config);
     experiment_support::Rows rows;
     constexpr std::array<double, 9> thresholds{
-        0.0, 1.0e-3, 3.0e-3, 1.0e-2, 2.0e-2,
-        3.0e-2, 5.0e-2, 1.0e-1, 2.0e-1};
+        0.0, 1.0e-4, 1.0e-3, 3.0e-3, 1.0e-2,
+        2.0e-2, 3.0e-2, 5.0e-2, 1.0e-1};
 
     for (const auto& field : experiment_support::standard_fields()) {
         const auto coefficient = experiment_support::make_field(
@@ -39,8 +39,7 @@ int main(int argc, char** argv) {
                 global.report.timing.total_ms + pruned.pruning_ms,
                 mean_iterations};
             rows.push_back(experiment_support::evaluate_candidate(
-                field.name, grid, a, rhs, global.prolongation,
-                candidate, config));
+                field.name, grid, a, rhs, candidate, config));
         }
     }
 

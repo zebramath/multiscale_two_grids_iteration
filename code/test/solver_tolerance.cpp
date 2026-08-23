@@ -19,27 +19,23 @@ int main(int argc, char** argv) {
             grid, coefficient.values);
         const tgi::Vector rhs = a.multiply(
             experiment_support::manufactured_solution(grid));
-        const auto global = experiment_support::build_global_reference(
-            grid, a, config.threads);
-
         for (double tolerance : tolerances) {
             auto options = experiment_support::energy_options(
-                3, config.threads, tolerance);
+                4, config.threads, tolerance);
             options.drop_tolerance = 0.0;
             auto candidate = experiment_support::make_candidate(
-                "local-energy-3",
+                "local-energy-4",
                 "tol=" + experiment_support::scientific(tolerance, 0),
                 tgi::build_interpolation(grid, a, options));
             rows.push_back(experiment_support::evaluate_candidate(
-                field.name, grid, a, rhs, global.prolongation,
-                candidate, config));
+                field.name, grid, a, rhs, candidate, config));
         }
     }
 
     experiment_support::Report report(
         "Algebraic localization: PCG tolerance on a fixed local support");
     report.add_summary(experiment_support::fixed_study_summary(
-        config, "Fixed support", "three coarse patch layers"));
+        config, "Fixed support", "four coarse patch layers"));
     report.add_note(
         "The support is identical in every row. The 1e-10 case is the "
         "reference-accurate local minimizer, not a direct solve.");

@@ -98,7 +98,7 @@ struct TwoGridIterationResult {
 inline TwoGridIterationResult solve_two_grid(const SparseMatrix& a, const Vector& rhs,
                                       const TwoGridCycle& cycle,
                                       double relative_tolerance = 1e-8,
-                                      int max_cycles = 5000);
+                                      int max_cycles = 40000);
 
 
 namespace two_grid_solver_detail {

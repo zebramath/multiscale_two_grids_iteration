@@ -90,9 +90,6 @@ int main(int argc, char** argv) {
             grid, coefficient.values);
         const tgi::Vector rhs = a.multiply(
             experiment_support::manufactured_solution(grid));
-        const auto global = experiment_support::build_global_reference(
-            grid, a, config.threads);
-
         auto local2_options = experiment_support::energy_options(
             2, config.threads, 1.0e-6);
         local2_options.drop_tolerance = 0.0;
@@ -100,8 +97,7 @@ int main(int argc, char** argv) {
         auto local2_candidate = experiment_support::make_candidate(
             "base-local", "layers=2", local2);
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, global.prolongation,
-            local2_candidate, config));
+            field.name, grid, a, rhs, local2_candidate, config));
 
         auto local3_options = experiment_support::energy_options(
             3, config.threads, 1.0e-6);
@@ -110,35 +106,18 @@ int main(int argc, char** argv) {
             "geometric-layer", "2 -> 3",
             tgi::build_interpolation(grid, a, local3_options));
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, global.prolongation,
-            layer_candidate, config));
+            field.name, grid, a, rhs, layer_candidate, config));
 
         auto strong_candidate = build_fixed_strong_candidate(
             grid, a, local2, config.threads);
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, global.prolongation,
-            strong_candidate, config));
+            field.name, grid, a, rhs, strong_candidate, config));
 
         auto residual_budget_candidate = build_residual_budget_candidate(
             grid, a, local2, config.threads);
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, global.prolongation,
-            residual_budget_candidate, config));
+            field.name, grid, a, rhs, residual_budget_candidate, config));
 
-        tgi::StrengthDistanceOptions distance_options;
-        distance_options.coarse_candidates_per_row = 8;
-        distance_options.local_tolerance = 1.0e-6;
-        distance_options.local_max_iterations = 20000;
-        distance_options.thread_count = config.threads;
-        const auto distance = tgi::build_strength_distance_interpolation(
-            grid, a, distance_options);
-        experiment_support::StudyCandidate distance_candidate{
-            "strength-distance", "q=8", distance.prolongation,
-            distance.report.build_ms,
-            distance.report.mean_construction_iterations};
-        rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, global.prolongation,
-            distance_candidate, config));
     }
 
     experiment_support::Report report(
@@ -146,8 +125,8 @@ int main(int argc, char** argv) {
     report.add_summary(experiment_support::fixed_study_summary(
         config, "Energy solve tolerance", "1e-6"));
     report.add_note(
-        "The base, geometric-layer, fixed residual-strong, and strength-distance "
-        "rows use one construction pass. Residual-budget is the retained "
+        "The base, geometric-layer and fixed residual-strong rows use one "
+        "construction pass. Residual-budget is the retained "
         "error-driven variant: it marks 70% of the current residual energy, "
         "adds at most 16 strong-graph nodes per round and 128 per column, and "
         "re-solves only marked columns. The reported build time includes all "

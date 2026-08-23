@@ -39,7 +39,7 @@ struct StrengthDistanceOptions {
     int coarse_candidates_per_row = 4;
     double minimum_strength = 1.0e-12;
     double local_tolerance = 1.0e-6;
-    int local_max_iterations = 20000;
+    int local_max_iterations = 40000;
     int thread_count = 1;
 };
 

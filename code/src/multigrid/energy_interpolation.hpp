@@ -26,7 +26,7 @@ struct InterpolationOptions {
     InterpolationStrategy strategy = InterpolationStrategy::LocalEnergyMinimum;
     int patch_layers = 3;
     double local_tolerance = 1e-3;
-    int local_max_iterations = 4000;
+    int local_max_iterations = 40000;
     int thread_count = 1;
     double drop_tolerance = 1e-14;
     bool require_convergence = true;

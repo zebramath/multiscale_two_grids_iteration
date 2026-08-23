@@ -47,7 +47,7 @@ inline tgi::InterpolationOptions energy_options(
         : tgi::InterpolationStrategy::LocalEnergyMinimum;
     options.patch_layers = layers;
     options.local_tolerance = tolerance;
-    options.local_max_iterations = 20000;
+    options.local_max_iterations = 40000;
     options.thread_count = threads;
     return options;
 }
@@ -60,13 +60,14 @@ inline tgi::InterpolationResult geometric_interpolation(
 }
 
 struct BasicConfig {
-    // The v2.5 baseline is deliberately fixed at H/h = 8 while doubling
-    // both grids relative to v2.4.  This makes the localization trade-offs
+    // The v2.6 baseline is deliberately fixed at H/h = 8 while doubling
+    // both grids relative to the earlier 64/8 baseline.  This makes the
+    // localization trade-offs
     // visible without changing the coefficient-field or solver settings.
     int fine_intervals = 128;
     int coarse_intervals = 16;
     int threads = 4;
-    int max_cycles = 4000;
+    int max_cycles = 40000;
     double contrast = 1.0e4;
 };
 

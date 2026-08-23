@@ -20,6 +20,12 @@ int main(int argc, char** argv) {
         auto global = experiment_support::build_global_reference(
             grid, a, config.threads);
 
+        auto geometric = experiment_support::make_candidate(
+            "geometric", "P_G",
+            experiment_support::geometric_interpolation(grid, a));
+        rows.push_back(experiment_support::evaluate_candidate(
+            field.name, grid, a, rhs, geometric, config));
+
         for (int layers : {2, 3, 4}) {
             auto options = experiment_support::energy_options(
                 layers, config.threads, 1.0e-10);
@@ -28,23 +34,22 @@ int main(int argc, char** argv) {
                 "local-energy", "layers=" + std::to_string(layers),
                 tgi::build_interpolation(grid, a, options));
             rows.push_back(experiment_support::evaluate_candidate(
-                field.name, grid, a, rhs, global.prolongation,
-                candidate, config));
+                field.name, grid, a, rhs, candidate, config));
         }
         auto global_candidate = experiment_support::make_candidate(
             "global-energy", "layers=inf", std::move(global));
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, global_candidate.prolongation,
-            global_candidate, config));
+            field.name, grid, a, rhs, global_candidate, config));
     }
 
     experiment_support::Report report(
-        "Spatial localization: local support radius and global reference");
+        "Spatial localization: P_G, local support radius and global reference");
     report.add_summary(experiment_support::fixed_study_summary(
         config, "Energy solve tolerance", "1e-10 for every support"));
     report.add_note(
-        "Only the support radius changes. The tight common PCG tolerance "
-        "makes algebraic stopping error negligible relative to localization.");
+        "P_G is the pure geometric bilinear baseline. The energy rows only "
+        "change support radius; their common PCG tolerance makes algebraic "
+        "stopping error negligible relative to localization.");
     report.add_table(
         "Support radius study", experiment_support::study_headers(),
         experiment_support::study_widths(), rows, true);

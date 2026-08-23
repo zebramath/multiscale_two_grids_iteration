@@ -54,7 +54,7 @@ int main() {
         tgi::InterpolationStrategy::LocalEnergyMinimum;
     local_options.patch_layers = 1;
     local_options.local_tolerance = 1.0e-8;
-    local_options.local_max_iterations = 5000;
+    local_options.local_max_iterations = 40000;
     local_options.thread_count = 2;
     const auto local = tgi::build_interpolation(grid, a, local_options);
     require(local.prolongation.cols() == grid.coarse_size(),

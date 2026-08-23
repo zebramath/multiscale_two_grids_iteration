@@ -43,30 +43,26 @@ inline double interpolation_density_percent(
 
 inline const Row& study_headers() {
     static const Row headers{
-        "Field", "Method", "Parameter", "P nnz", "Density %", "Ac nnz",
-        "F residual", "Energy error", "Build ms", "TG setup ms",
-        "Setup ms", "Solve ms", "Total ms", "Cycles", "Rho",
-        "Construct iters"};
+        "Field", "Method", "Parameter", "Density %", "Ac nnz",
+        "F residual", "Build ms", "TG setup ms", "Setup ms", "Solve ms",
+        "Total ms", "Cycles", "Rho", "Construct iters"};
     return headers;
 }
 
 inline std::vector<int> study_widths() {
-    return {11, 18, 13, 9, 10, 9, 12, 12,
-            10, 11, 10, 10, 10, 9, 8, 15};
+    return {11, 18, 20, 10, 9, 12, 10, 11,
+            10, 10, 10, 12, 8, 15};
 }
 
 inline Row evaluate_candidate(
     const std::string& field, const tgi::StructuredGrid& grid,
     const tgi::SparseMatrix& a, const tgi::Vector& rhs,
-    const tgi::SparseMatrix& global_reference,
     const StudyCandidate& candidate, const BasicConfig& config,
     int spectral_iterations = 80) {
-    const auto error = compare_prolongations_global(
-        grid, a, global_reference, candidate.prolongation);
     const double f_residual =
         tgi::algebraic_interpolation_detail::scaled_f_residual(
             grid, a, candidate.prolongation, config.threads);
-    // One timed run is intentional in v2.5: the table reports a reproducible
+    // One timed run is intentional in v2.6: the table reports a reproducible
     // workload estimate without hiding setup/solve costs behind repeated
     // measurements.  The first run still performs the optional spectral
     // estimate, which is explicitly excluded by evaluate_two_grid.
@@ -82,11 +78,9 @@ inline Row evaluate_candidate(
         field,
         candidate.method,
         candidate.parameter,
-        std::to_string(candidate.prolongation.nnz()),
         fixed(interpolation_density_percent(candidate.prolongation), 4),
         std::to_string(cycle.coarse_nnz),
         scientific(f_residual),
-        scientific(error.aggregate_relative_energy_error),
         fixed(candidate.build_ms),
         fixed(coarse_setup_ms),
         fixed(setup_ms),

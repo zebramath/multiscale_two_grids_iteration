@@ -1,8 +1,8 @@
 #include "experiment/study.hpp"
-#include "multigrid/reference_pruning.hpp"
 
 #include <array>
 #include <string>
+#include <utility>
 
 int main(int argc, char** argv) {
     experiment_support::BasicConfig config;
@@ -11,8 +11,9 @@ int main(int argc, char** argv) {
     }
     const tgi::StructuredGrid grid = experiment_support::make_grid(config);
     experiment_support::Rows rows;
-    constexpr std::array<int, 5> steps{1, 2, 4, 8, 16};
-    constexpr double post_prune_threshold = 1.0e-2;
+    // These are global-F-system iteration budgets.  The larger values make
+    // the approach to the global energy-minimum target visible.
+    constexpr std::array<int, 5> steps{4, 8, 16, 32, 64};
 
     for (const auto& field : experiment_support::standard_fields()) {
         const auto coefficient = experiment_support::make_field(
@@ -26,12 +27,14 @@ int main(int argc, char** argv) {
         auto geometric = experiment_support::geometric_interpolation(grid, a);
         const double geometric_ms = geometric.report.timing.total_ms;
 
+        // P_G is the common initial guess; every finite-step row targets the
+        // same global F-point equation AP=0 and is evaluated against the
+        // separately computed global reference basis.
         experiment_support::StudyCandidate initial{
-            "initial-geometric", "m=0", geometric.prolongation,
+            "geometric", "P_G", geometric.prolongation,
             geometric_ms, 0.0};
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, global.prolongation,
-            initial, config));
+            field.name, grid, a, rhs, initial, config));
 
         for (int count : steps) {
             tgi::JacobiInterpolationOptions options;
@@ -42,30 +45,13 @@ int main(int argc, char** argv) {
             options.thread_count = config.threads;
             auto interpolation = tgi::build_jacobi_interpolation(
                 grid, a, geometric.prolongation, options);
-            const double build_ms = geometric_ms + interpolation.report.build_ms;
             experiment_support::StudyCandidate candidate{
-                "Jacobi", "m=" + std::to_string(count),
-                interpolation.prolongation, build_ms,
+                "Jacobi-global", "m=" + std::to_string(count),
+                std::move(interpolation.prolongation),
+                geometric_ms + interpolation.report.build_ms,
                 static_cast<double>(count)};
             rows.push_back(experiment_support::evaluate_candidate(
-                field.name, grid, a, rhs, global.prolongation,
-                candidate, config));
-
-            // Apply the same relative, column-wise post-pruning rule to both
-            // iterative constructions.  This isolates sparsification from
-            // the iteration count; the full global-pruning sweep studies the
-            // threshold itself.
-            const auto pruned = tgi::prune_global_interpolation_relative(
-                grid, interpolation.prolongation, post_prune_threshold);
-            experiment_support::StudyCandidate sparse_candidate{
-                "Jacobi", "m=" + std::to_string(count) +
-                    ", drop=1e-2",
-                pruned.prolongation,
-                build_ms + pruned.pruning_ms,
-                static_cast<double>(count)};
-            rows.push_back(experiment_support::evaluate_candidate(
-                field.name, grid, a, rhs, global.prolongation,
-                sparse_candidate, config));
+                field.name, grid, a, rhs, candidate, config));
         }
 
         for (int count : steps) {
@@ -77,48 +63,31 @@ int main(int argc, char** argv) {
             auto interpolation = tgi::refine_global_energy_interpolation(
                 grid, a, geometric.prolongation, options);
             auto candidate = experiment_support::make_candidate(
-                "PCG", "m=" + std::to_string(count),
+                "PCG-global", "m=" + std::to_string(count),
                 std::move(interpolation));
             candidate.build_ms += geometric_ms;
-            const tgi::SparseMatrix pcg_prolongation = candidate.prolongation;
             rows.push_back(experiment_support::evaluate_candidate(
-                field.name, grid, a, rhs, global.prolongation,
-                candidate, config));
-
-            const auto pruned = tgi::prune_global_interpolation_relative(
-                grid, pcg_prolongation, post_prune_threshold);
-            experiment_support::StudyCandidate sparse_candidate{
-                "PCG", "m=" + std::to_string(count) +
-                    ", drop=1e-2",
-                pruned.prolongation,
-                candidate.build_ms + pruned.pruning_ms,
-                candidate.mean_construction_iterations};
-            rows.push_back(experiment_support::evaluate_candidate(
-                field.name, grid, a, rhs, global.prolongation,
-                sparse_candidate, config));
+                field.name, grid, a, rhs, candidate, config));
         }
 
-        auto reference = experiment_support::make_candidate(
-            "PCG-reference", "tol=1e-10", std::move(global));
+        auto exact = experiment_support::make_candidate(
+            "global-exact", "tol=1e-10", std::move(global));
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, reference.prolongation,
-            reference, config));
+            field.name, grid, a, rhs, exact, config));
     }
 
     experiment_support::Report report(
-        "Iterative localization: Jacobi/PCG steps with and without pruning");
+        "Global-target iterative construction: Jacobi and PCG");
     report.add_summary(experiment_support::fixed_study_summary(
-        config, "Initial interpolation", "geometric; iterative rows start unpruned"));
+        config, "Initial interpolation", "P_G; no pruning or row cap"));
     report.add_note(
-        "Jacobi and diagonal-PCG act on the same global F system and start "
-        "from the same geometric interpolation. With diagonal preconditioning, "
-        "one matrix action expands graph support by at most one edge. The "
-        "strict PCG reference is shown only as the limiting target. For every "
-        "step count, a second row applies the same post-construction relative "
-        "column pruning (drop=1e-2) to expose the setup/sparsity/convergence "
-        "trade-off without changing the iteration itself.");
+        "Jacobi-global and PCG-global use the same geometric initial basis "
+        "and target the global F-point equation AP=0. The step budgets are "
+        "4, 8, 16, 32 and 64; no magnitude pruning is applied. The exact "
+        "global-energy basis (PCG tolerance 1e-10) is included as the limit "
+        "for comparison.");
     report.add_table(
-        "Fixed-step iterative construction", experiment_support::study_headers(),
+        "Global-target fixed-step construction", experiment_support::study_headers(),
         experiment_support::study_widths(), rows, true);
     report.save("iterative_construction");
     experiment_support::write_csv(
