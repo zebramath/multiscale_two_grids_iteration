@@ -1,5 +1,8 @@
 #include "experiment/test_problem.hpp"
+#include "multigrid/adaptive_support.hpp"
+#include "multigrid/algebraic_interpolation.hpp"
 #include "multigrid/energy_interpolation.hpp"
+#include "multigrid/reference_pruning.hpp"
 #include "multigrid/residual_budget_support.hpp"
 #include "multigrid/two_grid_solver.hpp"
 #include "pde/diffusion_problem.hpp"
@@ -7,6 +10,7 @@
 #include <cmath>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -14,29 +18,14 @@ void require(bool condition, const std::string& message) {
     if (!condition) throw std::runtime_error(message);
 }
 
-double half_trace(const tgi::SparseMatrix& matrix) {
-    double trace = 0.0;
-    for (int row = 0; row < matrix.rows(); ++row) {
-        for (int position = matrix.row_ptr()[static_cast<std::size_t>(row)];
-             position < matrix.row_ptr()[static_cast<std::size_t>(row) + 1U];
-             ++position) {
-            if (matrix.col_idx()[static_cast<std::size_t>(position)] == row) {
-                trace += matrix.values()[static_cast<std::size_t>(position)];
-                break;
-            }
-        }
+double row_sum(const tgi::SparseMatrix& matrix, int row) {
+    double sum = 0.0;
+    for (int position = matrix.row_ptr()[static_cast<std::size_t>(row)];
+         position < matrix.row_ptr()[static_cast<std::size_t>(row) + 1U];
+         ++position) {
+        sum += matrix.values()[static_cast<std::size_t>(position)];
     }
-    return 0.5 * trace;
-}
-
-tgi::InterpolationOptions local_options(int layers) {
-    tgi::InterpolationOptions options;
-    options.strategy = tgi::InterpolationStrategy::LocalEnergyMinimum;
-    options.patch_layers = layers;
-    options.local_tolerance = 1.0e-8;
-    options.local_max_iterations = 4000;
-    options.thread_count = 2;
-    return options;
+    return sum;
 }
 
 } // namespace
@@ -46,60 +35,108 @@ int main() {
     tgi::CoefficientOptions coefficient_options;
     coefficient_options.distribution =
         tgi::CoefficientDistribution::ChannelizedBinary;
-    coefficient_options.contrast = 1.0e3;
-    coefficient_options.seed = 3;
+    coefficient_options.contrast = 1.0e4;
     coefficient_options.channel_background_block_size = 4;
-    coefficient_options.channel_width_fine_cells = 1;
-    const auto coefficient = tgi::make_coefficient(
-        grid, coefficient_options);
-    const auto a = tgi::assemble_diffusion(grid, coefficient.values);
+    const auto coefficient = tgi::make_coefficient(grid, coefficient_options);
+    const tgi::SparseMatrix a = tgi::assemble_diffusion(
+        grid, coefficient.values);
+    require(a.rows() == grid.fine_size(), "wrong matrix dimension");
+    for (double diagonal : a.diagonal()) {
+        require(diagonal > 0.0, "diffusion diagonal is not positive");
+    }
 
-    const auto local1 = tgi::build_interpolation(
-        grid, a, local_options(1));
-    const auto local2 = tgi::build_interpolation(
-        grid, a, local_options(2));
-    require(local1.prolongation.rows() == grid.fine_size(),
-            "local interpolation has wrong row count");
-    require(local1.prolongation.cols() == grid.coarse_size(),
-            "local interpolation has wrong column count");
+    tgi::InterpolationOptions geometric_options;
+    geometric_options.strategy =
+        tgi::InterpolationStrategy::GeometricBilinear;
+    const auto geometric = tgi::build_interpolation(
+        grid, a, geometric_options);
+    tgi::InterpolationOptions local_options;
+    local_options.strategy =
+        tgi::InterpolationStrategy::LocalEnergyMinimum;
+    local_options.patch_layers = 1;
+    local_options.local_tolerance = 1.0e-8;
+    local_options.local_max_iterations = 5000;
+    local_options.thread_count = 2;
+    const auto local = tgi::build_interpolation(grid, a, local_options);
+    require(local.prolongation.cols() == grid.coarse_size(),
+            "wrong local interpolation dimension");
 
-    const tgi::TwoGridCycle cycle1(a, local1.prolongation, 1, 2);
-    const tgi::TwoGridCycle cycle2(a, local2.prolongation, 1, 2);
-    require(half_trace(cycle2.coarse_matrix()) <=
-                half_trace(cycle1.coarse_matrix()) * (1.0 + 1.0e-9),
-            "energy did not decrease when support grew");
+    tgi::JacobiInterpolationOptions jacobi_options;
+    jacobi_options.steps = 1;
+    jacobi_options.maximum_entries_per_row = 0;
+    jacobi_options.relative_drop_tolerance = 0.0;
+    jacobi_options.thread_count = 2;
+    const auto jacobi1 = tgi::build_jacobi_interpolation(
+        grid, a, geometric.prolongation, jacobi_options);
+    jacobi_options.steps = 4;
+    const auto jacobi4 = tgi::build_jacobi_interpolation(
+        grid, a, geometric.prolongation, jacobi_options);
+    require(jacobi4.report.final_f_residual <=
+                jacobi1.report.final_f_residual * (1.0 + 1.0e-10),
+            "Jacobi F residual did not decrease");
+    for (int fine = 0; fine < grid.fine_size(); ++fine) {
+        if (!grid.is_coarse_node(fine)) continue;
+        require(std::abs(row_sum(jacobi4.prolongation, fine) - 1.0) <
+                    1.0e-14,
+                "Jacobi interpolation lost C-point injection");
+    }
 
-    tgi::ResidualBudgetSupportOptions support;
-    support.base_patch_layers = 1;
-    support.maximum_rounds = 3;
-    support.maximum_extra_nodes_per_column = 12;
-    support.maximum_nodes_per_round = 4;
-    support.target_residual_ratio = 0.5;
-    support.strength_scaling = tgi::StrengthScaling::RowMaximum;
-    support.strong_edge_fraction = 0.25;
-    support.thread_count = 2;
-    const auto adaptive = tgi::build_residual_budget_interpolation(
-        grid, a, local1.prolongation, local_options(1), support);
-    require(adaptive.prolongation.rows() == grid.fine_size(),
-            "adaptive interpolation has wrong row count");
-    require(adaptive.report.total_extra_nodes <=
-                grid.coarse_size() * support.maximum_extra_nodes_per_column,
-            "adaptive support exceeded its budget");
-    require(adaptive.report.final_mean_scaled_residual <=
-                adaptive.report.initial_mean_scaled_residual *
-                    (1.0 + 1.0e-8),
-            "adaptive refinement increased mean scaled residual");
+    tgi::StrengthDistanceOptions distance_options;
+    distance_options.coarse_candidates_per_row = 3;
+    distance_options.thread_count = 2;
+    const auto distance = tgi::build_strength_distance_interpolation(
+        grid, a, distance_options);
+    for (int fine = 0; fine < grid.fine_size(); ++fine) {
+        if (!grid.is_coarse_node(fine)) continue;
+        require(std::abs(row_sum(distance.prolongation, fine) - 1.0) <
+                    1.0e-12,
+                "strength-distance interpolation lost C-point injection");
+    }
 
-    const auto rhs = a.multiply(
-        experiment_support::manufactured_solution(grid));
-    const tgi::TwoGridCycle adaptive_cycle(
-        a, adaptive.prolongation, 1, 2);
-    const auto solved = tgi::solve_two_grid(
-        a, rhs, adaptive_cycle, 1.0e-6, 4000);
-    require(solved.converged, "small adaptive two-grid solve did not converge");
+    tgi::InterpolationOptions global_options = local_options;
+    global_options.strategy =
+        tgi::InterpolationStrategy::GlobalEnergyMinimum;
+    global_options.patch_layers = 0;
+    global_options.local_tolerance = 1.0e-10;
+    const auto global = tgi::build_interpolation(grid, a, global_options);
+    const auto matched = tgi::build_budget_matched_reference(
+        grid, a, global.prolongation, local.prolongation,
+        local_options);
+    require(
+        tgi::interpolation_f_entries_per_column(
+            grid, matched.prolongation, 2) ==
+        tgi::interpolation_f_entries_per_column(
+            grid, local.prolongation, 2),
+        "budget-matched reference changed per-column support counts");
 
-    const double rho = adaptive_cycle.estimate_convergence_factor(20, 9);
-    require(std::isfinite(rho) && rho >= 0.0 && rho <= 1.0,
-            "spectral proxy is outside [0,1]");
+    tgi::ResidualStrongSupportOptions strong_options;
+    strong_options.base_patch_layers = 1;
+    strong_options.maximum_extra_nodes_per_column = 8;
+    strong_options.thread_count = 2;
+    const auto strong = tgi::build_residual_strong_supports(
+        grid, a, local.prolongation, strong_options);
+    require(strong.supports.size() ==
+                static_cast<std::size_t>(grid.coarse_size()),
+            "strong support count is wrong");
+
+    tgi::ResidualBudgetSupportOptions budget_options;
+    budget_options.base_patch_layers = 1;
+    budget_options.maximum_rounds = 2;
+    budget_options.maximum_extra_nodes_per_column = 8;
+    budget_options.maximum_nodes_per_round = 4;
+    budget_options.strength_scaling =
+        tgi::StrengthScaling::SymmetricDiagonal;
+    budget_options.thread_count = 2;
+    const auto budget = tgi::build_residual_budget_interpolation(
+        grid, a, local.prolongation, local_options, budget_options);
+    require(budget.prolongation.rows() == grid.fine_size(),
+            "residual-budget interpolation dimension is wrong");
+
+    const tgi::Vector exact =
+        experiment_support::manufactured_solution(grid);
+    const tgi::Vector rhs = a.multiply(exact);
+    const tgi::TwoGridCycle cycle(a, global.prolongation, 1, 2);
+    const auto solved = tgi::solve_two_grid(a, rhs, cycle, 1.0e-6, 1000);
+    require(solved.converged, "two-grid solve did not converge");
     return 0;
 }

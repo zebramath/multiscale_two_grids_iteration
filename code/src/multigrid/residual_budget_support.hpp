@@ -170,14 +170,22 @@ struct ResidualSnapshot {
 
 inline ResidualSnapshot scaled_f_residual(
     const StructuredGrid& grid, const SparseMatrix& a,
-    const SparseMatrix& prolongation, int thread_count) {
+    const SparseMatrix& prolongation,
+    const std::vector<std::vector<int>>& supports,
+    int thread_count) {
     const SparseMatrix ap = sparse_multiply(
         a, prolongation, 0.0, thread_count);
     SparseMatrix transpose = ap.transpose(thread_count);
     const Vector diagonal = a.diagonal();
     std::vector<double> norm(
         static_cast<std::size_t>(grid.coarse_size()), 0.0);
+    std::vector<unsigned char> in_support(
+        static_cast<std::size_t>(grid.fine_size()), 0U);
     for (int coarse = 0; coarse < grid.coarse_size(); ++coarse) {
+        const std::size_t coarse_offset = static_cast<std::size_t>(coarse);
+        for (int node : supports[coarse_offset]) {
+            in_support[static_cast<std::size_t>(node)] = 1U;
+        }
         double squared = 0.0;
         for (int position =
                  transpose.row_ptr()[static_cast<std::size_t>(coarse)];
@@ -186,13 +194,19 @@ inline ResidualSnapshot scaled_f_residual(
              ++position) {
             const int node = transpose.col_idx()[
                 static_cast<std::size_t>(position)];
-            if (grid.is_coarse_node(node)) continue;
+            if (grid.is_coarse_node(node) ||
+                in_support[static_cast<std::size_t>(node)] != 0U) {
+                continue;
+            }
             const double scaled = transpose.values()[
                 static_cast<std::size_t>(position)] /
-                diagonal[static_cast<std::size_t>(node)];
+                std::sqrt(diagonal[static_cast<std::size_t>(node)]);
             squared += scaled * scaled;
         }
         norm[static_cast<std::size_t>(coarse)] = std::sqrt(squared);
+        for (int node : supports[coarse_offset]) {
+            in_support[static_cast<std::size_t>(node)] = 0U;
+        }
     }
     return {std::move(transpose), std::move(norm)};
 }
@@ -252,7 +266,8 @@ inline ResidualBudgetSupportResult build_residual_budget_interpolation(
 
     const auto initial_residual_begin = Clock::now();
     ResidualSnapshot snapshot = scaled_f_residual(
-        grid, a, result.prolongation, options.thread_count);
+        grid, a, result.prolongation, result.supports,
+        options.thread_count);
     result.report.residual_ms += milliseconds(
         initial_residual_begin, Clock::now());
     const std::vector<double> initial_norm = snapshot.norm;
@@ -338,11 +353,14 @@ inline ResidualBudgetSupportResult build_residual_budget_interpolation(
                  ++position) {
                 const int node = snapshot.transpose.col_idx()[
                     static_cast<std::size_t>(position)];
-                if (grid.is_coarse_node(node)) continue;
+                if (grid.is_coarse_node(node) ||
+                    in_support[static_cast<std::size_t>(node)] != 0U) {
+                    continue;
+                }
                 residual_value[static_cast<std::size_t>(node)] =
                     std::abs(snapshot.transpose.values()[
-                        static_cast<std::size_t>(position)] /
-                        diagonal[static_cast<std::size_t>(node)]);
+                        static_cast<std::size_t>(position)]) /
+                    std::sqrt(diagonal[static_cast<std::size_t>(node)]);
                 residual_nodes.push_back(node);
             }
 
@@ -466,7 +484,8 @@ inline ResidualBudgetSupportResult build_residual_budget_interpolation(
 
         const auto residual_begin = Clock::now();
         snapshot = scaled_f_residual(
-            grid, a, result.prolongation, options.thread_count);
+            grid, a, result.prolongation, result.supports,
+            options.thread_count);
         result.report.residual_ms += milliseconds(
             residual_begin, Clock::now());
     }
