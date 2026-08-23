@@ -1,7 +1,7 @@
 Support expansion strategies: fixed and adaptive budgets
 ========================================================
 
-Version                : 2.8.0
+Version                : 2.9.0
 Fine grid              : h=1/128
 Coarse grid            : H=1/16
 Contrast               : 1e+04
@@ -30,4 +30,3 @@ checker              base-local              layers=2       6.0922      48.490  
 checker         geometric-layer                2 -> 3      12.5471     116.814     224.596           217
 checker        indicator-strong         K=64 one-shot       6.4838      89.523     249.296           358
 checker         adaptive-budget      R=8, B=128, q=16       6.2368     175.675     264.834           219
-

@@ -3,6 +3,7 @@
 #include "experiment/problem.hpp"
 #include "experiment/reporting.hpp"
 #include "multigrid/two_grid_solver.hpp"
+#include "version.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -96,7 +97,7 @@ inline Summary fixed_study_summary(
     const BasicConfig& config, const std::string& extra_label = {},
     const std::string& extra_value = {}) {
     Summary summary{
-        {"Version", "2.8.0"},
+        {"Version", std::string(tgi::version)},
         {"Fine grid", "h=1/" + std::to_string(config.fine_intervals)},
         {"Coarse grid", "H=1/" + std::to_string(config.coarse_intervals)},
         {"Contrast", scientific(config.contrast, 0)},

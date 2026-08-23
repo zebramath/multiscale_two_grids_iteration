@@ -1,7 +1,7 @@
 Global-target iterative construction: Jacobi and PCG
 ====================================================
 
-Version               : 2.8.0
+Version               : 2.9.0
 Fine grid             : h=1/128
 Coarse grid           : H=1/16
 Contrast              : 1e+04
@@ -54,4 +54,3 @@ checker              PCG-global                  m=16       9.1300     154.732  
 checker              PCG-global                  m=32      20.4547     305.067     456.419           211
 checker              PCG-global                  m=64      48.1166     680.593     984.625           217
 checker            global-exact             tol=1e-10      96.9969    1831.299    2419.839           217
-

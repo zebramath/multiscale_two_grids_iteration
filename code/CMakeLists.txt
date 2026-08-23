@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 2.8.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 2.9.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -52,9 +52,11 @@ tgi_add_program(experiment2 experiments/experiment2.cpp)
 tgi_add_program(experiment3 experiments/experiment3.cpp)
 tgi_add_program(experiment4 experiments/experiment4.cpp)
 tgi_add_program(experiment5 experiments/experiment5.cpp)
+tgi_add_program(experiment6 experiments/experiment6.cpp)
 
 add_custom_target(experiments
-    DEPENDS experiment1 experiment2 experiment3 experiment4 experiment5)
+    DEPENDS experiment1 experiment2 experiment3 experiment4 experiment5
+            experiment6)
 
 include(CTest)
 if(BUILD_TESTING)

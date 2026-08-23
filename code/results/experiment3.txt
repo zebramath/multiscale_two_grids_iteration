@@ -1,7 +1,7 @@
 Sparse localization: relative magnitude pruning of the global basis
 ===================================================================
 
-Version                : 2.8.0
+Version                : 2.9.0
 Fine grid              : h=1/128
 Coarse grid            : H=1/16
 Contrast               : 1e+04
@@ -45,4 +45,3 @@ checker           global-pruned            drop=2e-02       2.4822    1664.078  
 checker           global-pruned            drop=3e-02       2.0837    1661.766    2818.570          3210
 checker           global-pruned            drop=5e-02       1.6022    1660.591    4767.240          9044
 checker           global-pruned            drop=1e-01       1.0059    1660.223   15580.245         33270
-

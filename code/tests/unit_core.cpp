@@ -33,12 +33,12 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 } // namespace
 
 int main() {
-    require(tgi::version == "2.8.0", "wrong package version");
+    require(tgi::version == "2.9.0", "wrong package version");
     const experiment_support::Row expected_headers{
         "Field", "Method", "Parameter", "P density %",
         "Setup ms", "Total ms", "Cycles"};
     require(experiment_support::study_headers() == expected_headers,
-            "public output schema is not the v2.8 compact schema");
+            "public output schema is not the compact schema");
     for (const auto& header : experiment_support::study_headers()) {
         std::string lower = header;
         std::transform(
@@ -147,6 +147,19 @@ int main() {
         experiment_support::manufactured_solution(grid);
     const tgi::Vector rhs = a.multiply(exact);
     const tgi::TwoGridCycle cycle(a, global.prolongation, 1, 2);
+    tgi::Vector coarse_rhs(
+        static_cast<std::size_t>(cycle.coarse_size()), 1.0);
+    tgi::Vector coarse_solution;
+    tgi::Vector coarse_work;
+    cycle.solve_coarse_system(
+        coarse_rhs, coarse_solution, coarse_work);
+    const tgi::Vector coarse_product =
+        cycle.coarse_matrix().multiply(coarse_solution);
+    const double coarse_relative_residual =
+        tgi::norm2(tgi::subtract(coarse_rhs, coarse_product)) /
+        tgi::norm2(coarse_rhs);
+    require(coarse_relative_residual < 1.0e-10,
+            "coarse direct solve is not numerically accurate");
     const auto solved = tgi::solve_two_grid(a, rhs, cycle, 1.0e-6, 1000);
     require(solved.converged, "two-grid solve did not converge");
     return 0;

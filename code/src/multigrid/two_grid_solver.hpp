@@ -62,6 +62,10 @@ public:
     Vector apply_error(const Vector& error) const;
     double estimate_convergence_factor(int iterations = 80,
                                        std::uint64_t seed = 12345) const;
+    void solve_coarse_system(const Vector& rhs, Vector& solution,
+                             Vector& work) const {
+        coarse_solver_.solve(rhs, solution, work);
+    }
     const SparseMatrix& coarse_matrix() const { return coarse_matrix_; }
     const CoarseSetupReport& setup_report() const { return setup_report_; }
     int coarse_size() const { return p_.cols(); }

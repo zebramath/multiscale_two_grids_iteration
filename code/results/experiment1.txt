@@ -1,7 +1,7 @@
 Spatial localization: P_G, local support radius and global reference
 ====================================================================
 
-Version                : 2.8.0
+Version                : 2.9.0
 Fine grid              : h=1/128
 Coarse grid            : H=1/16
 Contrast               : 1e+04
@@ -33,4 +33,3 @@ checker            local-energy              layers=2       6.0922      75.971  
 checker            local-energy              layers=3      12.5471     184.507     328.809           217
 checker            local-energy              layers=4      20.5466     315.108     501.694           217
 checker           global-energy            layers=inf      96.9969    1886.739    2469.773           217
-
