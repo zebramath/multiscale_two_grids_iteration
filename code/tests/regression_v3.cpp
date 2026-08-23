@@ -1,6 +1,5 @@
 #include "experiment/problem.hpp"
 #include "multigrid/adaptive_global_pcg.hpp"
-#include "multigrid/frontier_gain_support.hpp"
 #include "multigrid/global_pcg_path.hpp"
 
 #include <algorithm>
@@ -73,14 +72,26 @@ int main() {
     tgi::AdaptiveGlobalPcgOptions adaptive_options;
     adaptive_options.minimum_steps = 2;
     adaptive_options.maximum_steps = 8;
-    adaptive_options.step_increment = 2;
-    adaptive_options.patience = 2;
-    adaptive_options.probe_count = 2;
-    adaptive_options.power_iterations = 4;
+    adaptive_options.maximum_screening_steps = 8;
+    adaptive_options.screening_increment = 2;
+    adaptive_options.screening_pilot_iterations = 4;
+    adaptive_options.screening_tail_window = 2;
+    adaptive_options.minimum_screened_positive_candidates = 2;
+    adaptive_options.refinement_backtrack_steps = 2;
+    adaptive_options.refinement_stop_before_anchor_steps = 0;
+    adaptive_options.refinement_increment = 2;
+    adaptive_options.refinement_pilot_iterations = 4;
+    adaptive_options.refinement_tail_window = 2;
+    adaptive_options.confirmation_candidates = 2;
+    adaptive_options.easy_accept_cycles = 1000;
+    adaptive_options.medium_accept_cycles = 1000;
+    adaptive_options.initial_safety_forecast_cycles = 1000;
+    adaptive_options.maximum_confirmation_cycles = 1000;
     adaptive_options.thread_count = 2;
-    adaptive_options.expected_rhs = 2;
+    const tgi::Vector adaptive_rhs(
+        static_cast<std::size_t>(grid.fine_size()), 1.0);
     const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
-        grid, a, geometric.prolongation, adaptive_options);
+        grid, a, geometric.prolongation, adaptive_options, &adaptive_rhs);
     require(adaptive.report.selected_steps >= 0 &&
                 adaptive.report.selected_steps <= 8,
             "adaptive PCG selected an invalid checkpoint");
@@ -89,36 +100,5 @@ int main() {
     require(adaptive.prolongation.rows() == grid.fine_size(),
             "adaptive PCG returned an invalid prolongation");
 
-    tgi::InterpolationOptions local_options;
-    local_options.strategy =
-        tgi::InterpolationStrategy::LocalEnergyMinimum;
-    local_options.patch_layers = 1;
-    local_options.local_tolerance = 1.0e-7;
-    local_options.local_max_iterations = 1000;
-    local_options.thread_count = 2;
-    const auto local = tgi::build_interpolation(grid, a, local_options);
-    tgi::FrontierGainSupportOptions support_options;
-    support_options.base_patch_layers = 1;
-    support_options.maximum_rounds = 2;
-    support_options.maximum_extra_nodes_per_column = 8;
-    support_options.maximum_total_nodes_per_round = 12;
-    support_options.maximum_nodes_per_column_per_round = 3;
-    support_options.thread_count = 2;
-    const auto frontier = tgi::build_frontier_gain_interpolation(
-        grid, a, local.prolongation, local_options, support_options);
-    require(frontier.supports.size() ==
-                static_cast<std::size_t>(grid.coarse_size()),
-            "frontier-gain returned the wrong number of supports");
-    for (int coarse = 0; coarse < grid.coarse_size(); ++coarse) {
-        const auto& support =
-            frontier.supports[static_cast<std::size_t>(coarse)];
-        require(std::all_of(support.begin(), support.end(),
-                    [&](int node) { return !grid.is_coarse_node(node); }),
-                "frontier-gain inserted a coarse node into a local support");
-        const int extra = static_cast<int>(support.size()) -
-            static_cast<int>(grid.patch_f_nodes(coarse, 1).size());
-        require(extra <= support_options.maximum_extra_nodes_per_column,
-                "frontier-gain exceeded the per-column budget");
-    }
     return 0;
 }

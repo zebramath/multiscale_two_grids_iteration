@@ -22,7 +22,7 @@ experiment_support::Row measure(
     const std::string& parameter, const tgi::SparseMatrix& a,
     const tgi::Vector& rhs, const tgi::SparseMatrix& p,
     double interpolation_ms, int threads, int max_cycles,
-    const std::string& rho = "-") {
+    const std::string& selector_cycles = "-") {
     const auto metric = experiment_support::evaluate_two_grid(
         a, rhs, p, threads, 1.0e-6, max_cycles);
     return {
@@ -32,7 +32,7 @@ experiment_support::Row measure(
         std::to_string(item.seed), item.field.name, method, parameter,
         experiment_support::fixed(
             experiment_support::interpolation_density_percent(p), 4),
-        rho,
+        selector_cycles,
         metric.converged ? std::to_string(metric.cycles)
             : "failed@" + std::to_string(metric.cycles),
         experiment_support::fixed(
@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
 
     const experiment_support::Row headers{
         "1/h", "1/H", "H/h", "Contrast", "Seed", "Topology",
-        "Method", "Parameter", "P density %", "rho_hat", "Cycles",
+        "Method", "Parameter", "P density %", "selector cycles", "Cycles",
         "Setup ms", "Total ms"};
     experiment_support::Rows rows;
     constexpr int max_cycles = 12000;
@@ -122,14 +122,21 @@ int main(int argc, char** argv) {
         tgi::AdaptiveGlobalPcgOptions adaptive_options;
         adaptive_options.minimum_steps = 12;
         adaptive_options.maximum_steps = 56;
-        adaptive_options.step_increment = 4;
-        adaptive_options.patience = 3;
-        adaptive_options.probe_count = 3;
-        adaptive_options.power_iterations = 30;
-        adaptive_options.rhs_pilot_iterations = 32;
-        adaptive_options.rhs_tail_window = 8;
+        adaptive_options.maximum_screening_steps = 44;
+        adaptive_options.screening_increment = 16;
+        adaptive_options.screening_pilot_iterations = 24;
+        adaptive_options.screening_tail_window = 6;
+        adaptive_options.minimum_screened_positive_candidates = 4;
+        adaptive_options.refinement_backtrack_steps = 10;
+        adaptive_options.refinement_stop_before_anchor_steps = 4;
+        adaptive_options.refinement_increment = 2;
+        adaptive_options.refinement_pilot_iterations = 48;
+        adaptive_options.refinement_tail_window = 12;
+        adaptive_options.confirmation_candidates = 2;
+        adaptive_options.easy_accept_cycles = 48;
+        adaptive_options.medium_accept_cycles = 64;
+        adaptive_options.maximum_confirmation_cycles = max_cycles;
         adaptive_options.thread_count = threads;
-        adaptive_options.expected_rhs = 4;
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
             grid, problem.matrix, geometric.prolongation, adaptive_options,
             &problem.rhs);
@@ -139,8 +146,7 @@ int main(int argc, char** argv) {
             problem.matrix, problem.rhs, adaptive.prolongation,
             geometric_ms + adaptive.report.selection_wall_ms,
             threads, max_cycles,
-            experiment_support::fixed(
-                adaptive.report.selected_rho_hat, 6)));
+            std::to_string(adaptive.report.selected_cycles)));
     }
 
     experiment_support::Report report(

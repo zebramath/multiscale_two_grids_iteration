@@ -1,5 +1,0 @@
-Field,Rounds,Expanded cols,Frozen cols,Extra nodes,Final/initial,Build ms
-checker,10,20,0,659,0.6741,18.730
-cross-channel,10,29,0,1012,0.5760,22.799
-meandering-channel,10,20,0,810,0.7188,24.482
-diagonal-channels,10,30,0,1297,0.5095,26.516

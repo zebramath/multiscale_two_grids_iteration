@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
 
     tgi::GlobalEnergyPcgPath path(
         grid, problem.matrix, geometric.prolongation, config.threads);
-    constexpr std::array<int, 7> checkpoints{16, 24, 32, 40, 48, 56, 64};
+    constexpr std::array<int, 7> checkpoints{16, 24, 32, 36, 38, 40, 48};
     for (int steps : checkpoints) {
         path.advance_to(steps);
         const auto path_report = path.report();
@@ -32,14 +32,21 @@ int main(int argc, char** argv) {
     tgi::AdaptiveGlobalPcgOptions options;
     options.minimum_steps = 16;
     options.maximum_steps = 64;
-    options.step_increment = 4;
-    options.patience = 4;
-    options.probe_count = 3;
-    options.power_iterations = 30;
-    options.rhs_pilot_iterations = 40;
-    options.rhs_tail_window = 10;
+    options.maximum_screening_steps = 48;
+    options.screening_increment = 16;
+    options.screening_pilot_iterations = 32;
+    options.screening_tail_window = 8;
+    options.screening_patience = 2;
+    options.refinement_backtrack_steps = 10;
+    options.refinement_stop_before_anchor_steps = 4;
+    options.refinement_increment = 2;
+    options.refinement_pilot_iterations = 64;
+    options.refinement_tail_window = 16;
+    options.confirmation_candidates = 2;
+    options.easy_accept_cycles = 48;
+    options.medium_accept_cycles = 64;
+    options.maximum_confirmation_cycles = config.max_cycles;
     options.thread_count = config.threads;
-    options.expected_rhs = 8;
     const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
         grid, problem.matrix, geometric.prolongation, options,
         &problem.rhs);
@@ -53,40 +60,43 @@ int main(int argc, char** argv) {
         adaptive_candidate, config));
 
     const experiment_support::Row history_headers{
-        "m", "rho_hat", "rho_power", "rho_rhs", "pred cycles", "P density %",
-        "path ms", "probe ms", "score ms", "best"};
+        "m", "phase", "pilot", "rho_tail", "pilot residual",
+        "pred cycles", "confirmed", "P density %", "path ms",
+        "pilot ms", "confirm ms", "selected"};
     experiment_support::Rows history;
     for (const auto& item : adaptive.report.history) {
         history.push_back({
             std::to_string(item.steps),
-            experiment_support::fixed(item.rho_hat, 6),
-            experiment_support::fixed(item.rho_power, 6),
+            item.phase,
+            std::to_string(item.pilot_iterations),
             experiment_support::fixed(item.rho_rhs_pilot, 6),
+            experiment_support::scientific(item.pilot_relative_residual, 3),
             std::to_string(item.predicted_cycles),
+            item.confirmed_cycles >= 0
+                ? std::to_string(item.confirmed_cycles) : "-",
             experiment_support::fixed(item.density_percent, 4),
             experiment_support::fixed(item.path_ms),
-            experiment_support::fixed(item.probe_ms),
-            experiment_support::fixed(item.predicted_total_ms),
-            item.improved ? "yes" : "no"});
+            experiment_support::fixed(item.pilot_ms),
+            experiment_support::fixed(item.confirmation_ms),
+            item.selected ? "yes" : "no"});
     }
 
     experiment_support::Report report(
         "Adaptive finite-PCG checkpoint selection");
     report.add_summary(experiment_support::fixed_study_summary(
-        config, "Workload used by selector", "8 right-hand sides"));
+        config, "Selector", "screen-refine-confirm"));
     report.add_note(
-        "The fixed rows and the adaptive search continue one PCG trajectory "
-        "between checkpoints. The selector uses the maximum of three "
-        "independent 30-step energy-norm power probes and a 40-cycle "
-        "representative-RHS tail probe, keeps the historical "
-        "best candidate (including m=0), and stops after four non-improving "
-        "checkpoints.");
+        "The selector first screens coarse PCG checkpoints with 32 cycles, "
+        "backtracks from the best screen anchor, refines at spacing two with "
+        "64-cycle pilots, and continues only two diverse finalists to the "
+        "actual solve tolerance. The final objective is measured cycles on "
+        "the representative right-hand side.");
     report.add_table(
         "End-to-end verification", experiment_support::study_headers(),
         experiment_support::study_widths(), rows);
     report.add_table(
         "Adaptive decision trace", history_headers,
-        {5, 11, 11, 11, 11, 11, 10, 10, 12, 6}, history);
+        {5, 9, 7, 11, 15, 11, 11, 11, 10, 10, 11, 9}, history);
     report.save("experiment7");
     experiment_support::write_csv(
         "experiment7", experiment_support::study_headers(), rows);

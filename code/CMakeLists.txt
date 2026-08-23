@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 3.0.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 3.1.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -54,12 +54,13 @@ tgi_add_program(experiment4 experiments/experiment4.cpp)
 tgi_add_program(experiment5 experiments/experiment5.cpp)
 tgi_add_program(experiment6 experiments/experiment6.cpp)
 tgi_add_program(experiment7 experiments/experiment7.cpp)
-tgi_add_program(experiment8 experiments/experiment8.cpp)
 tgi_add_program(experiment9 experiments/experiment9.cpp)
+tgi_add_program(experiment10 experiments/experiment10.cpp)
+tgi_add_program(experiment11 experiments/experiment11.cpp)
 
 add_custom_target(experiments
     DEPENDS experiment1 experiment2 experiment3 experiment4 experiment5
-            experiment6 experiment7 experiment8 experiment9)
+            experiment6 experiment7 experiment9 experiment10 experiment11)
 
 include(CTest)
 if(BUILD_TESTING)
@@ -69,7 +70,7 @@ if(BUILD_TESTING)
         set_property(TARGET unit_core PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
     endif()
     add_test(NAME unit_core COMMAND unit_core)
-    add_executable(regression_v3 tests/regression_v3.cpp)
-    target_link_libraries(regression_v3 PRIVATE tgi_headers)
-    add_test(NAME regression_v3 COMMAND regression_v3)
+    add_executable(regression_v31 tests/regression_v3.cpp)
+    target_link_libraries(regression_v31 PRIVATE tgi_headers)
+    add_test(NAME regression_v31 COMMAND regression_v31)
 endif()
