@@ -24,21 +24,26 @@ run_step build cmake --build "$build_dir" --parallel "$threads"
 run_step tests ctest --test-dir "$build_dir" --output-on-failure
 
 if [ "$mode" = "quick" ]; then
-    run_step experiment7 "$build_dir/experiment7" \
+    run_step experiment3_adaptive_oracle \
+        "$build_dir/experiment3_adaptive_oracle" \
         --fine=32 --coarse=8 --threads="$threads" \
         --contrast=1e4 --max-cycles=12000
-    run_step experiment9 "$build_dir/experiment9" --quick --threads="$threads"
-    run_step experiment11 "$build_dir/experiment11" --threads="$threads"
+    run_step experiment4_robustness \
+        "$build_dir/experiment4_robustness" --quick --threads="$threads"
 elif [ "$mode" = "full" ]; then
-    run_step experiment7 "$build_dir/experiment7" \
-        --fine=128 --coarse=16 --threads="$threads" \
-        --contrast=1e4 --max-cycles=40000
-    run_step experiment9 "$build_dir/experiment9" --threads="$threads"
-    run_step experiment11 "$build_dir/experiment11" --threads="$threads"
-    run_step experiment13 "$build_dir/experiment13" --threads="$threads"
-    run_step experiment14 "$build_dir/experiment14" --threads="$threads"
+    run_step experiment1_localization \
+        "$build_dir/experiment1_localization" --threads="$threads"
+    run_step experiment2_pcg_path \
+        "$build_dir/experiment2_pcg_path" --threads="$threads"
+    run_step experiment3_adaptive_oracle \
+        "$build_dir/experiment3_adaptive_oracle" --threads="$threads"
+    run_step experiment4_robustness \
+        "$build_dir/experiment4_robustness" --threads="$threads"
+    run_step experiment5_diagnostics \
+        "$build_dir/experiment5_diagnostics" --threads="$threads"
+    run_step experiment6_workload \
+        "$build_dir/experiment6_workload" --threads="$threads"
 else
     echo "usage: $0 [quick|full]" >&2
     exit 2
 fi
-

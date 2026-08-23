@@ -1,0 +1,50 @@
+Diagnostic extension on additional seeds and coefficient fields
+===============================================================
+
+Version         : 3.5.0
+Cases           : 8
+Seeds           : 101, 313, 701, 907
+Oracle          : m=0 and m=12,16,...,48
+Solve tolerance : 1e-6
+
+Note: This diagnostic set is rerun with the midpoint adaptive selector. Candidate locations use the common search interval and pilot cycle forecasts rather than case-specific step values. The oracle is evaluation-only.
+
+Post-diagnosis validation
+-------------------------
+1/h      1/H    Contrast    Seed              Topology  Selected m   Adaptive cycles   Adaptive setup ms   Oracle m   Oracle cycles     Gap %  Geometric cycles  Fixed-40 cycles   Forecast
+-----  -----  ----------  ------  --------------------  ----------  ----------------  ------------------  ---------  --------------  --------  ----------------  ---------------  ---------
+32         8       1e+04     101     parallel-channels          12                41              28.380         12              41      0.00                54               44         39
+32         8       1e+06     313    meandering-channel          24                69              42.139         24              69      0.00            failed               73         62
+64         8       1e+02     101         cross-channel          12               143             229.069         12             143      0.00               393              296        125
+64         8       1e+04     313    meandering-channel          46               372             182.134         48             332     12.05            failed              354        280
+64        16       1e+04     101     diagonal-channels          24                99             544.240         20              87     13.79            failed              297         88
+64        16       1e+06     313     parallel-channels          34                55             305.542         32              55      0.00            failed               55         50
+64         8       1e+04     701            continuous          34               143              77.843         44             134      6.72               368              138        122
+64        16       1e+06     907               checker          34                57             337.349         40              54      5.56            failed               54         56
+
+
+Additional policy stress test on seeds and coefficient fields
+=============================================================
+
+Version         : 3.5.0
+Cases           : 8
+Seeds           : 1301, 1601, 1907, 2203
+Oracle          : m=0 and m=12,16,...,48
+Solve tolerance : 1e-6
+
+Note: This stress test contains six channel cases and two continuous or checkerboard cases. The same midpoint adaptive policy is used for every coefficient field, grid and seed. The oracle is evaluation-only.
+
+Policy stress test
+------------------
+1/h      1/H    Contrast    Seed              Topology  Selected m   Adaptive cycles   Adaptive setup ms   Oracle m   Oracle cycles     Gap %  Geometric cycles  Fixed-40 cycles   Forecast
+-----  -----  ----------  ------  --------------------  ----------  ----------------  ------------------  ---------  --------------  --------  ----------------  ---------------  ---------
+32         8       1e+02    1301     diagonal-channels          12                62              22.589         12              62      0.00                99               79         60
+32         8       1e+06    1601    meandering-channel          34                56              21.833         20              56      0.00            failed               56         51
+64         8       1e+02    1907     parallel-channels          12               127              49.246         12             127      0.00               196              200        105
+64         8       1e+04    2203         cross-channel          46               269              84.445         36             210     28.10            failed              281        136
+64        16       1e+02    1301    meandering-channel          12                50              74.910         12              50      0.00               242               56         46
+64        16       1e+06    1601     diagonal-channels          24                70             336.592         24              70      0.00            failed              242         64
+64         8       1e+06    1907            continuous          12               229             128.576         12             229      0.00               584              270        157
+64        16       1e+04    2203               checker          34                56             330.375         24              56      0.00            failed               56         55
+
+

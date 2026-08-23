@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 3.4.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 3.5.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -37,8 +37,8 @@ if(TGI_ENABLE_IPO)
     check_ipo_supported(RESULT TGI_IPO_SUPPORTED OUTPUT TGI_IPO_ERROR)
 endif()
 
-function(tgi_add_program target source)
-    add_executable(${target} ${source})
+function(tgi_add_program target)
+    add_executable(${target} ${ARGN})
     target_compile_definitions(
         ${target} PRIVATE TGI_RESULTS_DIR="${CMAKE_SOURCE_DIR}/results")
     target_link_libraries(${target} PRIVATE tgi_headers)
@@ -47,24 +47,36 @@ function(tgi_add_program target source)
     endif()
 endfunction()
 
-tgi_add_program(experiment1 experiments/experiment1.cpp)
-tgi_add_program(experiment2 experiments/experiment2.cpp)
-tgi_add_program(experiment3 experiments/experiment3.cpp)
-tgi_add_program(experiment4 experiments/experiment4.cpp)
-tgi_add_program(experiment5 experiments/experiment5.cpp)
-tgi_add_program(experiment6 experiments/experiment6.cpp)
-tgi_add_program(experiment7 experiments/experiment7.cpp)
-tgi_add_program(experiment9 experiments/experiment9.cpp)
-tgi_add_program(experiment10 experiments/experiment10.cpp)
-tgi_add_program(experiment11 experiments/experiment11.cpp)
-tgi_add_program(experiment12 experiments/experiment12.cpp)
-tgi_add_program(experiment13 experiments/experiment13.cpp)
-tgi_add_program(experiment14 experiments/experiment14.cpp)
+tgi_add_program(experiment1_localization
+    experiments/experiment1_localization.cpp
+    src/experiment/studies/localization_radius.cpp
+    src/experiment/studies/local_tolerance.cpp
+    src/experiment/studies/global_pruning.cpp
+    src/experiment/studies/support_strategy.cpp)
+tgi_add_program(experiment2_pcg_path
+    experiments/experiment2_pcg_path.cpp
+    src/experiment/studies/pcg_budget.cpp
+    src/experiment/studies/pcg_dense_scan.cpp
+    src/experiment/studies/pilot_diagnostic.cpp)
+tgi_add_program(experiment3_adaptive_oracle
+    experiments/experiment3_adaptive_oracle.cpp
+    src/experiment/studies/adaptive_trace.cpp
+    src/experiment/studies/oracle_quality.cpp)
+tgi_add_program(experiment4_robustness
+    experiments/experiment4_robustness.cpp
+    src/experiment/studies/robustness_matrix.cpp)
+tgi_add_program(experiment5_diagnostics
+    experiments/experiment5_diagnostics.cpp
+    src/experiment/studies/diagnostic_cases.cpp
+    src/experiment/studies/stress_cases.cpp)
+tgi_add_program(experiment6_workload
+    experiments/experiment6_workload.cpp
+    src/experiment/studies/workload.cpp)
 
 add_custom_target(experiments
-    DEPENDS experiment1 experiment2 experiment3 experiment4 experiment5
-            experiment6 experiment7 experiment9 experiment10 experiment11
-            experiment12 experiment13 experiment14)
+    DEPENDS experiment1_localization experiment2_pcg_path
+            experiment3_adaptive_oracle experiment4_robustness
+            experiment5_diagnostics experiment6_workload)
 
 include(CTest)
 if(BUILD_TESTING)
@@ -74,7 +86,7 @@ if(BUILD_TESTING)
         set_property(TARGET unit_core PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
     endif()
     add_test(NAME unit_core COMMAND unit_core)
-    add_executable(regression_v34 tests/regression_v3.cpp)
-    target_link_libraries(regression_v34 PRIVATE tgi_headers)
-    add_test(NAME regression_v34 COMMAND regression_v34)
+    add_executable(regression_v35 tests/regression_v3.cpp)
+    target_link_libraries(regression_v35 PRIVATE tgi_headers)
+    add_test(NAME regression_v35 COMMAND regression_v35)
 endif()

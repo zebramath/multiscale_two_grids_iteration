@@ -1,0 +1,29 @@
+Five-right-hand-side workload and setup break-even study
+========================================================
+
+Version                      : 3.5.0
+Problems                     : 4
+Right-hand sides per problem : 5
+Solve tolerance              : 1e-6
+
+Note: Each hierarchy is constructed once and reused for five distinct smooth/localized right-hand sides. Break-even is the smallest RHS count at which setup plus mean solve time favors the method over the named baseline; 'never' means the measured per-RHS time is not lower. Timings are single-run wall-clock measurements and should be read as order-of-magnitude evidence, not microbenchmarks.
+
+Amortized workload
+------------------
+1/h      1/H    Contrast              Topology         Method      m   One-time setup ms   Avg cycles  Max cycles   Avg solve ms  Break-even vs G  Break-even vs m40
+-----  -----  ----------  --------------------  -------------  -----  ------------------  -----------  ----------  -------------  ---------------  -----------------
+64         8       1e+04    meandering-channel      geometric      0               5.816       1113.4        1240        168.662                0                  0
+64         8       1e+04    meandering-channel          fixed     40              74.551        188.6         203         59.405                1                  0
+64         8       1e+04    meandering-channel  adaptive-v3.5     38             129.147        189.6         204         57.787                2                 34
+64        16       1e+04     diagonal-channels      geometric      0               0.994       4000.0      failed        647.513                0                  0
+64        16       1e+04     diagonal-channels          fixed     40             301.357         49.2          54         44.734                1                  0
+64        16       1e+04     diagonal-channels  adaptive-v3.5     38             400.850         49.4          54         41.872                1                 35
+64        16       1e+06         cross-channel      geometric      0              13.747       4000.0      failed        650.403                0                  0
+64        16       1e+06         cross-channel          fixed     40             166.115        116.0         124        108.131                1                  0
+64        16       1e+06         cross-channel  adaptive-v3.5     26             447.283         59.4          60         39.302                1                  5
+
+128       16       1e+04         cross-channel      geometric      0               3.995       4000.0      failed       2438.451                0                  0
+128       16       1e+04         cross-channel          fixed     40             640.619        231.4         247        421.511                1                  0
+128       16       1e+04         cross-channel  adaptive-v3.5     40            1470.724        231.4         247        410.245                1                 74
+
+

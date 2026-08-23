@@ -1,0 +1,117 @@
+Global-target finite-PCG construction
+=====================================
+
+Version               : 3.5.0
+Fine grid             : h=1/128
+Coarse grid           : H=1/16
+Contrast              : 1e+04
+Smoother              : one forward + one backward Gauss-Seidel
+Solve tolerance       : 1e-6
+Timing                : one end-to-end run per candidate
+Initial interpolation : P_G; no pruning or row cap
+
+Note: Every finite candidate starts from the geometric basis and follows the global energy PCG path for 4, 8, 16, 32 or 64 steps. The exact global-energy basis is included as the limiting reference.
+
+Global-target finite-PCG construction
+-------------------------------------
+Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
+-----------  ------------------  --------------------  -----------  ----------  ----------  ------------
+continuous            geometric                   P_G       1.3950      15.890     150.209           131
+continuous           PCG-global                   m=4       2.8455     210.650     265.298            90
+continuous           PCG-global                   m=8       4.7096     218.857     284.208            86
+continuous           PCG-global                  m=16       9.1300     380.286     505.064           116
+continuous           PCG-global                  m=32      20.4547     679.792     818.064            93
+continuous           PCG-global                  m=64      48.1166    1294.798    1523.162            90
+continuous         global-exact             tol=1e-10      95.7222    3646.874    4147.847            90
+
+channel               geometric                   P_G       1.3950       6.817   23028.972  failed@40000
+channel              PCG-global                   m=4       2.8455      91.618   12723.973         19397
+channel              PCG-global                   m=8       4.7096     142.097    6346.722          9058
+channel              PCG-global                  m=16       9.1300     278.933    3659.583          4043
+channel              PCG-global                  m=32      20.4547     539.822    1008.699           347
+channel              PCG-global                  m=64      48.1166    1211.884    2329.225           366
+channel            global-exact             tol=1e-10      97.8420    4230.971   20477.822          3227
+
+checker               geometric                   P_G       1.3950       5.497   22630.311  failed@40000
+checker              PCG-global                   m=4       2.8455     107.221   12385.738         19695
+checker              PCG-global                   m=8       4.7096     142.374    5370.107          7360
+checker              PCG-global                  m=16       9.1300     272.365    3839.353          4040
+checker              PCG-global                  m=32      20.4547     562.507    1102.950           347
+checker              PCG-global                  m=64      48.1166    1265.440    1879.370           226
+checker            global-exact             tol=1e-10      96.9969    3256.490    4392.856           228
+
+
+Channel dense PCG-step scan and coarse-solve cross-check
+========================================================
+
+Version         : 3.5.0
+Fine grid       : h=1/128
+Coarse grid     : H=1/16
+Contrast        : 1e+04
+Smoother        : one forward + one backward Gauss-Seidel
+Solve tolerance : 1e-6
+Timing          : one end-to-end run per candidate
+PCG scan        : m=16,18,...,64
+
+Note: Every row passed an independent long-double dense-Cholesky cross-check of the Galerkin coarse solve. Validation work is excluded from Setup ms and Total ms, and the production sparse coarse solver is unchanged.
+
+Channel finite-step PCG scan
+----------------------------
+Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
+-----------  ------------------  --------------------  -----------  ----------  ----------  ------------
+channel              PCG-global                  m=16       9.1300     248.089    3916.958          4043
+channel              PCG-global                  m=18      10.3088     273.711    3762.909          3291
+channel              PCG-global                  m=20      11.6236     308.540    2163.339          1861
+channel              PCG-global                  m=22      13.0007     348.942    1631.179          1148
+channel              PCG-global                  m=24      14.4398     379.759    1485.718           926
+channel              PCG-global                  m=26      15.8038     481.789    1246.233           644
+channel              PCG-global                  m=28      17.3034     459.359    1011.323           441
+channel              PCG-global                  m=30      18.8537     472.809     906.045           336
+channel              PCG-global                  m=32      20.4547     490.054    1018.276           347
+channel              PCG-global                  m=34      21.9609     536.430    1100.678           367
+channel              PCG-global                  m=36      23.5999     572.749    1027.760           268
+channel              PCG-global                  m=38      25.2786     566.585     901.340           231
+channel              PCG-global                  m=40      26.9969     594.482     946.475           234
+channel              PCG-global                  m=42      28.6040     612.347    1096.833           238
+channel              PCG-global                  m=44      30.3389     701.502    1185.678           244
+channel              PCG-global                  m=46      32.1029     827.390    1303.799           252
+channel              PCG-global                  m=48      33.8960     826.973    1523.969           256
+channel              PCG-global                  m=50      35.5642     936.001    1505.265           263
+channel              PCG-global                  m=52      37.3532    1069.896    1738.708           276
+channel              PCG-global                  m=54      39.1612    1117.526    1861.202           288
+channel              PCG-global                  m=56      40.9881    1182.395    1921.092           276
+channel              PCG-global                  m=58      42.6795    1088.903    1931.604           324
+channel              PCG-global                  m=60      44.4826    1168.514    2145.544           360
+channel              PCG-global                  m=62      46.2950    1050.498    2113.596           364
+channel              PCG-global                  m=64      48.1166    1193.122    2197.898           366
+channel            global-exact             tol=1e-10      97.8420    4091.240   20504.385          3227
+
+
+Pilot residual ranking diagnostic
+=================================
+
+Version         : 3.5.0
+Fine grid       : h=1/128
+Coarse grid     : H=1/16
+Contrast        : 1e+04
+Smoother        : one forward + one backward Gauss-Seidel
+Solve tolerance : 1e-6
+Timing          : one end-to-end run per candidate
+
+Finite PCG path
+---------------
+m                r32            r64            r96           r128           r160      cycles
+-----  -------------  -------------  -------------  -------------  -------------  ----------
+28        4.7725e+00     5.3471e-01     1.2938e-01     4.2236e-02     1.4169e-02         441
+30        3.9553e+00     3.6775e-01     5.4333e-02     1.1693e-02     2.7384e-03         336
+32        3.8423e+00     4.2508e-01     7.3184e-02     1.6506e-02     3.9435e-03         347
+34        3.7836e+00     4.5763e-01     9.1759e-02     2.2958e-02     5.9574e-03         367
+36        3.0142e+00     2.6490e-01     2.7828e-02     3.5846e-03     5.2371e-04         268
+38        2.2437e+00     1.6143e-01     1.1825e-02     8.8277e-04     7.3027e-05         231
+40        1.6992e+00     1.1278e-01     7.8030e-03     5.9325e-04     6.1518e-05         234
+42        1.2817e+00     8.0618e-02     5.5398e-03     4.8492e-04     6.5868e-05         238
+44        9.4597e-01     5.6653e-02     4.1084e-03     4.6791e-04     7.9342e-05         244
+46        6.8061e-01     4.4365e-02     4.8746e-03     7.7017e-04     1.3522e-04         252
+48        5.4421e-01     3.9168e-02     5.4234e-03     9.2890e-04     1.6543e-04         256
+
+

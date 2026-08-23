@@ -61,38 +61,25 @@ inline std::filesystem::path write_result(
     return path;
 }
 
-inline std::filesystem::path write_csv(
-    const std::string& name, const Row& headers, const Rows& rows) {
+inline std::string& active_result_group() {
+    static std::string name;
+    return name;
+}
+
+inline void begin_result_group(const std::string& name) {
+    active_result_group() = name;
+    write_result(name, "");
+}
+
+inline std::filesystem::path append_group_result(
+    const std::string& contents) {
     const std::filesystem::path directory = TGI_RESULTS_DIR;
-    std::filesystem::create_directories(directory);
-    const std::filesystem::path path = directory / (name + ".csv");
-    std::ofstream stream(path);
-    const auto write_cell = [&](const std::string& cell) {
-        const bool quote = cell.find_first_of(",\"\n\r") !=
-            std::string::npos;
-        if (!quote) {
-            stream << cell;
-            return;
-        }
-        stream << '"';
-        for (char character : cell) {
-            if (character == '"') stream << '"';
-            stream << character;
-        }
-        stream << '"';
-    };
-    const auto write_row = [&](const Row& row) {
-        for (std::size_t index = 0; index < row.size(); ++index) {
-            if (index != 0U) stream << ',';
-            write_cell(row[index]);
-        }
-        stream << '\n';
-    };
-    write_row(headers);
-    for (const Row& row : rows) write_row(row);
-    if (!stream) {
+    const std::filesystem::path path =
+        directory / (active_result_group() + ".txt");
+    std::ofstream stream(path, std::ios::app);
+    if (!stream || !(stream << contents << '\n')) {
         throw std::runtime_error(
-            "cannot write CSV result file " + path.string());
+            "cannot append result file " + path.string());
     }
     return path;
 }
@@ -145,7 +132,9 @@ public:
     }
 
     void save(const std::string& name) const {
-        const std::filesystem::path path = write_result(name, text_.str());
+        const std::filesystem::path path = active_result_group().empty()
+            ? write_result(name, text_.str())
+            : append_group_result(text_.str());
         std::cout << text_.str() << "Saved: " << path.string() << '\n';
     }
 
@@ -163,4 +152,3 @@ private:
 };
 
 }
-

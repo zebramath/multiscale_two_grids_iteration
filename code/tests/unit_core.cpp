@@ -1,8 +1,6 @@
 #include "experiment/study.hpp"
 #include "multigrid/support_expansion.hpp"
-#include "multigrid/strength_distance_interpolation.hpp"
 #include "multigrid/energy_interpolation.hpp"
-#include "multigrid/reference_pruning.hpp"
 #include "multigrid/two_grid_solver.hpp"
 #include "pde/diffusion_problem.hpp"
 #include "version.hpp"
@@ -43,8 +41,8 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "3.4.0", "wrong package version");
-    require(tgi::version_major == 3 && tgi::version_minor == 4 &&
+    require(tgi::version == "3.5.0", "wrong package version");
+    require(tgi::version_major == 3 && tgi::version_minor == 5 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
     const experiment_support::Row expected_headers{

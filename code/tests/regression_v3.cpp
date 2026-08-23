@@ -1,6 +1,5 @@
 #include "experiment/problem.hpp"
-#include "multigrid/adaptive_global_pcg.hpp"
-#include "multigrid/global_pcg_path.hpp"
+#include "multigrid/global_pcg.hpp"
 
 #include <algorithm>
 #include <cmath>

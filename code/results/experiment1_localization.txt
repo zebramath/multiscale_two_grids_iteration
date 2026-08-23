@@ -1,0 +1,160 @@
+Spatial localization: P_G, local support radius and global reference
+====================================================================
+
+Version                : 3.5.0
+Fine grid              : h=1/128
+Coarse grid            : H=1/16
+Contrast               : 1e+04
+Smoother               : one forward + one backward Gauss-Seidel
+Solve tolerance        : 1e-6
+Timing                 : one end-to-end run per candidate
+Energy solve tolerance : 1e-10 for every support
+
+Note: P_G is the pure geometric bilinear baseline. The energy rows only change support radius; their common PCG tolerance makes algebraic stopping error negligible relative to localization.
+
+Support radius study
+--------------------
+Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
+-----------  ------------------  --------------------  -----------  ----------  ----------  ------------
+continuous            geometric                   P_G       1.3950      24.204      89.779           131
+continuous         local-energy              layers=2       6.0922     141.654     235.127           104
+continuous         local-energy              layers=3      12.5471     353.830     440.683            91
+continuous         local-energy              layers=4      20.5466     593.630     700.802            90
+continuous        global-energy            layers=inf      95.7222    3858.813    4367.217            90
+
+channel               geometric                   P_G       1.3950       2.484   24160.177  failed@40000
+channel            local-energy              layers=2       6.0922     144.410    5592.740          6840
+channel            local-energy              layers=3      12.5471     398.100    6475.671          6050
+channel            local-energy              layers=4      20.5466     641.427    7912.609          5275
+channel           global-energy            layers=inf      97.8420    4493.985   20050.192          3227
+
+checker               geometric                   P_G       1.3950       3.597   21716.976  failed@40000
+checker            local-energy              layers=2       6.0922     126.915    3195.892          4144
+checker            local-energy              layers=3      12.5471     409.173     656.868           243
+checker            local-energy              layers=4      20.5466     710.057     999.123           229
+checker           global-energy            layers=inf      96.9969    3501.325    4633.798           228
+
+
+Algebraic localization: PCG tolerance on a fixed local support
+==============================================================
+
+Version         : 3.5.0
+Fine grid       : h=1/128
+Coarse grid     : H=1/16
+Contrast        : 1e+04
+Smoother        : one forward + one backward Gauss-Seidel
+Solve tolerance : 1e-6
+Timing          : one end-to-end run per candidate
+Fixed support   : four coarse patch layers
+
+Note: The support is identical in every row. The 1e-10 case is the reference-accurate local minimizer, not a direct solve.
+
+PCG tolerance study
+-------------------
+Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
+-----------  ------------------  --------------------  -----------  ----------  ----------  ------------
+continuous       local-energy-4             tol=1e-02      11.1357     165.502     268.190           111
+continuous       local-energy-4             tol=3e-03      15.7941     211.397     346.062            95
+continuous       local-energy-4             tol=1e-03      18.4505     249.008     358.313            91
+continuous       local-energy-4             tol=3e-04      20.0343     274.028     398.015            90
+continuous       local-energy-4             tol=1e-04      20.4964     302.250     417.443            90
+continuous       local-energy-4             tol=1e-10      20.5466     627.489     768.004            90
+
+channel          local-energy-4             tol=1e-02      14.8391     179.236    6833.395          5449
+channel          local-energy-4             tol=3e-03      18.2800     206.990    6988.509          5296
+channel          local-energy-4             tol=1e-03      19.6917     205.917    7856.601          5283
+channel          local-energy-4             tol=3e-04      20.1398     257.305    7665.557          5278
+channel          local-energy-4             tol=1e-04      20.2876     289.837    8708.779          5277
+channel          local-energy-4             tol=1e-10      20.5466     715.495    8423.560          5275
+
+checker          local-energy-4             tol=1e-02      14.2278     165.169    1550.730          1186
+checker          local-energy-4             tol=3e-03      17.8336     168.340     543.247           265
+checker          local-energy-4             tol=1e-03      19.4081     229.315     572.339           231
+checker          local-energy-4             tol=3e-04      19.9827     262.453     549.964           229
+checker          local-energy-4             tol=1e-04      20.1788     266.837     599.769           229
+checker          local-energy-4             tol=1e-10      20.5466     531.112     865.712           229
+
+
+Sparse localization: relative magnitude pruning of the global basis
+===================================================================
+
+Version                : 3.5.0
+Fine grid              : h=1/128
+Coarse grid            : H=1/16
+Contrast               : 1e+04
+Smoother               : one forward + one backward Gauss-Seidel
+Solve tolerance        : 1e-6
+Timing                 : one end-to-end run per candidate
+Global solve tolerance : 1e-10
+
+Note: For each column, an F entry is dropped when its magnitude is at most delta times that column's maximum magnitude. C injection is always preserved. Build and total times include construction of the dense global reference, so this is a diagnostic oracle study.
+
+Global pruning study
+--------------------
+Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
+-----------  ------------------  --------------------  -----------  ----------  ----------  ------------
+continuous        global-pruned            drop=0e+00      95.7222    3420.400    3864.806            90
+continuous        global-pruned            drop=1e-04      16.3928    2614.728    2725.049            90
+continuous        global-pruned            drop=1e-03       9.0549    2510.509    2578.326            92
+continuous        global-pruned            drop=3e-03       6.2830    2513.507    2621.384            94
+continuous        global-pruned            drop=1e-02       3.8930    2524.093    2590.859           100
+continuous        global-pruned            drop=2e-02       2.8038    2513.034    2601.683           111
+continuous        global-pruned            drop=3e-02       2.2598    2504.823    2570.602           118
+continuous        global-pruned            drop=5e-02       1.6492    2504.095    2626.314           206
+continuous        global-pruned            drop=1e-01       0.9962    2501.897    2960.917           633
+
+channel           global-pruned            drop=0e+00      97.8420    4355.679   20411.254          3227
+channel           global-pruned            drop=1e-04       8.4467    3387.396    5966.909          3226
+channel           global-pruned            drop=1e-03       5.6410    3363.351    6013.752          3481
+channel           global-pruned            drop=3e-03       4.4629    3357.798    5788.143          3486
+channel           global-pruned            drop=1e-02       3.1815    3360.552    5417.751          3488
+channel           global-pruned            drop=2e-02       2.4593    3356.291    5518.221          3504
+channel           global-pruned            drop=3e-02       2.0604    3353.431    7095.252          6391
+channel           global-pruned            drop=5e-02       1.5799    3357.407   13521.926         18888
+channel           global-pruned            drop=1e-01       0.9935    3367.966   31696.947  failed@40000
+
+checker           global-pruned            drop=0e+00      96.9969    3813.968    5037.719           228
+checker           global-pruned            drop=1e-04       7.7556    2947.559    3106.879           231
+checker           global-pruned            drop=1e-03       5.4953    2913.684    3063.592           234
+checker           global-pruned            drop=3e-03       4.4253    2911.876    3095.984           235
+checker           global-pruned            drop=1e-02       3.1966    2928.786    3543.609           815
+checker           global-pruned            drop=2e-02       2.4822    2916.452    5166.410          3044
+checker           global-pruned            drop=3e-02       2.0837    2914.867    7367.181          6648
+checker           global-pruned            drop=5e-02       1.6022    2915.687   14179.221         19649
+checker           global-pruned            drop=1e-01       1.0059    2907.379   30714.435  failed@40000
+
+
+Support expansion strategies: fixed and adaptive budgets
+========================================================
+
+Version                : 3.5.0
+Fine grid              : h=1/128
+Coarse grid            : H=1/16
+Contrast               : 1e+04
+Smoother               : one forward + one backward Gauss-Seidel
+Solve tolerance        : 1e-6
+Timing                 : one end-to-end run per candidate
+Energy solve tolerance : 1e-6
+
+Note: The base, geometric-layer and indicator-strong rows use one construction pass. Adaptive-budget is the retained error-driven variant: it marks 70% of the current indicator energy, adds at most 16 strong-graph nodes per round and 128 per column, and re-solves only marked columns. The reported build time includes all support selection and refinement rounds.
+
+Fixed support strategy study
+----------------------------
+Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
+-----------  ------------------  --------------------  -----------  ----------  ----------  ------------
+continuous           base-local              layers=2       6.0922      79.908     208.567           104
+continuous      geometric-layer                2 -> 3      12.5471     260.277     344.816            91
+continuous     indicator-strong         K=64 one-shot       6.1082     102.845     171.598           104
+continuous      adaptive-budget      R=8, B=128, q=16       6.2364     347.302     435.454           101
+
+channel              base-local              layers=2       6.0922     114.655    5846.881          6840
+channel         geometric-layer                2 -> 3      12.5471     246.941    7062.248          6050
+channel        indicator-strong         K=64 one-shot       6.4855     191.057    5355.506          5592
+channel         adaptive-budget      R=8, B=128, q=16       6.2390     394.526    3638.550          3553
+
+checker              base-local              layers=2       6.0922     102.028    3518.151          4144
+checker         geometric-layer                2 -> 3      12.5471     240.243     541.780           243
+checker        indicator-strong         K=64 one-shot       6.4838     161.660     992.349           946
+checker         adaptive-budget      R=8, B=128, q=16       6.2368     392.690    1093.600           807
+
+
