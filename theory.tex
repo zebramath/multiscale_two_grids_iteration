@@ -1,0 +1,892 @@
+\documentclass{ctexart}
+
+\usepackage{packages}
+\usepackage{mathstyle}
+\usepackage{reportstyle}
+
+\setinfo{局部能量插值的局部化与有限步 PCG 两网格机制}{崔正平}
+
+\theoremstyle{chineseplain}
+\newtheorem{theorem}{定理}[section]
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{corollary}[theorem]{推论}
+\newtheorem{assumption}[theorem]{假设}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{定义}
+
+\DeclareMathOperator{\cond}{cond}
+\DeclareMathOperator{\Ran}{Ran}
+\DeclareMathOperator{\sym}{sym}
+\newcommand{\ip}[2]{\left\langle #1,#2\right\rangle}
+\newcommand{\rhoTG}{\rho_{\mathrm{TG}}}
+
+\begin{document}
+
+\maketitle
+
+\section{模型、代码对应关系与结论边界}
+
+考虑规则网格上带齐次 Dirichlet 边界条件的扩散方程离散系统
+\begin{align}
+    \bm A\bm u=\bm b,
+    \qquad \bm A=\bm A^\T\succ\bm0.
+\end{align}
+按细点 $F$ 和粗点 $C$ 排列未知量，写成
+\begin{align}
+    \bm A=
+    \begin{bmatrix}
+        \bm B&\bm C\\
+        \bm C^\T&\bm A_{CC}
+    \end{bmatrix},
+    \qquad \bm B=\bm A_{FF}\succ\bm0.                       \label{eq:block-A}
+\end{align}
+所有保持粗点单位注入的插值均表示为
+\begin{align}
+    \bm P(\bm W)=
+    \begin{bmatrix}\bm W\\\bm I\end{bmatrix},
+    \qquad \bm W\in\R^{n_F\times n_C}.                     \label{eq:P-W}
+\end{align}
+向量能量范数和矩阵能量范数分别记为
+\begin{align}
+    \norm{\bm v}_{\bm B}^2=\bm v^\T\bm B\bm v,
+    \qquad
+    \norm{\bm Z}_{\bm B,F}^2=\tr(\bm Z^\T\bm B\bm Z).   \label{eq:B-norm}
+\end{align}
+对具有 $n$ 行的矩阵还使用
+$\norm{\bm Z}_{\bm A,F}^2=\tr(\bm Z^\T\bm A\bm Z)$。
+
+本文与代码的对应关系如下：局部或全局能量列求解的是 $\bm B$ 的主子系统；
+预条件器为 $\bm D=\diag(\bm B)$；experiment5--6 从几何插值 $\bm W_0$
+出发逐列运行 PCG；两网格循环使用一次前向 Gauss--Seidel、Galerkin 粗校正和
+一次后向 Gauss--Seidel。固定步数对应代码中的 \texttt{tolerance=0}。
+
+除非特别说明，PCG 结论均指精确算术下、组装输出前的迭代量。代码会删除绝对值不超过
+$10^{-14}$ 的输出条目，浮点运算也会破坏严格共轭，因此数值验证应把下文恒等式理解为
+舍入误差范围内的基准。本文分析的是两网格误差传播算子的谱半径；研究报告中的
+\texttt{Cycles} 还依赖右端项、初值和停止准则，不能与谱半径等同。
+能量极小插值的背景可见\cite{Wan2000,Vassilevski2010}。
+
+
+\section{能量极小插值与空间局部化}
+
+定义总列能量
+\begin{align}
+    J(\bm W)=\frac12\tr\!\left(\bm P(\bm W)^\T
+    \bm A\bm P(\bm W)\right).
+\end{align}
+
+\begin{proposition}[全局极小点与能量差]\label{prop:energy-minimum}
+泛函 $J$ 的唯一极小点为
+\begin{align}
+    \bm W^\ast=-\bm B^{-1}\bm C,                            \label{eq:W-star}
+\end{align}
+并且对任意 $\bm W=\bm W^\ast+\bm E$，
+\begin{align}
+    J(\bm W)-J(\bm W^\ast)
+    =\frac12\norm{\bm E}_{\bm B,F}^2.                     \label{eq:energy-completion}
+\end{align}
+\end{proposition}
+
+\begin{proof}
+展开迹并利用对称性可得
+\begin{align}
+    J(\bm W)=\frac12\tr(\bm W^\T\bm B\bm W)
+    +\tr(\bm W^\T\bm C)+\frac12\tr(\bm A_{CC}).
+\end{align}
+其一阶条件为 $\bm B\bm W+\bm C=\bm0$。由于 $\bm B\succ\bm0$，
+该驻点唯一。代入 $\bm W=\bm W^\ast+\bm E$，一次项消失，得到
+\cref{eq:energy-completion}。
+\end{proof}
+
+记第 $j$ 个全局列满足
+\begin{align}
+    \bm B\bm w_j^\ast=\bm b_j,
+    \qquad \bm b_j=-\bm C\bm e_j.                          \label{eq:column-system}
+\end{align}
+给定支撑 $S_{j,\ell}\subset F$，令
+\begin{align}
+    V_{j,\ell}=\{\bm v:\supp(\bm v)\subseteq S_{j,\ell}\}.
+\end{align}
+精确局部列 $\bm w_{j,\ell}\in V_{j,\ell}$ 由
+\begin{align}
+    \bm z^\T\bm B\bm w_{j,\ell}=\bm z^\T\bm b_j,
+    \qquad \bm z\in V_{j,\ell}                            \label{eq:local-galerkin}
+\end{align}
+确定。这正是代码求解的主子系统。
+
+令 $\mathcal G(\bm B)$ 为 $\bm B$ 的非零图，$\mathcal N_m(G)$ 为集合 $G$
+的 $m$ 跳闭邻域，并定义
+\begin{align}
+    \widehat{\bm B}=\bm D^{-1/2}\bm B\bm D^{-1/2},
+    \qquad
+    \widehat\kappa=\cond_2(\widehat{\bm B}),
+    \qquad
+    q=\frac{\sqrt{\widehat\kappa}-1}
+    {\sqrt{\widehat\kappa}+1}.                             \label{eq:q}
+\end{align}
+
+\begin{theorem}[局部能量列的指数逼近]\label{thm:localization}
+设 $G_j=\supp(\bm b_j)$。若
+\begin{align}
+    \mathcal N_{m-1}(G_j)\subseteq S_{j,\ell}               \label{eq:patch-containment}
+\end{align}
+对某个 $m\ge1$ 成立，则
+\begin{align}
+    \norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}
+    \le 2q^m\norm{\bm w_j^\ast}_{\bm B}.                 \label{eq:abstract-localization}
+\end{align}
+此外，对任意 $\bm v\in V_{j,\ell}$ 有正交分解
+\begin{align}
+    \norm{\bm w_j^\ast-\bm v}_{\bm B}^2
+    =\norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}^2
+    +\norm{\bm w_{j,\ell}-\bm v}_{\bm B}^2.             \label{eq:projection-pythagoras}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+由\cref{eq:column-system,eq:local-galerkin}，
+$\bm w_j^\ast-\bm w_{j,\ell}$ 与 $V_{j,\ell}$ 关于 $\bm B$ 正交，
+故\cref{eq:projection-pythagoras}成立，且 $\bm w_{j,\ell}$ 是该空间中的
+最佳能量逼近。
+
+对全局方程从零初值运行 $m$ 步对角 PCG，所得向量属于
+\begin{align}
+    \mathcal K_m(\bm D^{-1}\bm B,\bm D^{-1}\bm b_j).
+\end{align}
+对角缩放不改变支撑，每乘一次 $\bm B$ 最多沿图传播一跳，因此该向量支撑在
+$\mathcal N_{m-1}(G_j)$ 内。由\cref{eq:patch-containment}，它是
+$V_{j,\ell}$ 中的合法竞争函数。CG 的 Chebyshev 估计给出其误差不超过
+$2q^m\norm{\bm w_j^\ast}_{\bm B}$；再用最佳逼近性质即得结论。
+\end{proof}
+
+在代码的五点格式中，令 $r=H/h$。layers=$\ell$ 的支撑是以粗点为中心、
+细网格 $\ell^\infty$ 半径为 $\ell r$ 的方形区域，并删除其中的粗点。
+$G_j$ 只含与中心粗点相邻的细点，所以
+$\mathcal N_{\ell r-1}(G_j)\subseteq S_{j,\ell}$。于是
+\begin{align}
+    \norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}
+    \le2q^{\ell r}\norm{\bm w_j^\ast}_{\bm B}.           \label{eq:code-localization}
+\end{align}
+若 $\bm W_\ell$ 由所有局部列组成，则逐列平方求和得到
+\begin{align}
+    \norm{\bm P(\bm W^\ast)-\bm P(\bm W_\ell)}_{\bm A,F}
+    &=\norm{\bm W^\ast-\bm W_\ell}_{\bm B,F}
+      \le2q^{\ell r}\norm{\bm W^\ast}_{\bm B,F},        \label{eq:matrix-localization}\\
+    0\le J(\bm W_\ell)-J(\bm W^\ast)
+    &\le2q^{2\ell r}\norm{\bm W^\ast}_{\bm B,F}^2.     \label{eq:energy-localization}
+\end{align}
+
+下面给出一个较保守但完全显式的速率。设每条细网格边权满足
+$a_{\min}\le a_e\le a_{\max}$，记 $\kappa_a=a_{\max}/a_{\min}$。
+把 $F$ 点向量在粗点和物理边界上延拓为零。逐粗网格方格选取通向一个零锚点、
+长度不超过 $2r$ 的网格路径，沿路径使用 Cauchy--Schwarz 不等式并计数，可得
+\begin{align}
+    \sum_{i\in F}v_i^2
+    \le2r^3\sum_{e=(p,q)}(v_p-v_q)^2.                     \label{eq:anchored-poincare}
+\end{align}
+另一方面，五点扩散矩阵的对角元满足
+\begin{align}
+    \bm v^\T\bm B\bm v
+    &\ge a_{\min}\sum_e(v_p-v_q)^2,\\
+    \bm v^\T\bm D\bm v
+    &\le4a_{\max}\sum_{i\in F}v_i^2.
+\end{align}
+因此
+\begin{align}
+    \lambda_{\min}(\widehat{\bm B})\ge
+    \frac1{8\kappa_a r^3}.
+\end{align}
+又因 $\bm B$ 为对角占优的对称扩散矩阵，Gershgorin 圆盘给出
+$\lambda_{\max}(\widehat{\bm B})\le2$，从而
+\begin{align}
+    \widehat\kappa\le16\kappa_a r^3.                      \label{eq:kappa-explicit}
+\end{align}
+当 $\widehat\kappa>1$ 时，利用
+$-\log q\ge2/\sqrt{\widehat\kappa}$ 可将\cref{eq:code-localization}写成
+\begin{align}
+    \norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}
+    \le2\exp\!\left(-\frac{\ell}{2\sqrt{\kappa_a r}}\right)
+    \norm{\bm w_j^\ast}_{\bm B}.                         \label{eq:explicit-localization}
+\end{align}
+若 $\widehat\kappa=1$，CG 一步精确收敛，结论更强。
+
+若局部主子系统只做有限步 PCG，记结果为 $\bm w_{j,\ell,m}\in V_{j,\ell}$，
+则同一正交性直接给出
+\begin{align}
+    \norm{\bm w_j^\ast-\bm w_{j,\ell,m}}_{\bm B}^2
+    =\norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}^2
+    +\norm{\bm w_{j,\ell}-\bm w_{j,\ell,m}}_{\bm B}^2. \label{eq:space-algebra-split}
+\end{align}
+第二项再由该局部缩放系统的标准 PCG 估计控制。因此空间截断误差与局部代数误差
+不是需要用三角不等式粗略相加的两个量，而是严格正交。
+
+这一证明与 LOD\cite{MalqvistPeterseim2020} 的共同点是都把全局能量正交对象投影到局部空间；区别是这里直接用
+有限传播的 PCG 向量作竞争函数，不调用当前节点注入框架尚未验证的稳定拟插值条件。
+因此本文只声称一般依赖 $\widehat\kappa$ 或 $\kappa_a$ 的指数局部化，不声称
+无条件的对比度无关速率。
+
+
+\section{PCG 路径的正交尾与 Ritz 滤波}
+
+对每个粗列从同一几何初值 $\bm w_{0,j}$ 运行 PCG。令
+\begin{align}
+    \bm e_{m,j}=\bm w_{m,j}-\bm w_j^\ast,
+    \qquad
+    \bm E_m=\bm W_m-\bm W^\ast.
+\end{align}
+第 $k$ 步的列修正和矩阵修正记为
+\begin{align}
+    \bm c_{k,j}=\alpha_{k,j}\bm p_{k,j},
+    \qquad
+    \bm C_k=[\bm c_{k,1},\ldots,\bm c_{k,n_C}].            \label{eq:Ck}
+\end{align}
+若某列已经精确终止，约定其后修正为零。
+
+\begin{theorem}[PCG 的有限正交尾]\label{thm:pcg-tail}
+精确算术下存在 $\nu\le n_F$，使得 $\bm W_\nu=\bm W^\ast$，并且
+对 $0\le m\le\nu$ 有
+\begin{align}
+    \bm E_m=-\sum_{k=m}^{\nu-1}\bm C_k,                   \label{eq:tail-sum}\\
+    \tr(\bm C_k^\T\bm B\bm C_l)&=0\quad(k\ne l),        \label{eq:tail-orthogonality}\\
+    \norm{\bm E_m}_{\bm B,F}^2
+    &=\sum_{k=m}^{\nu-1}d_k^2,
+    \qquad d_k=\norm{\bm C_k}_{\bm B,F}.                 \label{eq:tail-energy}
+\end{align}
+此外
+\begin{align}
+    d_k^2=\sum_{j=1}^{n_C}
+    \alpha_{k,j}\bm r_{k,j}^\T\bm D^{-1}\bm r_{k,j},    \label{eq:dk-residual}
+\end{align}
+从而
+\begin{align}
+    J(\bm W_m)-J(\bm W^\ast)
+    &=\frac12\sum_{k=m}^{\nu-1}d_k^2,                    \label{eq:J-tail}\\
+    J(\bm W_m)-J(\bm W_{m+1})&=\frac12d_m^2.             \label{eq:J-step}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+固定一列。PCG 等价于对 $\widehat{\bm B}$ 运行普通 CG，其搜索方向关于
+$\bm B$ 共轭，并在不超过该列 Krylov grade 的有限步终止。因此精确解等于初值加
+全部修正之和；从第 $m$ 步截断即得\cref{eq:tail-sum}。逐列相加保留不同步之间的
+正交性，得到\cref{eq:tail-orthogonality,eq:tail-energy}。步长公式给出
+\begin{align}
+    \alpha_{k,j}^2\bm p_{k,j}^\T\bm B\bm p_{k,j}
+    =\alpha_{k,j}\bm r_{k,j}^\T\bm D^{-1}\bm r_{k,j},
+\end{align}
+故\cref{eq:dk-residual}成立。最后使用\cref{eq:energy-completion}即可。
+\end{proof}
+
+令
+\begin{align}
+    \widehat{\bm B}=\bm Q\bm\Lambda\bm Q^\T,
+    \qquad 0<\lambda_1\le\cdots\le\lambda_{n_F},
+\end{align}
+并写 $\widehat{\bm e}_{m,j}=\bm D^{1/2}\bm e_{m,j}$。在第 $m$ 步尚未
+精确终止时，存在归一化误差多项式 $\pi_{m,j}(0)=1$，使
+\begin{align}
+    \widehat{\bm e}_{m,j}
+    =\pi_{m,j}(\widehat{\bm B})\widehat{\bm e}_{0,j}.     \label{eq:error-polynomial}
+\end{align}
+若 $\theta_{l,j}^{(m)}$ 是相应 Lanczos 三对角矩阵的 Ritz 值，则
+\begin{align}
+    \pi_{m,j}(t)=\prod_{l=1}^m
+    \left(1-\frac{t}{\theta_{l,j}^{(m)}}\right),           \label{eq:ritz-product}
+\end{align}
+并且 $\pi_{m,j}$ 最小化
+\begin{align}
+    \sum_i\lambda_i a_{ij}^2p(\lambda_i)^2,
+    \qquad
+    a_{ij}=\bm q_i^\T\widehat{\bm e}_{0,j},               \label{eq:cg-positive-objective}
+\end{align}
+其中 $p$ 的次数不超过 $m$ 且 $p(0)=1$。
+
+CG 的多项式最优性还给出一个稍后要用的统一块估计。对任意 $m,s\ge0$，
+\begin{align}
+    \norm{\bm E_{m+s}}_{\bm B,F}
+    \le\vartheta_s\norm{\bm E_m}_{\bm B,F},
+    \qquad \vartheta_s=2q^s.                              \label{eq:block-contraction}
+\end{align}
+证明只需用第 $m$ 步最优多项式乘以区间
+$[\lambda_1,\lambda_{n_F}]$ 上次数 $s$ 的归一化 Chebyshev 多项式，
+作为第 $m+s$ 步的竞争函数。若 $\vartheta_s<1$，结合正交尾恒等式可得
+\begin{align}
+    \norm{\bm W_{m+s}-\bm W_m}_{\bm B,F}
+    \ge\sqrt{1-\vartheta_s^2}\,
+    \norm{\bm E_m}_{\bm B,F}.                            \label{eq:block-lower}
+\end{align}
+
+
+\section{两网格谱半径的精确表示与非渐近判据}
+
+定义 Schur 补
+\begin{align}
+    \bm S=\bm A_{CC}-\bm C^\T\bm B^{-1}\bm C\succ\bm0.  \label{eq:Schur}
+\end{align}
+变换
+\begin{align}
+    \bm\Phi=
+    \begin{bmatrix}\bm I&\bm W^\ast\\\bm0&\bm I\end{bmatrix}
+    \begin{bmatrix}\bm B^{-1/2}&\bm0\\\bm0&\bm S^{-1/2}\end{bmatrix}
+\end{align}
+满足 $\bm\Phi^\T\bm A\bm\Phi=\bm I$。若
+$\bm W=\bm W^\ast+\bm\Delta$，定义图参数
+\begin{align}
+    \bm K=\bm B^{1/2}\bm\Delta\bm S^{-1/2}.              \label{eq:K}
+\end{align}
+在 $\bm\Phi$ 坐标中，粗空间恰为
+$\Ran[\bm K^\T,\bm I]^\T$；精确能量空间对应 $\bm K=\bm0$。
+
+令 $\bm S_f$ 为一次前向 Gauss--Seidel 误差传播，后向传播为其
+$\bm A$--伴随。把变换后的前向传播按行分块：
+\begin{align}
+    \bm\Phi^{-1}\bm S_f\bm\Phi
+    =\begin{bmatrix}\bm X\\\bm Y\end{bmatrix},
+    \qquad
+    \bm X\in\R^{n_F\times n},\quad
+    \bm Y\in\R^{n_C\times n}.                            \label{eq:XY}
+\end{align}
+
+\begin{theorem}[两网格谱半径公式]\label{thm:rho-formula}
+对任意单位注入插值，Galerkin 粗校正与对称前后磨光组成的两网格误差传播在
+$\bm\Phi$ 坐标中为
+\begin{align}
+    (\bm X-\bm K\bm Y)^\T
+    (\bm I+\bm K\bm K^\T)^{-1}
+    (\bm X-\bm K\bm Y).                                  \label{eq:TG-operator}
+\end{align}
+因此
+\begin{align}
+    \rhoTG(\bm K)
+    =\norm{(\bm I+\bm K\bm K^\T)^{-1/2}
+    (\bm X-\bm K\bm Y)}_2^2,                             \label{eq:rho-formula}
+\end{align}
+而精确能量插值的谱半径为
+\begin{align}
+    \rho_\ast=\rhoTG(\bm0)=\norm{\bm X}_2^2.             \label{eq:rho-star}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+在 $\bm\Phi$ 坐标中，能量正交投影变为 Euclidean 正交投影。图子空间的
+正交补由 $[\bm I,-\bm K^\T]^\T$ 张成，故其投影为
+\begin{align}
+    \begin{bmatrix}\bm I\\-\bm K^\T\end{bmatrix}
+    (\bm I+\bm K\bm K^\T)^{-1}
+    \begin{bmatrix}\bm I&-\bm K\end{bmatrix}.
+\end{align}
+在两侧乘以前、后磨光传播即得\cref{eq:TG-operator}。该矩阵对称半正定，
+其最大特征值就是\cref{eq:rho-formula}。
+\end{proof}
+
+\begin{corollary}[任意两个候选的精确比较]\label{cor:LMI}
+给定阈值 $\mu\ge0$，对任意 $\bm K$ 有
+\begin{align}
+    \rhoTG(\bm K)<\mu
+    \quad\Longleftrightarrow\quad
+    \mu(\bm I+\bm K\bm K^\T)
+    -(\bm X-\bm K\bm Y)(\bm X-\bm K\bm Y)^\T\succ\bm0. \label{eq:threshold-LMI}
+\end{align}
+把 $\mu$ 取为 $\rho_\ast$，得到有限步严格优于精确能量极限的充要条件；
+把 $\mu$ 取为 $\rhoTG(\widetilde{\bm K})$，得到 $\bm K$ 严格优于
+$\widetilde{\bm K}$ 的充要条件。将严格正定改为半正定，即得到非严格比较。
+\end{corollary}
+
+\begin{proof}
+令 $\bm G=\bm I+\bm K\bm K^\T\succ\bm0$、
+$\bm Z=\bm X-\bm K\bm Y$。由\cref{eq:rho-formula}，
+$\rhoTG(\bm K)<\mu$ 当且仅当
+$\bm G^{-1/2}\bm Z\bm Z^\T\bm G^{-1/2}\prec\mu\bm I$。
+作合同变换即得\cref{eq:threshold-LMI}。
+\end{proof}
+
+对 PCG 路径定义
+\begin{align}
+    \bm K_m=\bm B^{1/2}\bm E_m\bm S^{-1/2},
+    \qquad
+    \bm H_m=\bm K_m-\bm K_{m+1}
+    =-\bm B^{1/2}\bm C_m\bm S^{-1/2}.                     \label{eq:Km-Hm}
+\end{align}
+于是 $\bm K_m=\sum_{k=m}^{\nu-1}\bm H_k$。
+\cref{cor:LMI} 对任意维数、任意幅度均成立，因此可以直接、无渐近假设地判断
+某个实际 PCG 步是否优于精确终点，或下一步究竟改善还是恶化。
+
+最后说明为什么能量最优不等于两网格最优。令
+$\bm T=\bm A^{1/2}\bm S_f\bm A^{-1/2}$，粗空间维数为 $n_C$。
+对任意同维粗空间 $\mathcal U$，
+\begin{align}
+    \rhoTG(\mathcal U)=\norm{(\bm I-\bm Q_{\mathcal U})\bm T}_2^2.
+\end{align}
+由最佳低秩逼近定理，所有 $n_C$ 维粗空间中的最小值为
+$\sigma_{n_C+1}(\bm T)^2$，可由 $\bm T$ 的前 $n_C$ 个左奇异向量张成的空间达到。
+这与最小化 $J(\bm W)$ 是不同的优化问题，故不存在能量单调改善必然推出
+两网格谱半径单调改善的逻辑。
+
+
+\section{精确能量空间附近的一阶机制与严格余项}
+
+设 $\bm X$ 的最大奇异值为 $\sigma>0$，重数为 $p$，其中
+$1\le p<n_F$，且
+\begin{align}
+    \sigma_1(\bm X)=\cdots=\sigma_p(\bm X)=\sigma
+    >\sigma_{p+1}(\bm X).                                  \label{eq:top-cluster}
+\end{align}
+取对应的左右奇异向量矩阵 $\bm U_\ast,\bm V_\ast$，满足
+\begin{align}
+    \bm X\bm V_\ast=\sigma\bm U_\ast,
+    \qquad \bm X^\T\bm U_\ast=\sigma\bm V_\ast.
+\end{align}
+对方向 $\bm Z$ 定义
+\begin{align}
+    \bm M(\bm Z)=\sym(\bm U_\ast^\T\bm Z\bm Y\bm V_\ast).
+\end{align}
+
+\begin{theorem}[方向导数与有限二阶判据]\label{thm:local-expansion}
+谱半径在 $\bm K=\bm0$ 处的右方向导数为
+\begin{align}
+    D^+\rhoTG(\bm0;\bm Z)
+    =-2\sigma\lambda_{\min}(\bm M(\bm Z)).                \label{eq:directional-derivative}
+\end{align}
+因此 $\bm M(\bm Z)\succ\bm0$ 是严格下降方向的充分条件。
+
+进一步令
+\begin{align}
+    a&=\norm{\bm X}_2,\qquad b=\norm{\bm Y}_2,\\
+    \delta&=\sigma^2-\sigma_{p+1}(\bm X)^2,\\
+    c_0&=b^2+(a+b)^2,\\
+    c_1&=2ab+c_0,\\
+    C&=c_0+\frac{2c_1^2}{\delta},
+    \qquad
+    k_0=\min\left\{1,\frac{\delta}{4c_1}\right\}.        \label{eq:local-constants}
+\end{align}
+若 $k=\norm{\bm K}_2\le k_0$，则
+\begin{align}
+    \sigma^2-2\sigma\lambda_{\min}(\bm M(\bm K))-c_0k^2
+    \le\rhoTG(\bm K)
+    \le\sigma^2-2\sigma\lambda_{\min}(\bm M(\bm K))+Ck^2. \label{eq:cluster-bound}
+\end{align}
+特别地，若
+\begin{align}
+    \lambda_{\min}(\bm M(\bm K))>\frac{C}{2\sigma}k^2,    \label{eq:strict-local-improvement}
+\end{align}
+则 $\rhoTG(\bm K)<\rho_\ast$。
+\end{theorem}
+
+\begin{proof}
+记
+\begin{align}
+    \bm F(\bm K)=(\bm X-\bm K\bm Y)^\T
+    (\bm I+\bm K\bm K^\T)^{-1}(\bm X-\bm K\bm Y).
+\end{align}
+当 $k\le1$ 时，
+\begin{align}
+    \bm F(\bm K)=\bm X^\T\bm X-
+    \bm X^\T\bm K\bm Y-\bm Y^\T\bm K^\T\bm X+\bm R,
+    \qquad \norm{\bm R}_2\le c_0k^2.                     \label{eq:F-expansion}
+\end{align}
+这里 $b^2k^2$ 来自 $\bm Y^\T\bm K^\T\bm K\bm Y$，
+$(a+b)^2k^2$ 控制逆矩阵偏离单位阵造成的其余项。保留前一个二次项是获得严格常数所必需的。
+总扰动范数不超过 $c_1k\le\delta/4$。
+
+把 $\bm X^\T\bm X$ 按顶端特征子空间 $\Ran(\bm V_\ast)$ 及其正交补分块。
+消去正交补后，Schur 补耦合项的范数不超过 $2c_1^2k^2/\delta$。
+顶端子空间上的一次项为 $-2\sigma\bm M(\bm K)$，再加
+\cref{eq:F-expansion} 的余项，得到\cref{eq:cluster-bound}。
+令 $\bm K=t\bm Z$ 并除以 $t\downarrow0$，得到\cref{eq:directional-derivative}。
+\end{proof}
+
+简单主模态 $p=1$ 时，记单位奇异向量为 $\bm u,\bm v$，并令
+\begin{align}
+    \bm y=\bm Y\bm v,
+    \qquad \bm c=\bm S^{-1/2}\bm y,
+    \qquad c_y=\norm{\bm c}_2.
+\end{align}
+若 $\bm y\ne\bm0$，定义实际 PCG 删除方向的主模态分数
+\begin{align}
+    \beta_m=\bm u^\T\bm H_m\bm y,
+    \qquad
+    \xi_m=\frac{\beta_m}{d_mc_y}\in[-1,1].                \label{eq:beta-xi}
+\end{align}
+等式
+\begin{align}
+    \beta_m=\ip{\bm H_m\bm S^{1/2}}{\bm u\bm c^\T}_F
+\end{align}
+表明 $\xi_m$ 就是实际删除块与主模态有利方向之间的夹角余弦。
+由\cref{eq:cluster-bound} 分别作用于 $\bm K_m$ 和
+$\bm K_{m+1}=\bm K_m-\bm H_m$，可得
+\begin{align}
+    \left|\rhoTG(\bm K_{m+1})-\rhoTG(\bm K_m)-2\sigma\beta_m\right|
+    \le C\left(\norm{\bm K_m}_2^2+
+    \norm{\bm K_{m+1}}_2^2\right).                        \label{eq:step-expansion}
+\end{align}
+与此同时，\cref{eq:J-step} 给出的能量收益为 $d_m^2/2$。
+因此当 $d_m$ 较小且 $\xi_m$ 保持正值时，两网格损失的一阶项
+$2\sigma\xi_mc_yd_m$ 可以严格压过二阶余项，而插值能量仍继续下降。
+
+
+\section{Ritz 滤波与通道充分条件}
+
+本节说明上面的正方向分数如何由 PCG 谱滤波产生，而不是把它当作无来源的假设。
+CG 多项式与 Ritz 值的标准背景可见\cite{Greenbaum,SleijpenVanDerSluis1996}。
+定义正交矩阵
+\begin{align}
+    \bm U_D=\bm B^{1/2}\bm D^{-1/2}\widehat{\bm B}^{-1/2}.
+\end{align}
+利用\cref{eq:error-polynomial}，简单主模态下有精确公式
+\begin{align}
+    \bm u^\T\bm K_m\bm y
+    &=\sum_{i,j}\omega_{ij}\pi_{m,j}(\lambda_i),          \label{eq:ritz-linear}\\
+    \norm{\bm E_m}_{\bm B,F}^2
+    &=\sum_{i,j}\lambda_i a_{ij}^2\pi_{m,j}(\lambda_i)^2, \label{eq:ritz-quadratic}
+\end{align}
+其中
+\begin{align}
+    \omega_{ij}=c_j\sqrt{\lambda_i}
+    (\bm u^\T\bm U_D\bm q_i)a_{ij}.                       \label{eq:omega}
+\end{align}
+第一式是带符号的线性谱和，第二式是非负的二次谱和。PCG 最小化的是后者，
+并不最小化前者；Ritz 根可以先压低某些不利谱成分，同时暂时保留对固定磨光器有利的成分。
+
+下面给出与通道系数场相连的充分条件。假设 $\bm B$ 是不可约的对称扩散矩阵，
+非对角元非正，并且每个相关右端项满足 $\bm b_j\ge\bm0$、$\bm b_j\ne\bm0$。
+此时 $\bm B^{-1}$ 逐项为正，于是
+$\widehat{\bm B}$ 的最小特征值简单，单位特征向量 $\bm q_1$ 可取逐项为正。
+对通道节点集 $\mathcal C\subset F$，定义
+\begin{align}
+    \operatorname{vol}_D(\mathcal C)&=\sum_{i\in\mathcal C}D_{ii},\\
+    \operatorname{cut}_B(\mathcal C)&=
+    \text{从 $\mathcal C$ 指向其外部、粗点或边界的边权总和},\\
+    \Phi_{\mathcal C}&=
+    \frac{\operatorname{cut}_B(\mathcal C)}
+    {\operatorname{vol}_D(\mathcal C)}.
+\end{align}
+用通道指标向量代入 Rayleigh 商可得
+\begin{align}
+    \lambda_1\le\Phi_{\mathcal C}.                        \label{eq:channel-rayleigh}
+\end{align}
+若 $\lambda_2>\Phi_{\mathcal C}$，则
+\begin{align}
+    \left|\bm q_1^\T
+    \frac{\bm D^{1/2}\bm1_{\mathcal C}}
+    {\sqrt{\operatorname{vol}_D(\mathcal C)}}\right|^2
+    \ge\frac{\lambda_2-\Phi_{\mathcal C}}
+    {\lambda_2-\lambda_1}.                                \label{eq:channel-alignment}
+\end{align}
+因此小割比并伴随谱隙时，最低模态定量集中在通道上。
+
+设几何初始列的支撑为 $G_j$。由于 $\bm w_j^\ast=\bm B^{-1}\bm b_j>\bm0$，
+若
+\begin{align}
+    \sum_{i\notin G_j}q_{1,i}\sqrt{D_{ii}}w_{ij}^\ast
+    >\sum_{i\in G_j}q_{1,i}\sqrt{D_{ii}}
+    |w_{0,ij}-w_{ij}^\ast|,                                \label{eq:geometric-deficit}
+\end{align}
+则最低模态系数
+\begin{align}
+    a_{1j}=\bm q_1^\T\bm D^{1/2}
+    (\bm w_{0,j}-\bm w_j^\ast)
+\end{align}
+严格为负。这把“几何基没有沿长通道延伸”写成了可检查的不等式。
+
+为给出完整的块判据，考虑两个检查点 $m<n$，令
+\begin{align}
+    \delta_j(t)=\pi_{m,j}(t)-\pi_{n,j}(t),
+    \qquad
+    D_{m:n}=\norm{\bm W_n-\bm W_m}_{\bm B,F}.              \label{eq:block-delta}
+\end{align}
+再定义
+\begin{align}
+    \psi_i&=\bm u^\T\bm U_D\bm q_i,
+    \qquad \mu=|\psi_1|,\\
+    \zeta_0&=
+    \frac{\sgn(\psi_1)\bm a_1^\T\bm c}
+    {\norm{\bm a_1}_2c_y},                                \label{eq:zeta}\\
+    A_1&=\sqrt{\lambda_1}\norm{\bm a_1}_2,
+    \qquad
+    A_\perp=
+    \left(\sum_{i\ge2,j}\lambda_i a_{ij}^2\right)^{1/2}. \label{eq:A-scales}
+\end{align}
+假设 $\psi_1\ne0$、$\bm a_1\ne\bm0$，并且
+\begin{align}
+    \sgn(\psi_1)a_{1j}c_j\ge0\quad\text{对所有 $j$},
+    \qquad \zeta_0>0.                                     \label{eq:static-sign}
+\end{align}
+若所有相关列都满足 $\delta_j(\lambda_1)>0$，令
+\begin{align}
+    \delta^-&=\min_{a_{1j}\ne0}\delta_j(\lambda_1),
+    \qquad
+    \delta^+=\max_{a_{1j}\ne0}\delta_j(\lambda_1),
+    \qquad \tau=\delta^-/\delta^+,\\
+    \bar\eps&=
+    \frac{\max_{i\ge2,j}|\delta_j(\lambda_i)|}{\delta^-}
+    \frac{A_\perp}{A_1}.                                  \label{eq:ritz-leakage}
+\end{align}
+
+\begin{theorem}[通道低模态与 Ritz 分离推出有利块]\label{thm:channel-ritz}
+在上述条件下，若
+\begin{align}
+    \mu\tau\zeta_0>\bar\eps\sqrt{1-\mu^2},               \label{eq:channel-ritz-condition}
+\end{align}
+则
+\begin{align}
+    \bm u^\T(\bm K_m-\bm K_n)\bm y
+    \ge\eta c_yD_{m:n}>0,                                 \label{eq:block-cone}
+\end{align}
+其中
+\begin{align}
+    \eta=
+    \frac{\mu\tau\zeta_0-\bar\eps\sqrt{1-\mu^2}}
+    {\sqrt{1+\bar\eps^2}}>0.                              \label{eq:eta}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+在 $\widehat{\bm B}$ 的特征基中，块修正的谱坐标为
+\begin{align}
+    x_{ij}=\sqrt{\lambda_i}a_{ij}\delta_j(\lambda_i),
+    \qquad D_{m:n}^2=\sum_{i,j}x_{ij}^2.                  \label{eq:block-spectral-coordinates}
+\end{align}
+记最低模态和其余模态部分的范数分别为 $L,H$。由\cref{eq:ritz-leakage}，
+$H/L\le\bar\eps$。有利方向 $\bm u\bm c^\T$ 在最低模态上的范数为
+$\mu c_y$，在其余模态上的范数为 $c_y\sqrt{1-\mu^2}$。
+利用\cref{eq:static-sign}及 $\delta^-\le\delta_j(\lambda_1)\le\delta^+$，
+最低模态内积至少为 $\mu\tau\zeta_0c_yL$；其余模态内积由
+Cauchy--Schwarz 不等式控制为不小于
+$-c_y\sqrt{1-\mu^2}H$。除以
+$D_{m:n}=L\sqrt{1+(H/L)^2}$，再用 $H/L\le\bar\eps$，得到
+\cref{eq:block-cone,eq:eta}。
+\end{proof}
+
+\cref{eq:channel-rayleigh,eq:geometric-deficit,eq:static-sign,eq:channel-ritz-condition}
+分别对应系数通道、几何初值、固定磨光器和
+PCG Ritz 动力学。它们是充分条件而不是自动成立的事实；尤其磨光器改变时，
+$\bm u,\bm y$ 和有利方向也会改变，因此不能只凭 $\bm B$ 和 PCG 收敛性
+无条件推出有限步优势。
+
+
+\section{有限 PCG 尾部的严格反单调结论}
+
+继续假设精确极限的最慢模态简单且 $\bm y\ne\bm0$。取检查点
+\begin{align}
+    m_0<m_1<\cdots<m_L=\nu.
+\end{align}
+定义第 $l$ 个实际 PCG 块
+\begin{align}
+    \bm C^{(l)}&=\bm W_{m_{l+1}}-\bm W_{m_l},\\
+    \bm H^{(l)}&=\bm K_{m_l}-\bm K_{m_{l+1}},\\
+    D_l&=\norm{\bm C^{(l)}}_{\bm B,F},
+    \qquad
+    \beta_l=\bm u^\T\bm H^{(l)}\bm y.                    \label{eq:block-definitions}
+\end{align}
+不同块由互不相交的 PCG 共轭方向组成，所以
+\begin{align}
+    \mathcal E_{m_j}^2
+    :=\norm{\bm E_{m_j}}_{\bm B,F}^2
+    =\sum_{l=j}^{L-1}D_l^2.                                \label{eq:block-pythagoras}
+\end{align}
+
+\begin{theorem}[PCG 有利尾部定理]\label{thm:tail-cone}
+假设存在与块无关的 $\eta>0$，使
+\begin{align}
+    \beta_l\ge\eta c_yD_l,
+    \qquad l=0,\ldots,L-1.                                \label{eq:uniform-cone}
+\end{align}
+令 $\lambda_S=\lambda_{\min}(\bm S)$，并使用
+\cref{eq:local-constants} 中简单主模态 $p=1$ 的 $C,k_0$。
+若
+\begin{align}
+    0<\mathcal E_{m_0}\le k_0\sqrt{\lambda_S},
+    \qquad
+    \mathcal E_{m_0}<\frac{2\sigma\eta c_y\lambda_S}{C}, \label{eq:tail-smallness}
+\end{align}
+则每个尚未到达终点的检查点都严格优于精确能量插值：
+\begin{align}
+    \rhoTG(\bm K_{m_j})<\rho_\ast,
+    \qquad j=0,\ldots,L-1.                                \label{eq:all-tail-better}
+\end{align}
+而且
+\begin{align}
+    \rho_\ast-\rhoTG(\bm K_{m_j})
+    \ge2\sigma\eta c_y\mathcal E_{m_j}
+    -\frac{C}{\lambda_S}\mathcal E_{m_j}^2.               \label{eq:tail-margin}
+\end{align}
+
+若检查点采用固定块长 $s$，使 $\vartheta=2q^s<1$，并把最后一个不足
+$s$ 步的块直接连到精确终点，则在更强条件
+\begin{align}
+    \mathcal E_{m_0}<
+    \frac{2\sigma\eta c_y\sqrt{1-\vartheta^2}\,\lambda_S}
+    {C(1+\vartheta^2)}                                    \label{eq:antimonotone-threshold}
+\end{align}
+下有
+\begin{align}
+    J(\bm W_{m_{l+1}})&<J(\bm W_{m_l}),\\
+    \rhoTG(\bm K_{m_{l+1}})&>\rhoTG(\bm K_{m_l})
+    \qquad(l=0,\ldots,L-1),                              \label{eq:opposite-monotonicity}
+\end{align}
+从而
+\begin{align}
+    \rhoTG(\bm K_{m_0})<\cdots<
+    \rhoTG(\bm K_{m_{L-1}})<\rhoTG(\bm K_\nu)=\rho_\ast. \label{eq:tail-chain}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+由\cref{eq:uniform-cone,eq:block-pythagoras}，
+\begin{align}
+    \bm u^\T\bm K_{m_j}\bm y
+    =\sum_{l=j}^{L-1}\beta_l
+    \ge\eta c_y\sum_{l=j}^{L-1}D_l
+    \ge\eta c_y\mathcal E_{m_j}.                          \label{eq:tail-linear-lower}
+\end{align}
+又有
+\begin{align}
+    \norm{\bm K_{m_j}}_2^2
+    \le\frac{\mathcal E_{m_j}^2}{\lambda_S}.             \label{eq:K-energy-bound}
+\end{align}
+PCG 能量误差单调，故所有后续检查点仍在
+\cref{thm:local-expansion} 的有效邻域。将
+\cref{eq:tail-linear-lower,eq:K-energy-bound} 代入其上界，得到
+\cref{eq:tail-margin}；\cref{eq:tail-smallness} 保证右端为正。
+
+固定块长时，\cref{eq:block-contraction,eq:block-lower} 给出
+\begin{align}
+    \mathcal E_{m_{l+1}}\le\vartheta\mathcal E_{m_l},
+    \qquad D_l\ge\sqrt{1-\vartheta^2}\mathcal E_{m_l}.
+\end{align}
+对相邻两点分别使用\cref{eq:step-expansion}的块版本，可得
+\begin{align}
+    \rhoTG(\bm K_{m_{l+1}})-\rhoTG(\bm K_{m_l})
+    \ge2\sigma\eta c_y\sqrt{1-\vartheta^2}\mathcal E_{m_l}
+    -\frac{C(1+\vartheta^2)}{\lambda_S}\mathcal E_{m_l}^2.
+\end{align}
+\cref{eq:antimonotone-threshold} 使其严格为正。能量严格下降由
+\cref{eq:block-pythagoras} 得到。
+\end{proof}
+
+最大奇异值有重数时也有同样的尾部结论。沿用
+\cref{eq:top-cluster} 的 $\bm U_\ast,\bm V_\ast$，若每个块满足矩阵锥条件
+\begin{align}
+    \sym\!\left(\bm U_\ast^\T\bm H^{(l)}
+    \bm Y\bm V_\ast\right)\succeq\gamma D_l\bm I_p
+    \qquad(\gamma>0),                                    \label{eq:cluster-block-cone}
+\end{align}
+则
+\begin{align}
+    \lambda_{\min}(\bm M(\bm K_{m_j}))
+    \ge\gamma\sum_{l=j}^{L-1}D_l
+    \ge\gamma\mathcal E_{m_j}.
+\end{align}
+因此，只需把\cref{eq:tail-smallness}中的 $\eta c_y$ 换成 $\gamma$，就仍有
+\begin{align}
+    \rho_\ast-\rhoTG(\bm K_{m_j})
+    \ge2\sigma\gamma\mathcal E_{m_j}
+    -\frac{C}{\lambda_S}\mathcal E_{m_j}^2>0.             \label{eq:cluster-tail-margin}
+\end{align}
+固定块长时，把\cref{eq:antimonotone-threshold}中的 $\eta c_y$ 换成
+$\gamma$，相同的特征值不等式和\cref{eq:block-lower}仍推出严格链
+\cref{eq:tail-chain}。这说明尾部结论不依赖最慢模态必须简单；简单情形的作用主要是
+把矩阵锥压缩成易解释的夹角分数。
+
+\cref{thm:channel-ritz} 若对所有块给出统一的 $\eta$ 下界，就直接验证
+\cref{eq:uniform-cone}。因此在明确的通道低模态、几何符号、磨光器对齐和
+Ritz 泄漏条件下，\cref{eq:tail-chain} 不再是对未知方向的抽象假设，而是
+一条可逐项检查的充分条件链。
+
+
+\section{有限幅度改进、反例边界与可计算量}
+
+局部理论并非改进机制的唯一表述。仍在简单主模态情形下，设
+\begin{align}
+    \tau_y=\norm{\bm y}_2>0,
+    \qquad \bm z=\bm y/\tau_y,
+    \qquad
+    \bm K_c=\frac{\sigma}{\tau_y}\bm u\bm z^\T.           \label{eq:cancel-point}
+\end{align}
+则
+\begin{align}
+    (\bm X-\bm K_c\bm Y)\bm v=\bm0,
+\end{align}
+即精确能量空间的最慢模态被有限幅度的图倾斜完全抵消。令
+\begin{align}
+    \bm l=(\bm I-\bm v\bm v^\T)\bm Y^\T\bm z.
+\end{align}
+直接在 $\operatorname{span}\{\bm v\}\oplus\bm v^\perp$ 上计算
+\cref{eq:rho-formula}，得到
+\begin{align}
+    \rhoTG(\bm K_c)
+    \le\sigma_2(\bm X)^2+
+    \frac{\sigma^2}{\sigma^2+\tau_y^2}\norm{\bm l}_2^2.  \label{eq:cancel-bound}
+\end{align}
+若右端严格小于 $\sigma^2$，则 $\bm K_c$ 严格优于精确能量空间。
+由于\cref{eq:rho-formula} 关于 $\bm K$ 连续，$\bm K_c$ 周围存在一个非空开邻域
+保持严格优势；实际 PCG 不必精确落在这条秩一射线上。
+
+另一方面，不可能证明任意 SPD 问题都存在有限步优势。如果精确能量粗空间已经等于
+固定磨光器下的最优同维粗空间，那么任意单位注入插值（包括所有有限 PCG 步）都满足
+\begin{align}
+    \rhoTG(\bm K_m)\ge\rho_\ast.
+\end{align}
+因此正确结论是条件性的结构定理，而不是“继续 PCG 必然先变好再变坏”的普遍规律。
+
+若要把理论与 experiment6 直接对照，建议在现有四项正式指标之外，仅在诊断模式记录：
+\begin{enumerate}
+    \item $d_m^2=\sum_j\alpha_{m,j}\bm r_{m,j}^\T\bm D^{-1}\bm r_{m,j}$，
+    用于核对 PCG 能量恒等式；
+    \item $\beta_m$、$\xi_m$ 以及块版本，用于判断实际删除方向是否有利；
+    \item \cref{eq:threshold-LMI} 的最小特征值，用于无渐近地比较相邻步或精确终点；
+    \item 代表列的 Ritz 值，以及 $\tau,\bar\eps$，用于验证选择性谱滤波；
+    \item $\sigma^2-\sigma_2^2$；若顶端奇异值成簇，则记录重数 $p$ 和
+    $\lambda_{\min}(\bm M(\bm H^{(l)}))$。
+\end{enumerate}
+这些量用于检验机制，不应取代当前右端项下的循环数和计时结果。
+
+
+\section{结论}
+
+对局部能量插值，局部列是全局列的能量正交投影。以有限传播的对角 PCG 向量作
+竞争函数，可得到与代码方形支撑完全对应的指数误差界
+\crefrange{eq:code-localization}{eq:energy-localization}，以及只依赖
+$\kappa_a$ 和 $H/h$ 的保守显式界\cref{eq:explicit-localization}。
+
+对有限步全局 PCG，关键不是一般的 $\bm W_m\to\bm W^\ast$，而是三条更强的事实：
+误差是有限个共轭修正的正交尾；能量误差是这些修正长度的平方尾和；Ritz 多项式
+选择性地保留或删除谱成分。两网格谱半径则由精确公式\cref{eq:rho-formula}
+控制，它对 PCG 尾部的主响应是带符号的一阶量。于是，在
+\cref{thm:channel-ritz,thm:tail-cone} 的可检验条件下，PCG 继续降低插值能量时，
+两网格谱半径可以严格逐块升高，并在精确能量终点达到该尾段的最差值。
+
+该结论保持了实验所需的强度，同时明确了适用范围：它解释并严格刻画有限步窗口，
+但不把通道结构、磨光器对齐或 Ritz 分离误写成对所有问题自动成立的性质。
+
+
+\begin{thebibliography}{99}
+
+\bibitem{Wan2000}
+W. L. Wan, T. F. Chan, B. Smith,
+\newblock An Energy-Minimizing Interpolation for Robust Multigrid Methods,
+\newblock \emph{SIAM Journal on Scientific Computing}, 21(4), 2000.
+
+\bibitem{Vassilevski2010}
+P. S. Vassilevski,
+\newblock General Constrained Energy Minimization Interpolation Mappings for AMG,
+\newblock \emph{SIAM Journal on Scientific Computing}, 32(1), 2010.
+
+\bibitem{MalqvistPeterseim2020}
+A. Målqvist, D. Peterseim,
+\newblock \emph{Numerical Homogenization by Localized Orthogonal Decomposition},
+\newblock SIAM, 2020.
+
+\bibitem{Greenbaum}
+A. Greenbaum,
+\newblock \emph{Iterative Methods for Solving Linear Systems},
+\newblock SIAM, 1997.
+
+\bibitem{SleijpenVanDerSluis1996}
+G. L. G. Sleijpen, A. van der Sluis,
+\newblock Further Results on the Convergence Behavior of Conjugate-Gradients and Ritz Values,
+\newblock \emph{Linear Algebra and its Applications}, 246, 233--278, 1996.
+
+\end{thebibliography}
+
+\end{document}
