@@ -1,5 +1,4 @@
 #include "experiment/study.hpp"
-#include "multigrid/algebraic_interpolation.hpp"
 
 #include <array>
 #include <string>
@@ -28,23 +27,6 @@ int main(int argc, char** argv) {
             field.name, a, rhs, initial, config));
 
         for (int count : steps) {
-            tgi::JacobiInterpolationOptions options;
-            options.steps = count;
-            options.damping = 2.0 / 3.0;
-            options.relative_drop_tolerance = 0.0;
-            options.maximum_entries_per_row = 0;
-            options.thread_count = config.threads;
-            auto interpolation = tgi::build_jacobi_interpolation(
-                grid, a, geometric.prolongation, options);
-            experiment_support::StudyCandidate candidate{
-                "Jacobi-global", "m=" + std::to_string(count),
-                std::move(interpolation.prolongation),
-                geometric_ms + interpolation.report.build_ms};
-            rows.push_back(experiment_support::evaluate_candidate(
-                field.name, a, rhs, candidate, config));
-        }
-
-        for (int count : steps) {
             auto options = experiment_support::energy_options(
                 0, config.threads, 0.0);
             options.local_max_iterations = count;
@@ -67,21 +49,18 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::Report report(
-        "Global-target iterative construction: Jacobi and PCG");
+        "Global-target finite-PCG construction");
     report.add_summary(experiment_support::fixed_study_summary(
         config, "Initial interpolation", "P_G; no pruning or row cap"));
     report.add_note(
-        "Jacobi-global and PCG-global use the same geometric initial basis "
-        "and target the global F-point equation AP=0. The step budgets are "
-        "4, 8, 16, 32 and 64; no magnitude pruning is applied. The exact "
-        "global-energy basis (PCG tolerance 1e-10) is included as the limit "
-        "for comparison.");
+        "Every finite candidate starts from the geometric basis and follows "
+        "the global energy PCG path for 4, 8, 16, 32 or 64 steps. The exact "
+        "global-energy basis is included as the limiting reference.");
     report.add_table(
-        "Global-target fixed-step construction", experiment_support::study_headers(),
+        "Global-target finite-PCG construction", experiment_support::study_headers(),
         experiment_support::study_widths(), rows, true);
     report.save("experiment5");
     experiment_support::write_csv(
         "experiment5", experiment_support::study_headers(), rows);
     return 0;
 }
-

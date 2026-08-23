@@ -1,7 +1,7 @@
 Adaptive PCG versus an offline step-two oracle
 ==============================================
 
-Version           : 3.3.0
+Version           : 3.4.0
 Oracle candidates : m=0 and m=12,14,...,48
 Solve tolerance   : 1e-6
 
@@ -11,10 +11,10 @@ Representative oracle gaps
 --------------------------
 1/h      1/H    Contrast              Topology  Selected m   Adaptive cycles   Oracle m   Oracle cycles     Gap %   Selection ms  P density %
 -----  -----  ----------  --------------------  ----------  ----------------  ---------  --------------  --------  -------------  -----------
-32         8       1e+02         cross-channel           0                38          0              38      0.00          0.691       5.0989
-32         8       1e+04     parallel-channels          16                50         20              45     11.11          9.446      58.5806
-64         8       1e+02     diagonal-channels          12               228         12             228      0.00         49.932      24.6651
-64         8       1e+06     parallel-channels          12               160         22             144     11.11         33.402      24.6651
-64        16       1e+04     diagonal-channels          22                57         30              50     14.00         81.359      27.9819
-64        16       1e+06    meandering-channel          34                58         40              51     13.73        128.483      48.2792
+32         8       1e+02         cross-channel           0                38          0              38      0.00          0.633       5.0989
+32         8       1e+04     parallel-channels          12                54         20              45     20.00         10.219      44.2757
+64         8       1e+02     diagonal-channels          12               228         12             228      0.00         51.201      24.6651
+64         8       1e+06     parallel-channels          12               160         22             144     11.11         35.753      24.6651
+64        16       1e+04     diagonal-channels          34                51         30              50      2.00        110.899      48.2792
+64        16       1e+06    meandering-channel          34                58         40              51     13.73        107.463      48.2792
 

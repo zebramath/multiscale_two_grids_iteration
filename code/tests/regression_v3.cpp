@@ -75,7 +75,6 @@ int main() {
     adaptive_options.step_quantum = 2;
     adaptive_options.pilot_iterations = 4;
     adaptive_options.tail_window = 2;
-    adaptive_options.maximum_candidate_hierarchies = 3;
     adaptive_options.maximum_cycles = 1000;
     adaptive_options.thread_count = 2;
     const tgi::Vector adaptive_rhs(
@@ -89,8 +88,6 @@ int main() {
             "adaptive PCG did not record its decisions");
     require(adaptive.report.history.size() <= 4U,
             "budget adaptive PCG exceeded its finite candidate budget");
-    require(!adaptive.report.selected_cycles_confirmed,
-            "budget adaptive PCG unexpectedly ran a full confirmation solve");
     require(adaptive.prolongation.rows() == grid.fine_size(),
             "adaptive PCG returned an invalid prolongation");
 

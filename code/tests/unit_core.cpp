@@ -1,6 +1,6 @@
 #include "experiment/study.hpp"
 #include "multigrid/support_expansion.hpp"
-#include "multigrid/algebraic_interpolation.hpp"
+#include "multigrid/strength_distance_interpolation.hpp"
 #include "multigrid/energy_interpolation.hpp"
 #include "multigrid/reference_pruning.hpp"
 #include "multigrid/two_grid_solver.hpp"
@@ -43,8 +43,8 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "3.3.0", "wrong package version");
-    require(tgi::version_major == 3 && tgi::version_minor == 3 &&
+    require(tgi::version == "3.4.0", "wrong package version");
+    require(tgi::version_major == 3 && tgi::version_minor == 4 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
     const experiment_support::Row expected_headers{
@@ -113,26 +113,6 @@ int main() {
     require_throws(
         [&]() { (void)tgi::build_interpolation(grid, a, unfinished_local); },
         "required local convergence was not enforced");
-
-    tgi::JacobiInterpolationOptions jacobi_options;
-    jacobi_options.steps = 1;
-    jacobi_options.maximum_entries_per_row = 0;
-    jacobi_options.relative_drop_tolerance = 0.0;
-    jacobi_options.thread_count = 2;
-    const auto jacobi1 = tgi::build_jacobi_interpolation(
-        grid, a, geometric.prolongation, jacobi_options);
-    jacobi_options.steps = 4;
-    const auto jacobi4 = tgi::build_jacobi_interpolation(
-        grid, a, geometric.prolongation, jacobi_options);
-    require(jacobi4.report.final_f_residual <=
-                jacobi1.report.final_f_residual * (1.0 + 1.0e-10),
-            "Jacobi F residual did not decrease");
-    for (int fine = 0; fine < grid.fine_size(); ++fine) {
-        if (!grid.is_coarse_node(fine)) continue;
-        require(std::abs(row_sum(jacobi4.prolongation, fine) - 1.0) <
-                    1.0e-14,
-                "Jacobi interpolation lost C-point injection");
-    }
 
     tgi::StrengthDistanceOptions distance_options;
     distance_options.coarse_candidates_per_row = 3;

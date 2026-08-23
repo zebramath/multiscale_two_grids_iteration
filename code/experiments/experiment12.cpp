@@ -141,10 +141,10 @@ int main(int argc, char** argv) {
         {"Oracle", "m=0 and m=12,16,...,48"},
         {"Solve tolerance", "1e-6"}});
     report.add_note(
-        "This historical diagnostic set is rerun with the v3.3 data-driven "
-        "selector. Candidate locations come from pilot forecasts and PCG "
-        "energy-residual decay rather than case-specific step values. The "
-        "oracle is evaluation-only.");
+        "This diagnostic set is rerun with the midpoint adaptive selector. "
+        "Candidate locations use the common search interval and pilot cycle "
+        "forecasts rather than case-specific step values. The oracle is "
+        "evaluation-only.");
     report.add_table(
         "Post-diagnosis validation", headers,
         {5, 5, 10, 6, 20, 10, 16, 18, 9, 14, 8, 16, 15, 9}, rows);

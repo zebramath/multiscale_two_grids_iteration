@@ -1,7 +1,7 @@
 Support expansion strategies: fixed and adaptive budgets
 ========================================================
 
-Version                : 3.3.0
+Version                : 3.4.0
 Fine grid              : h=1/128
 Coarse grid            : H=1/16
 Contrast               : 1e+04
@@ -16,18 +16,18 @@ Fixed support strategy study
 ----------------------------
 Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
 -----------  ------------------  --------------------  -----------  ----------  ----------  ------------
-continuous           base-local              layers=2       6.0922      44.987      89.386           104
-continuous      geometric-layer                2 -> 3      12.5471     112.218     162.291            91
-continuous     indicator-strong         K=64 one-shot       6.1082      57.066      96.464           104
-continuous      adaptive-budget      R=8, B=128, q=16       6.2364     159.181     199.195           101
+continuous           base-local              layers=2       6.0922      42.161      81.021           104
+continuous      geometric-layer                2 -> 3      12.5471     108.513     163.677            91
+continuous     indicator-strong         K=64 one-shot       6.1082      53.094     100.935           104
+continuous      adaptive-budget      R=8, B=128, q=16       6.2364     164.594     210.641           101
 
-channel              base-local              layers=2       6.0922      54.165    2747.800          6840
-channel         geometric-layer                2 -> 3      12.5471     130.841    3278.706          6050
-channel        indicator-strong         K=64 one-shot       6.4855     102.294    2417.931          5592
-channel         adaptive-budget      R=8, B=128, q=16       6.2390     197.902    1632.941          3553
+channel              base-local              layers=2       6.0922      55.464    2896.970          6840
+channel         geometric-layer                2 -> 3      12.5471     134.302    3477.686          6050
+channel        indicator-strong         K=64 one-shot       6.4855      98.283    2522.382          5592
+channel         adaptive-budget      R=8, B=128, q=16       6.2390     192.336    1714.884          3553
 
-checker              base-local              layers=2       6.0922      46.039    1662.176          4144
-checker         geometric-layer                2 -> 3      12.5471     113.745     236.010           243
-checker        indicator-strong         K=64 one-shot       6.4838      90.085     535.344           946
-checker         adaptive-budget      R=8, B=128, q=16       6.2368     237.216     596.132           807
+checker              base-local              layers=2       6.0922      52.747    1774.676          4144
+checker         geometric-layer                2 -> 3      12.5471     111.154     234.503           243
+checker        indicator-strong         K=64 one-shot       6.4838      92.129     504.859           946
+checker         adaptive-budget      R=8, B=128, q=16       6.2368     186.557     536.126           807
 

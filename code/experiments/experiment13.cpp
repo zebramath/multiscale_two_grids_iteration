@@ -141,10 +141,9 @@ int main(int argc, char** argv) {
         {"Oracle", "m=0 and m=12,16,...,48"},
         {"Solve tolerance", "1e-6"}});
     report.add_note(
-        "This set was held out for v3.2 but informed the v3.3 selector design, "
-        "so it is reported as a stress test rather than independent held-out "
-        "evidence. Six cases use channel fields and two use continuous or "
-        "checkerboard fields. The oracle is evaluation-only.");
+        "This stress test contains six channel cases and two continuous or "
+        "checkerboard cases. The same midpoint adaptive policy is used for "
+        "every coefficient field, grid and seed. The oracle is evaluation-only.");
     report.add_table(
         "Policy stress test", headers,
         {5, 5, 10, 6, 20, 10, 16, 18, 9, 14, 8, 16, 15, 9}, rows);

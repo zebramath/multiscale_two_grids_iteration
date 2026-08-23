@@ -151,7 +151,7 @@ int main(int argc, char** argv) {
             problem.matrix, problem.rhs, adaptive.prolongation,
             geometric_ms + adaptive.report.selection_wall_ms,
             threads, max_cycles,
-            std::to_string(adaptive.report.selected_cycles)));
+            std::to_string(adaptive.report.estimated_selected_cycles)));
 
     }
 
@@ -167,7 +167,7 @@ int main(int argc, char** argv) {
         "The full matrix contains 18 coefficient problems: three grids, "
         "three contrasts, two seeds, and four channel topologies assigned in "
         "balanced rotation. Each problem compares the geometric basis, fixed "
-        "m=40 PCG, and the data-driven v3.3 selector without case-specific "
+        "m=40 PCG, and the midpoint adaptive selector without case-specific "
         "tuning.");
     report.add_table(
         "Robustness matrix", headers,

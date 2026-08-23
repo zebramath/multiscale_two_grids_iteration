@@ -202,7 +202,7 @@ int main(int argc, char** argv) {
         };
         append("geometric", 0, geometric_setup, geometric_metric);
         append("fixed", 40, fixed_setup, fixed_metric);
-        append("adaptive-v3.3", adaptive.report.selected_steps,
+        append("adaptive-v3.4", adaptive.report.selected_steps,
                adaptive_setup, adaptive_metric);
     }
 

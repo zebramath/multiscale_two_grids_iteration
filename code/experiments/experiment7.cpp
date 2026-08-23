@@ -72,11 +72,12 @@ int main(int argc, char** argv) {
     experiment_support::Report report(
         "Adaptive finite-PCG checkpoint selection");
     report.add_summary(experiment_support::fixed_study_summary(
-        config, "Selector", "cost-aware sparse screen"));
+        config, "Selector", "midpoint adaptive screen"));
     report.add_note(
-        "The v3.3 selector fits a robust tail model at the geometric basis and "
-        "one anchor, projects a data-dependent third checkpoint when needed, "
-        "and never confirms a candidate to the solve tolerance during setup.");
+        "The selector evaluates the geometric basis, a minimum-step anchor and "
+        "an interval midpoint. At most one midpoint refinement is added from "
+        "the pilot forecast and normalized PCG energy residual; no full "
+        "confirmation solve is used during setup.");
     report.add_table(
         "End-to-end verification", experiment_support::study_headers(),
         experiment_support::study_widths(), rows);

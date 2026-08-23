@@ -1,7 +1,7 @@
 Spatial localization: P_G, local support radius and global reference
 ====================================================================
 
-Version                : 3.3.0
+Version                : 3.4.0
 Fine grid              : h=1/128
 Coarse grid            : H=1/16
 Contrast               : 1e+04
@@ -16,21 +16,21 @@ Support radius study
 --------------------
 Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
 -----------  ------------------  --------------------  -----------  ----------  ----------  ------------
-continuous            geometric                   P_G       1.3950       2.500      51.669           131
-continuous         local-energy              layers=2       6.0922      64.875     108.363           104
-continuous         local-energy              layers=3      12.5471     138.880     185.295            91
-continuous         local-energy              layers=4      20.5466     254.543     315.928            90
-continuous        global-energy            layers=inf      95.7222    1606.798    1823.242            90
+continuous            geometric                   P_G       1.3950       2.999      43.167           131
+continuous         local-energy              layers=2       6.0922      59.022     102.550           104
+continuous         local-energy              layers=3      12.5471     138.143     193.309            91
+continuous         local-energy              layers=4      20.5466     245.406     306.866            90
+continuous        global-energy            layers=inf      95.7222    1562.223    1755.075            90
 
-channel               geometric                   P_G       1.3950       1.337   12334.051  failed@40000
-channel            local-energy              layers=2       6.0922      61.600    2995.047          6840
-channel            local-energy              layers=3      12.5471     172.764    3440.604          6050
-channel            local-energy              layers=4      20.5466     312.634    4015.956          5275
-channel           global-energy            layers=inf      97.8420    2073.056    8988.522          3227
+channel               geometric                   P_G       1.3950       1.762   11913.122  failed@40000
+channel            local-energy              layers=2       6.0922      61.243    2691.631          6840
+channel            local-energy              layers=3      12.5471     171.213    3289.490          6050
+channel            local-energy              layers=4      20.5466     316.010    3901.390          5275
+channel           global-energy            layers=inf      97.8420    2222.929    9164.747          3227
 
-checker               geometric                   P_G       1.3950       2.198   12163.971  failed@40000
-checker            local-energy              layers=2       6.0922      63.259    1709.128          4144
-checker            local-energy              layers=3      12.5471     163.338     277.374           243
-checker            local-energy              layers=4      20.5466     297.705     442.981           229
-checker           global-energy            layers=inf      96.9969    1752.405    2371.827           228
+checker               geometric                   P_G       1.3950       1.937   11802.267  failed@40000
+checker            local-energy              layers=2       6.0922      61.963    1705.775          4144
+checker            local-energy              layers=3      12.5471     166.239     285.129           243
+checker            local-energy              layers=4      20.5466     290.420     444.829           229
+checker           global-energy            layers=inf      96.9969    1706.482    2179.258           228
 
