@@ -4,10 +4,7 @@
 #include <array>
 
 int main(int argc, char** argv) {
-    experiment_support::BasicConfig config;
-    for (int index = 1; index < argc; ++index) {
-        experiment_support::parse_basic_argument(config, argv[index]);
-    }
+    const auto config = experiment_support::parse_config(argc, argv);
     const tgi::StructuredGrid grid = experiment_support::make_grid(config);
     experiment_support::Rows rows;
     constexpr std::array<double, 9> thresholds{
@@ -15,12 +12,10 @@ int main(int argc, char** argv) {
         2.0e-2, 3.0e-2, 5.0e-2, 1.0e-1};
 
     for (const auto& field : experiment_support::standard_fields()) {
-        const auto coefficient = experiment_support::make_field(
-            grid, field, config.contrast);
-        const tgi::SparseMatrix a = tgi::assemble_diffusion(
-            grid, coefficient.values);
-        const tgi::Vector rhs = a.multiply(
-            experiment_support::manufactured_solution(grid));
+        const auto problem = experiment_support::make_problem(
+            grid, field, config);
+        const auto& a = problem.matrix;
+        const auto& rhs = problem.rhs;
         const auto global = experiment_support::build_global_reference(
             grid, a, config.threads);
         const int systems = global.report.local_solves.systems;
@@ -39,7 +34,7 @@ int main(int argc, char** argv) {
                 global.report.timing.total_ms + pruned.pruning_ms,
                 mean_iterations};
             rows.push_back(experiment_support::evaluate_candidate(
-                field.name, grid, a, rhs, candidate, config));
+                field.name, a, rhs, candidate, config));
         }
     }
 
@@ -55,8 +50,8 @@ int main(int argc, char** argv) {
     report.add_table(
         "Global pruning study", experiment_support::study_headers(),
         experiment_support::study_widths(), rows, true);
-    report.save("global_pruning");
+    report.save("experiment3");
     experiment_support::write_csv(
-        "global_pruning", experiment_support::study_headers(), rows);
+        "experiment3", experiment_support::study_headers(), rows);
     return 0;
 }

@@ -3,20 +3,15 @@
 #include <string>
 
 int main(int argc, char** argv) {
-    experiment_support::BasicConfig config;
-    for (int index = 1; index < argc; ++index) {
-        experiment_support::parse_basic_argument(config, argv[index]);
-    }
+    const auto config = experiment_support::parse_config(argc, argv);
     const tgi::StructuredGrid grid = experiment_support::make_grid(config);
     experiment_support::Rows rows;
 
     for (const auto& field : experiment_support::standard_fields()) {
-        const auto coefficient = experiment_support::make_field(
-            grid, field, config.contrast);
-        const tgi::SparseMatrix a = tgi::assemble_diffusion(
-            grid, coefficient.values);
-        const tgi::Vector rhs = a.multiply(
-            experiment_support::manufactured_solution(grid));
+        const auto problem = experiment_support::make_problem(
+            grid, field, config);
+        const auto& a = problem.matrix;
+        const auto& rhs = problem.rhs;
         auto global = experiment_support::build_global_reference(
             grid, a, config.threads);
 
@@ -24,7 +19,7 @@ int main(int argc, char** argv) {
             "geometric", "P_G",
             experiment_support::geometric_interpolation(grid, a));
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, geometric, config));
+            field.name, a, rhs, geometric, config));
 
         for (int layers : {2, 3, 4}) {
             auto options = experiment_support::energy_options(
@@ -34,12 +29,12 @@ int main(int argc, char** argv) {
                 "local-energy", "layers=" + std::to_string(layers),
                 tgi::build_interpolation(grid, a, options));
             rows.push_back(experiment_support::evaluate_candidate(
-                field.name, grid, a, rhs, candidate, config));
+                field.name, a, rhs, candidate, config));
         }
         auto global_candidate = experiment_support::make_candidate(
             "global-energy", "layers=inf", std::move(global));
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, global_candidate, config));
+            field.name, a, rhs, global_candidate, config));
     }
 
     experiment_support::Report report(
@@ -53,8 +48,8 @@ int main(int argc, char** argv) {
     report.add_table(
         "Support radius study", experiment_support::study_headers(),
         experiment_support::study_widths(), rows, true);
-    report.save("support_radius");
+    report.save("experiment1");
     experiment_support::write_csv(
-        "support_radius", experiment_support::study_headers(), rows);
+        "experiment1", experiment_support::study_headers(), rows);
     return 0;
 }

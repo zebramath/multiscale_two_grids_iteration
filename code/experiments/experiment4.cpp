@@ -36,7 +36,7 @@ experiment_support::StudyCandidate build_fixed_strong_candidate(
     const int total_iterations =
         interpolation.report.local_solves.total_iterations;
     auto candidate = experiment_support::make_candidate(
-        "residual-strong", "K=64 one-shot", std::move(interpolation));
+        "indicator-strong", "K=64 one-shot", std::move(interpolation));
     candidate.mean_construction_iterations = changed_count > 0
         ? static_cast<double>(total_iterations) /
               static_cast<double>(changed_count)
@@ -69,27 +69,22 @@ experiment_support::StudyCandidate build_residual_budget_candidate(
         experiment_support::milliseconds(
             begin, experiment_support::Clock::now());
     return {
-        "residual-budget", "R=8, B=128, q=16",
+        "adaptive-budget", "R=8, B=128, q=16",
         result.prolongation, build_ms, 0.0};
 }
 
 } // namespace
 
 int main(int argc, char** argv) {
-    experiment_support::BasicConfig config;
-    for (int index = 1; index < argc; ++index) {
-        experiment_support::parse_basic_argument(config, argv[index]);
-    }
+    const auto config = experiment_support::parse_config(argc, argv);
     const tgi::StructuredGrid grid = experiment_support::make_grid(config);
     experiment_support::Rows rows;
 
     for (const auto& field : experiment_support::standard_fields()) {
-        const auto coefficient = experiment_support::make_field(
-            grid, field, config.contrast);
-        const tgi::SparseMatrix a = tgi::assemble_diffusion(
-            grid, coefficient.values);
-        const tgi::Vector rhs = a.multiply(
-            experiment_support::manufactured_solution(grid));
+        const auto problem = experiment_support::make_problem(
+            grid, field, config);
+        const auto& a = problem.matrix;
+        const auto& rhs = problem.rhs;
         auto local2_options = experiment_support::energy_options(
             2, config.threads, 1.0e-6);
         local2_options.drop_tolerance = 0.0;
@@ -97,7 +92,7 @@ int main(int argc, char** argv) {
         auto local2_candidate = experiment_support::make_candidate(
             "base-local", "layers=2", local2);
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, local2_candidate, config));
+            field.name, a, rhs, local2_candidate, config));
 
         auto local3_options = experiment_support::energy_options(
             3, config.threads, 1.0e-6);
@@ -106,36 +101,36 @@ int main(int argc, char** argv) {
             "geometric-layer", "2 -> 3",
             tgi::build_interpolation(grid, a, local3_options));
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, layer_candidate, config));
+            field.name, a, rhs, layer_candidate, config));
 
         auto strong_candidate = build_fixed_strong_candidate(
             grid, a, local2, config.threads);
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, strong_candidate, config));
+            field.name, a, rhs, strong_candidate, config));
 
         auto residual_budget_candidate = build_residual_budget_candidate(
             grid, a, local2, config.threads);
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, residual_budget_candidate, config));
+            field.name, a, rhs, residual_budget_candidate, config));
 
     }
 
     experiment_support::Report report(
-        "Support expansion strategies: fixed residual and residual-budget");
+        "Support expansion strategies: fixed and adaptive budgets");
     report.add_summary(experiment_support::fixed_study_summary(
         config, "Energy solve tolerance", "1e-6"));
     report.add_note(
-        "The base, geometric-layer and fixed residual-strong rows use one "
-        "construction pass. Residual-budget is the retained "
-        "error-driven variant: it marks 70% of the current residual energy, "
+        "The base, geometric-layer and indicator-strong rows use one "
+        "construction pass. Adaptive-budget is the retained "
+        "error-driven variant: it marks 70% of the current indicator energy, "
         "adds at most 16 strong-graph nodes per round and 128 per column, and "
         "re-solves only marked columns. The reported build time includes all "
         "support selection and refinement rounds.");
     report.add_table(
         "Fixed support strategy study", experiment_support::study_headers(),
         experiment_support::study_widths(), rows, true);
-    report.save("support_strategies");
+    report.save("experiment4");
     experiment_support::write_csv(
-        "support_strategies", experiment_support::study_headers(), rows);
+        "experiment4", experiment_support::study_headers(), rows);
     return 0;
 }

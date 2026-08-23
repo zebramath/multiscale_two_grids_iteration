@@ -1,0 +1,34 @@
+Support expansion strategies: fixed and adaptive budgets
+========================================================
+
+Version                : 2.7.0
+Fine grid              : h=1/128
+Coarse grid            : H=1/16
+Contrast               : 1e+04
+Smoother               : one forward + one backward Gauss-Seidel
+Solve tolerance        : 1e-6
+Rho avg                : geometric mean over the actual solve
+Timing                 : one end-to-end run per candidate
+Energy solve tolerance : 1e-6
+
+Note: The base, geometric-layer and indicator-strong rows use one construction pass. Adaptive-budget is the retained error-driven variant: it marks 70% of the current indicator energy, adds at most 16 strong-graph nodes per round and 128 per column, and re-solves only marked columns. The reported build time includes all support selection and refinement rounds.
+
+Fixed support strategy study
+----------------------------
+Field                    Method             Parameter      P nnz  P density %     Ac nnz      L nnz    Build ms  TG setup ms    Setup ms    Solve ms    Total ms    Cycles   Rho avg  Build iters  Converged
+-----------  ------------------  --------------------  ---------  -----------  ---------  ---------  ----------  -----------  ----------  ----------  ----------  --------  --------  -----------  ---------
+continuous           base-local              layers=2     221089       6.0922      12741      12548      42.530        9.001      51.530      47.503      99.137        86    0.8502         76.1        yes
+continuous      geometric-layer                2 -> 3     455337      12.5471      23085      16704     101.963       17.751     119.715      48.543     169.369        86    0.8504         89.1        yes
+continuous     indicator-strong         K=64 one-shot     221669       6.1082      12755      12281      55.931        6.076      62.007      43.517     105.525        86    0.8503         39.8        yes
+continuous      adaptive-budget      R=8, B=128, q=16     226321       6.2364      12903      12343     175.825       16.160     191.985      34.742     226.729        86    0.8509          0.0        yes
+
+channel              base-local              layers=2     221089       6.0922      12741      12548      49.168        5.201      54.369    2258.431    2312.801      4768    0.9971         92.2        yes
+channel         geometric-layer                2 -> 3     455337      12.5471      23085      16704     122.523       11.712     134.235    2778.070    2920.540      4262    0.9968        111.4        yes
+channel        indicator-strong         K=64 one-shot     235360       6.4855      14525      13768      94.294        5.152      99.447    1976.090    2075.537      3960    0.9965         65.7        yes
+channel         adaptive-budget      R=8, B=128, q=16     226416       6.2390      13197      12891     189.889        5.155     195.044    1119.925    1314.970      2582    0.9947          0.0        yes
+
+checker              base-local              layers=2     221089       6.0922      12741      12548      43.526        4.610      48.136     642.471     690.607      1475    0.9907         89.1        yes
+checker         geometric-layer                2 -> 3     455337      12.5471      23085      16704     116.661       11.124     127.785     114.219     242.290       217    0.9382        104.9        yes
+checker        indicator-strong         K=64 one-shot     235298       6.4838      14125      13527      88.458        6.267      94.725     149.298     244.024       358    0.9621         59.6        yes
+checker         adaptive-budget      R=8, B=128, q=16     226336       6.2368      13127      12817     190.264        4.809     195.073     140.271     335.345       219    0.9388          0.0        yes
+

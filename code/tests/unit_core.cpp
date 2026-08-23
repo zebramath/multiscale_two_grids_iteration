@@ -1,11 +1,15 @@
-#include "experiment/test_problem.hpp"
+#include "experiment/evaluation.hpp"
+#include "experiment/problem.hpp"
 #include "multigrid/support_expansion.hpp"
 #include "multigrid/algebraic_interpolation.hpp"
 #include "multigrid/energy_interpolation.hpp"
 #include "multigrid/reference_pruning.hpp"
 #include "multigrid/two_grid_solver.hpp"
 #include "pde/diffusion_problem.hpp"
+#include "version.hpp"
 
+#include <algorithm>
+#include <cctype>
 #include <cmath>
 #include <stdexcept>
 #include <string>
@@ -30,6 +34,18 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 } // namespace
 
 int main() {
+    require(tgi::version == "2.7.0", "wrong package version");
+    for (const auto& header : experiment_support::study_headers()) {
+        std::string lower = header;
+        std::transform(
+            lower.begin(), lower.end(), lower.begin(),
+            [](unsigned char value) {
+                return static_cast<char>(std::tolower(value));
+            });
+        require(lower.find("residual") == std::string::npos,
+                "forbidden residual metric in public output");
+    }
+
     const tgi::StructuredGrid grid(15, 4);
     tgi::CoefficientOptions coefficient_options;
     coefficient_options.distribution =

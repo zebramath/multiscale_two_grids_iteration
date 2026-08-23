@@ -1,14 +1,12 @@
 #include "experiment/study.hpp"
+#include "multigrid/algebraic_interpolation.hpp"
 
 #include <array>
 #include <string>
 #include <utility>
 
 int main(int argc, char** argv) {
-    experiment_support::BasicConfig config;
-    for (int index = 1; index < argc; ++index) {
-        experiment_support::parse_basic_argument(config, argv[index]);
-    }
+    const auto config = experiment_support::parse_config(argc, argv);
     const tgi::StructuredGrid grid = experiment_support::make_grid(config);
     experiment_support::Rows rows;
     // These are global-F-system iteration budgets.  The larger values make
@@ -16,12 +14,10 @@ int main(int argc, char** argv) {
     constexpr std::array<int, 5> steps{4, 8, 16, 32, 64};
 
     for (const auto& field : experiment_support::standard_fields()) {
-        const auto coefficient = experiment_support::make_field(
-            grid, field, config.contrast);
-        const tgi::SparseMatrix a = tgi::assemble_diffusion(
-            grid, coefficient.values);
-        const tgi::Vector rhs = a.multiply(
-            experiment_support::manufactured_solution(grid));
+        const auto problem = experiment_support::make_problem(
+            grid, field, config);
+        const auto& a = problem.matrix;
+        const auto& rhs = problem.rhs;
         auto global = experiment_support::build_global_reference(
             grid, a, config.threads);
         auto geometric = experiment_support::geometric_interpolation(grid, a);
@@ -34,7 +30,7 @@ int main(int argc, char** argv) {
             "geometric", "P_G", geometric.prolongation,
             geometric_ms, 0.0};
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, initial, config));
+            field.name, a, rhs, initial, config));
 
         for (int count : steps) {
             tgi::JacobiInterpolationOptions options;
@@ -51,7 +47,7 @@ int main(int argc, char** argv) {
                 geometric_ms + interpolation.report.build_ms,
                 static_cast<double>(count)};
             rows.push_back(experiment_support::evaluate_candidate(
-                field.name, grid, a, rhs, candidate, config));
+                field.name, a, rhs, candidate, config));
         }
 
         for (int count : steps) {
@@ -67,13 +63,13 @@ int main(int argc, char** argv) {
                 std::move(interpolation));
             candidate.build_ms += geometric_ms;
             rows.push_back(experiment_support::evaluate_candidate(
-                field.name, grid, a, rhs, candidate, config));
+                field.name, a, rhs, candidate, config));
         }
 
         auto exact = experiment_support::make_candidate(
             "global-exact", "tol=1e-10", std::move(global));
         rows.push_back(experiment_support::evaluate_candidate(
-            field.name, grid, a, rhs, exact, config));
+            field.name, a, rhs, exact, config));
     }
 
     experiment_support::Report report(
@@ -89,8 +85,8 @@ int main(int argc, char** argv) {
     report.add_table(
         "Global-target fixed-step construction", experiment_support::study_headers(),
         experiment_support::study_widths(), rows, true);
-    report.save("iterative_construction");
+    report.save("experiment5");
     experiment_support::write_csv(
-        "iterative_construction", experiment_support::study_headers(), rows);
+        "experiment5", experiment_support::study_headers(), rows);
     return 0;
 }
