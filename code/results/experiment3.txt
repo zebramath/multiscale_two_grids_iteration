@@ -1,0 +1,47 @@
+Experiment 3 - Aggressive global prolongation truncation
+========================================================
+
+Dataset            : models/test_fields.tgi
+Fine grid          : h = 1/128
+Coarse grid        : H = 1/16
+H/h                : 8
+Base interpolation : P_E,inf exact
+Global tolerance   : 1.0e-10
+Fields             : 3
+
+Note: Thresholds span mild compression through loss of convergence. Timing includes truncation and two-grid setup/solve, excluding the shared global interpolation construction.
+
+Sparsity, accuracy, convergence, and timing
+-------------------------------------------
+Field                      Drop       P nnz    Retained      Ac nnz       L nnz    Global L2  Global energy        Cycles   Final residual   Truncate+2G ms
+--------------------  ---------  ----------  ----------  ----------  ----------  -----------  -------------  ------------  ---------------  ---------------
+random_continuous       0.0e+00     3453183     100.00%       50625       25425    0.000e+00      0.000e+00           103        9.059e-07          566.430
+random_continuous       1.0e-03      311780       9.03%       17027       16284    5.075e-03      1.485e-02           103        8.969e-07           56.788
+random_continuous       3.0e-03      215087       6.23%       12251       13800    1.379e-02      3.883e-02           103        8.954e-07           51.494
+random_continuous       1.0e-02      131915       3.82%        7941       10503    3.974e-02      1.033e-01           100        9.411e-07           44.068
+random_continuous       2.0e-02       95256       2.76%        5847        8530    7.108e-02      1.727e-01           100        9.867e-07           41.208
+random_continuous       3.0e-02       77226       2.24%        4851        8020    9.922e-02      2.321e-01           101        9.202e-07           40.746
+random_continuous       5.0e-02       57621       1.67%        3747        6805    1.496e-01      3.297e-01           151        9.747e-07           56.790
+random_continuous       1.0e-01       35935       1.04%        2397        4994    2.585e-01      5.298e-01           432        9.768e-07          189.521
+random_continuous       2.0e-01       19078       0.55%        1291        3337    4.397e-01      8.216e-01          1702        1.000e-06          663.841
+
+channelized_binary      0.0e+00     2851590     100.00%       50625       25425    0.000e+00      0.000e+00          1004        9.974e-07         2380.158
+channelized_binary      1.0e-03      217447       7.63%       12625       14586    2.918e-03      1.146e-02          1026        9.936e-07          425.333
+channelized_binary      3.0e-03      168990       5.93%        9991       12525    8.411e-03      1.851e-02          1021        9.963e-07          358.007
+channelized_binary      1.0e-02      119392       4.19%        7189       10284    2.754e-02      4.744e-02          1007        9.956e-07          366.923
+channelized_binary      2.0e-02       92132       3.23%        5671        9159    5.468e-02      8.884e-02          1171        9.978e-07          373.528
+channelized_binary      3.0e-02       76908       2.70%        4863        8419    8.114e-02      1.278e-01          2695        9.996e-07          850.329
+channelized_binary      5.0e-02       58803       2.06%        3847        7264    1.312e-01      2.041e-01          7399        9.993e-07         2283.383
+channelized_binary      1.0e-01       37076       1.30%        2427        5509    2.434e-01      3.868e-01  failed@20000        1.070e-05         7751.689
+channelized_binary      2.0e-01       19395       0.68%        1277        3605    4.101e-01      6.705e-01  failed@20000        1.522e-04         7533.006
+
+coarse_checkerboard     0.0e+00     2567844     100.00%       50625       25425    0.000e+00      0.000e+00           158        9.443e-07          470.141
+coarse_checkerboard     1.0e-03      207150       8.07%       12085       14368    2.870e-03      1.093e-02           158        9.589e-07           72.079
+coarse_checkerboard     3.0e-03      165535       6.45%        9881       12606    8.353e-03      1.738e-02           157        9.955e-07           68.638
+coarse_checkerboard     1.0e-02      119718       4.66%        7365       10488    2.757e-02      4.533e-02           313        9.758e-07          116.627
+coarse_checkerboard     2.0e-02       92818       3.61%        5839        9793    5.540e-02      8.690e-02          1190        9.989e-07          407.256
+coarse_checkerboard     3.0e-02       77631       3.02%        5011        8812    8.205e-02      1.256e-01          2745        9.974e-07          934.562
+coarse_checkerboard     5.0e-02       59373       2.31%        3951        7312    1.327e-01      2.021e-01          7540        9.997e-07         2391.619
+coarse_checkerboard     1.0e-01       37407       1.46%        2471        5331    2.464e-01      3.871e-01  failed@20000        1.185e-05         7756.240
+coarse_checkerboard     2.0e-01       19606       0.76%        1285        3449    4.153e-01      6.708e-01  failed@20000        1.607e-04         7162.694
+

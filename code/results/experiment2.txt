@@ -1,0 +1,36 @@
+Experiment 2 - Local tolerance across shared high-contrast fields
+=================================================================
+
+Dataset             : models/test_fields.tgi
+Fine grid           : h = 1/128
+Coarse grid         : H = 1/16
+H/h                 : 8
+Patch layers        : 3
+Fields              : 3
+Reference tolerance : 1.0e-10
+
+Basis accuracy, convergence, and timing
+---------------------------------------
+Field                  Local tol  Residual mean      L2 mean    Energy mean       P nnz        Cycles   Final residual    Total ms
+--------------------  ----------  -------------  -----------  -------------  ----------  ------------  ---------------  ----------
+random_continuous        1.0e-02      9.207e-03    1.779e-02      1.669e-02      363074           105        9.116e-07      92.721
+random_continuous        3.0e-03      2.746e-03    4.977e-03      4.762e-03      433385           103        9.692e-07     110.299
+random_continuous        1.0e-03      9.233e-04    1.730e-03      1.637e-03      452995           103        9.115e-07     119.922
+random_continuous        3.0e-04      2.760e-04    5.501e-04      5.024e-04      455311           103        9.022e-07     108.688
+random_continuous        1.0e-04      9.246e-05    1.779e-04      1.639e-04      455337           103        9.050e-07     111.887
+random_continuous        1.0e-10      9.082e-11    0.000e+00      0.000e+00      455337           103        9.049e-07     177.944
+
+channelized_binary       1.0e-02      9.167e-03    2.060e-02      1.617e-02      414069          2139        9.961e-07    1129.111
+channelized_binary       3.0e-03      2.743e-03    8.716e-03      6.440e-03      445582          2115        9.995e-07    1156.085
+channelized_binary       1.0e-03      9.180e-04    2.991e-03      1.825e-03      451459          2105        9.990e-07    1234.679
+channelized_binary       3.0e-04      2.752e-04    1.325e-03      6.189e-04      453180          2099        9.978e-07    1187.217
+channelized_binary       1.0e-04      9.067e-05    4.454e-04      2.215e-04      454311          2096        9.980e-07    1203.150
+channelized_binary       1.0e-10      8.934e-11    0.000e+00      0.000e+00      455337          2091        9.978e-07    1257.426
+
+coarse_checkerboard      1.0e-02      9.105e-03    2.032e-02      1.625e-02      410543           596        9.960e-07     343.877
+coarse_checkerboard      3.0e-03      2.747e-03    8.939e-03      6.683e-03      443841           200        9.914e-07     167.745
+coarse_checkerboard      1.0e-03      9.130e-04    3.405e-03      2.161e-03      450099           166        9.859e-07     149.721
+coarse_checkerboard      3.0e-04      2.731e-04    1.460e-03      6.899e-04      452493           164        9.704e-07     165.257
+coarse_checkerboard      1.0e-04      9.019e-05    5.161e-04      2.426e-04      454046           163        9.627e-07     163.671
+coarse_checkerboard      1.0e-10      8.944e-11    0.000e+00      0.000e+00      455337           162        9.996e-07     250.989
+

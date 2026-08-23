@@ -1,0 +1,17 @@
+Shared high-contrast test-field dataset
+=======================================
+
+Dataset     : models/test_fields.tgi
+Fine grid   : h = 1/128
+Coarse grid : H = 1/16
+H/h         : 8
+Fields      : 3
+Seed        : 2
+
+Coefficient fields
+------------------
+Name                      Contrast    High phase
+----------------------  ----------  ------------
+random_continuous            10000        48.97%
+channelized_binary           10000        53.05%
+coarse_checkerboard          10000        51.29%
