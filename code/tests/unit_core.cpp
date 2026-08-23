@@ -43,7 +43,7 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 } // namespace
 
 int main() {
-    require(tgi::version == "2.11.0", "wrong package version");
+    require(tgi::version == "3.0.0", "wrong package version");
     const experiment_support::Row expected_headers{
         "Field", "Method", "Parameter", "P density %",
         "Setup ms", "Total ms", "Cycles"};

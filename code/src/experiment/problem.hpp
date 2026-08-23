@@ -83,6 +83,19 @@ inline const std::vector<FieldCase>& standard_fields() {
     return fields;
 }
 
+inline const std::vector<FieldCase>& channel_topologies() {
+    static const std::vector<FieldCase> fields{
+        {"cross-channel", tgi::CoefficientDistribution::ChannelizedBinary},
+        {"meandering-channel",
+         tgi::CoefficientDistribution::MeanderingChannelBinary},
+        {"diagonal-channels",
+         tgi::CoefficientDistribution::DiagonalChannelsBinary},
+        {"parallel-channels",
+         tgi::CoefficientDistribution::ParallelChannelsBinary}
+    };
+    return fields;
+}
+
 struct ExperimentProblem {
     std::string field_name;
     tgi::SparseMatrix matrix;

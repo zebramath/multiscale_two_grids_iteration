@@ -1,0 +1,71 @@
+Robustness sweep over seeds, channel topology, contrast and H/h
+===============================================================
+
+Version         : 3.0.0
+Cases           : 18
+Mode            : full
+Solve tolerance : 1e-6
+Maximum cycles  : 12000
+
+Note: The full matrix contains 18 coefficient problems: three grids, three contrasts, two seeds, and four channel topologies assigned in balanced rotation. Each problem compares the geometric basis, fixed m=40 PCG, and the same adaptive rule without case-specific tuning.
+
+Robustness matrix
+-----------------
+1/h      1/H    H/h    Contrast    Seed              Topology          Method   Parameter  P density %     rho_hat        Cycles    Setup ms    Total ms
+-----  -----  -----  ----------  ------  --------------------  --------------  ----------  -----------  ----------  ------------  ----------  ----------
+32         8      4       1e+02       1         cross-channel       geometric         P_G       5.0989           -            38       1.838       2.771
+32         8      4       1e+02       1         cross-channel       PCG-fixed        m=40      94.5380           -            51      12.638      15.518
+32         8      4       1e+02       1         cross-channel    PCG-adaptive         m=0       5.0989    0.688216            38      54.551      55.447
+32         8      4       1e+02      17    meandering-channel       geometric         P_G       5.0989           -           161       0.171       3.903
+32         8      4       1e+02      17    meandering-channel       PCG-fixed        m=40      94.5380           -           108       8.015      13.701
+32         8      4       1e+02      17    meandering-channel    PCG-adaptive        m=12      44.2757    0.770678            46      70.776      73.011
+32         8      4       1e+04       1     diagonal-channels       geometric         P_G       5.0989           -            86       0.130       2.129
+32         8      4       1e+04       1     diagonal-channels       PCG-fixed        m=40      94.5380           -           179       6.138      14.664
+32         8      4       1e+04       1     diagonal-channels    PCG-adaptive         m=0       5.0989    0.847459            86      62.346      64.347
+32         8      4       1e+04      17     parallel-channels       geometric         P_G       5.0989           -            86       0.137       2.135
+32         8      4       1e+04      17     parallel-channels       PCG-fixed        m=40      94.5380           -            52       7.593      10.356
+32         8      4       1e+04      17     parallel-channels    PCG-adaptive         m=0       5.0989    0.862084            86      56.585      58.570
+32         8      4       1e+06       1         cross-channel       geometric         P_G       5.0989           -            40       0.123       1.074
+32         8      4       1e+06       1         cross-channel       PCG-fixed        m=40      94.5380           -            55       8.790      12.326
+32         8      4       1e+06       1         cross-channel    PCG-adaptive         m=0       5.0989    0.700741            40      71.550      72.767
+32         8      4       1e+06      17    meandering-channel       geometric         P_G       5.0989           -           258       0.143       7.445
+32         8      4       1e+06      17    meandering-channel       PCG-fixed        m=40      94.5380           -           214       7.888      21.742
+32         8      4       1e+06      17    meandering-channel    PCG-adaptive        m=12      44.2757    0.742237            56      97.415     101.486
+
+64         8      8       1e+02       1     diagonal-channels       geometric         P_G       5.6689           -           350       2.008      59.659
+64         8      8       1e+02       1     diagonal-channels       PCG-fixed        m=40      75.5390           -           378      60.532     145.069
+64         8      8       1e+02       1     diagonal-channels    PCG-adaptive         m=0       5.6689    0.944544           350     150.597     186.967
+64         8      8       1e+02      17     parallel-channels       geometric         P_G       5.6689           -           265       0.522      37.145
+64         8      8       1e+02      17     parallel-channels       PCG-fixed        m=40      75.5390           -           183      27.687      81.515
+64         8      8       1e+02      17     parallel-channels    PCG-adaptive        m=16      32.4397    0.901889           133     268.480     291.096
+64         8      8       1e+04       1         cross-channel       geometric         P_G       5.6689           -           302       0.381      31.221
+64         8      8       1e+04       1         cross-channel       PCG-fixed        m=40      75.5390           -           250      26.785      77.576
+64         8      8       1e+04       1         cross-channel    PCG-adaptive         m=0       5.6689    0.952609           302     146.077     181.208
+64         8      8       1e+04      17    meandering-channel       geometric         P_G       5.6689           -          1225       0.567     126.377
+64         8      8       1e+04      17    meandering-channel       PCG-fixed        m=40      75.5390           -           203      32.686      81.257
+64         8      8       1e+04      17    meandering-channel    PCG-adaptive        m=16      32.4397    0.930893           237     193.808     224.905
+64         8      8       1e+06       1     diagonal-channels       geometric         P_G       5.6689           -           435       0.455      44.702
+64         8      8       1e+06       1     diagonal-channels       PCG-fixed        m=40      75.5390           -           290      29.844      81.611
+64         8      8       1e+06       1     diagonal-channels    PCG-adaptive         m=0       5.6689    0.952552           435     108.356     156.852
+64         8      8       1e+06      17     parallel-channels       geometric         P_G       5.6689           -           335       0.531      38.548
+64         8      8       1e+06      17     parallel-channels       PCG-fixed        m=40      75.5390           -           187      27.346      73.409
+64         8      8       1e+06      17     parallel-channels    PCG-adaptive        m=20      39.8111    0.913734           167     216.566     236.414
+64        16      4       1e+02       1         cross-channel       geometric         P_G       1.2346           -           313       2.352      35.741
+64        16      4       1e+02       1         cross-channel       PCG-fixed        m=40      58.3662           -           112     182.851     236.605
+64        16      4       1e+02       1         cross-channel    PCG-adaptive        m=12      13.1223    0.781129            54     397.072     407.188
+64        16      4       1e+02      17    meandering-channel       geometric         P_G       1.2346           -           348       0.605      46.246
+64        16      4       1e+02      17    meandering-channel       PCG-fixed        m=40      58.3662           -            48     128.975     149.659
+64        16      4       1e+02      17    meandering-channel    PCG-adaptive        m=12      13.1223    0.769278            48     333.124     346.121
+64        16      4       1e+04       1     diagonal-channels       geometric         P_G       1.2346           -  failed@12000       0.700    1281.534
+64        16      4       1e+04       1     diagonal-channels       PCG-fixed        m=40      58.3662           -            51     141.348     164.831
+64        16      4       1e+04       1     diagonal-channels    PCG-adaptive        m=16      18.7750    0.785431            54     467.329     478.817
+64        16      4       1e+04      17     parallel-channels       geometric         P_G       1.2346           -  failed@12000       0.729    1299.490
+64        16      4       1e+04      17     parallel-channels       PCG-fixed        m=40      58.3662           -            51     124.697     147.026
+64        16      4       1e+04      17     parallel-channels    PCG-adaptive        m=12      13.1223    0.893463           144     456.357     486.233
+64        16      4       1e+06       1         cross-channel       geometric         P_G       1.2346           -  failed@12000       0.659    1271.367
+64        16      4       1e+06       1         cross-channel       PCG-fixed        m=40      58.3662           -           123     114.024     175.025
+64        16      4       1e+06       1         cross-channel    PCG-adaptive        m=24      31.5204    0.781966            63     693.965     711.899
+64        16      4       1e+06      17    meandering-channel       geometric         P_G       1.2346           -  failed@12000       0.596    1370.081
+64        16      4       1e+06      17    meandering-channel       PCG-fixed        m=40      58.3662           -            51     121.227     162.330
+64        16      4       1e+06      17    meandering-channel    PCG-adaptive        m=24      31.5204    0.761357            68     711.426     730.972
+

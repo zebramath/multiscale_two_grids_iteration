@@ -45,7 +45,10 @@ enum class CoefficientDistribution {
     Analytic,
     RandomContinuous,
     RandomBinaryCheckerboard,
-    ChannelizedBinary
+    ChannelizedBinary,
+    MeanderingChannelBinary,
+    DiagonalChannelsBinary,
+    ParallelChannelsBinary
 };
 
 struct CoefficientOptions {
@@ -193,6 +196,40 @@ inline bool is_high_conductivity_channel(double x, double y,
     return horizontal || vertical;
 }
 
+inline bool is_channel_distribution(CoefficientDistribution distribution) {
+    return distribution == CoefficientDistribution::ChannelizedBinary ||
+        distribution == CoefficientDistribution::MeanderingChannelBinary ||
+        distribution == CoefficientDistribution::DiagonalChannelsBinary ||
+        distribution == CoefficientDistribution::ParallelChannelsBinary;
+}
+
+inline bool is_high_conductivity_topology(
+    CoefficientDistribution distribution, double x, double y,
+    double width, std::uint64_t seed) {
+    if (distribution == CoefficientDistribution::ChannelizedBinary) {
+        return is_high_conductivity_channel(x, y, width);
+    }
+    const double phase = 2.0 * pi *
+        static_cast<double>(mix_bits(seed) & 0xffffULL) / 65536.0;
+    if (distribution == CoefficientDistribution::MeanderingChannelBinary) {
+        const double center = 0.50 + 0.18 *
+            std::sin(2.0 * pi * x + phase);
+        return std::abs(y - center) <= 0.5 * width;
+    }
+    if (distribution == CoefficientDistribution::DiagonalChannelsBinary) {
+        const double shift = 0.10 * std::sin(phase);
+        return std::abs(y - x - shift) <= 0.5 * width ||
+            std::abs(y - (1.0 - x) + shift) <= 0.5 * width;
+    }
+    if (distribution == CoefficientDistribution::ParallelChannelsBinary) {
+        const double wobble = 0.015 * std::sin(4.0 * pi * x + phase);
+        return std::abs(y - (0.25 + wobble)) <= 0.5 * width ||
+            std::abs(y - (0.50 - wobble)) <= 0.5 * width ||
+            std::abs(y - (0.75 + wobble)) <= 0.5 * width;
+    }
+    return false;
+}
+
 }
 
 inline CoefficientField make_coefficient(const StructuredGrid& grid,
@@ -209,8 +246,8 @@ inline CoefficientField make_coefficient(const StructuredGrid& grid,
         throw std::invalid_argument(
             "invalid random continuous coefficient options");
     }
-    if (options.distribution ==
-        CoefficientDistribution::ChannelizedBinary) {
+    if (diffusion_problem_detail::is_channel_distribution(
+            options.distribution)) {
         if (options.channel_width_fine_cells <= 0) {
             throw std::invalid_argument(
                 "channel width must be positive");
@@ -240,7 +277,8 @@ inline CoefficientField make_coefficient(const StructuredGrid& grid,
                     static_cast<std::uint32_t>(block_y)));
             const bool high_inclusion = (hash & 1ULL) != 0ULL;
             field.values[static_cast<std::size_t>(id)] =
-                (diffusion_problem_detail::is_high_conductivity_channel(x, y, width) ||
+                (diffusion_problem_detail::is_high_conductivity_topology(
+                     options.distribution, x, y, width, options.seed) ||
                  high_inclusion)
                     ? options.contrast
                     : 1.0;

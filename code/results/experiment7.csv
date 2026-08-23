@@ -1,0 +1,9 @@
+Field,Method,Parameter,P density %,Setup ms,Total ms,Cycles
+cross-channel,PCG-fixed,m=16,9.1300,434.632,2727.897,4043
+cross-channel,PCG-fixed,m=24,14.4398,526.303,1187.878,926
+cross-channel,PCG-fixed,m=32,20.4547,588.972,890.523,347
+cross-channel,PCG-fixed,m=40,26.9969,663.749,920.797,234
+cross-channel,PCG-fixed,m=48,33.8960,795.164,1254.479,256
+cross-channel,PCG-fixed,m=56,40.9881,893.246,1341.836,276
+cross-channel,PCG-fixed,m=64,48.1166,1022.566,1740.647,366
+cross-channel,PCG-adaptive,selected m=36,23.5999,3863.259,4151.908,268
