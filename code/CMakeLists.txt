@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 3.7.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 4.0.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -47,37 +47,23 @@ function(tgi_add_program target)
     endif()
 endfunction()
 
-tgi_add_program(experiment1_localization
-    experiments/experiment1_localization.cpp
-    src/experiment/studies/localization_radius.cpp
-    src/experiment/studies/local_tolerance.cpp
-    src/experiment/studies/global_pruning.cpp
-    src/experiment/studies/support_strategy.cpp)
-tgi_add_program(experiment2_pcg_path
-    experiments/experiment2_pcg_path.cpp
-    src/experiment/studies/pcg_budget.cpp
-    src/experiment/studies/pcg_dense_scan.cpp
-    src/experiment/studies/pilot_diagnostic.cpp)
-tgi_add_program(experiment3_adaptive_oracle
-    experiments/experiment3_adaptive_oracle.cpp
-    src/experiment/studies/adaptive_trace.cpp
-    src/experiment/studies/oracle_quality.cpp
-    src/experiment/studies/selector_ablation.cpp)
-tgi_add_program(experiment4_robustness
-    experiments/experiment4_robustness.cpp
-    src/experiment/studies/robustness_matrix.cpp)
-tgi_add_program(experiment5_diagnostics
-    experiments/experiment5_diagnostics.cpp
-    src/experiment/studies/diagnostic_cases.cpp
-    src/experiment/studies/stress_cases.cpp)
-tgi_add_program(experiment6_workload
-    experiments/experiment6_workload.cpp
-    src/experiment/studies/workload.cpp)
+tgi_add_program(experiment1_two_grid_comparison
+    experiments/experiment1_two_grid_comparison.cpp
+    src/experiment/studies/two_grid_comparison.cpp)
+tgi_add_program(experiment2_finite_path
+    experiments/experiment2_finite_path.cpp
+    src/experiment/studies/finite_path_evidence.cpp)
+tgi_add_program(experiment3_oracle_validation
+    experiments/experiment3_oracle_validation.cpp
+    src/experiment/studies/oracle_quality.cpp)
+tgi_add_program(experiment4_multilevel_comparison
+    experiments/experiment4_multilevel_comparison.cpp
+    src/experiment/studies/multilevel_comparison.cpp)
 
 add_custom_target(experiments
-    DEPENDS experiment1_localization experiment2_pcg_path
-            experiment3_adaptive_oracle experiment4_robustness
-            experiment5_diagnostics experiment6_workload)
+    DEPENDS experiment1_two_grid_comparison experiment2_finite_path
+            experiment3_oracle_validation
+            experiment4_multilevel_comparison)
 
 include(CTest)
 if(BUILD_TESTING)
@@ -87,7 +73,7 @@ if(BUILD_TESTING)
         set_property(TARGET unit_core PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
     endif()
     add_test(NAME unit_core COMMAND unit_core)
-    add_executable(regression_v37 tests/regression_v3.cpp)
-    target_link_libraries(regression_v37 PRIVATE tgi_headers)
-    add_test(NAME regression_v37 COMMAND regression_v37)
+    add_executable(regression_v40 tests/regression_v3.cpp)
+    target_link_libraries(regression_v40 PRIVATE tgi_headers)
+    add_test(NAME regression_v40 COMMAND regression_v40)
 endif()

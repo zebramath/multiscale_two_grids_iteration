@@ -36,9 +36,6 @@ struct CoarseSetupReport {
     double factorization_ms = 0.0;
     double total_ms = 0.0;
     double interpolation_energy = 0.0;
-    double interpolation_complexity = 0.0;
-    double two_grid_operator_complexity = 0.0;
-    double factor_fill_ratio = 0.0;
     std::size_t coarse_nnz = 0;
     std::size_t factor_nnz = 0;
 };
@@ -661,14 +658,6 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
     for (double value : coarse_matrix_.diagonal()) {
         setup_report_.interpolation_energy += value;
     }
-    const double fine_nnz = static_cast<double>(a_.nnz());
-    if (fine_nnz > 0.0) {
-        setup_report_.interpolation_complexity =
-            static_cast<double>(p_.nnz()) / fine_nnz;
-        setup_report_.two_grid_operator_complexity =
-            (fine_nnz + static_cast<double>(coarse_matrix_.nnz())) /
-            fine_nnz;
-    }
 
     const auto ordering_begin = two_grid_solver_detail::Clock::now();
     const std::vector<int> ordering =
@@ -684,14 +673,6 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
         two_grid_solver_detail::milliseconds(
             factorization_begin, factorization_end);
     setup_report_.factor_nnz = coarse_solver_.nnz();
-    if (setup_report_.coarse_nnz > 0U) {
-        const std::size_t symmetric_factor_nnz =
-            2U * setup_report_.factor_nnz -
-            static_cast<std::size_t>(coarse_matrix_.rows());
-        setup_report_.factor_fill_ratio =
-            static_cast<double>(symmetric_factor_nnz) /
-            static_cast<double>(setup_report_.coarse_nnz);
-    }
     setup_report_.total_ms =
         two_grid_solver_detail::milliseconds(setup_begin, factorization_end);
 

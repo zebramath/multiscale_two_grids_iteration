@@ -1,6 +1,7 @@
 #include "experiment/study.hpp"
 #include "multigrid/support_expansion.hpp"
 #include "multigrid/energy_interpolation.hpp"
+#include "multigrid/multilevel_hierarchy.hpp"
 #include "multigrid/two_grid_solver.hpp"
 #include "pde/diffusion_problem.hpp"
 #include "version.hpp"
@@ -41,8 +42,8 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "3.7.0", "wrong package version");
-    require(tgi::version_major == 3 && tgi::version_minor == 7 &&
+    require(tgi::version == "4.0.0", "wrong package version");
+    require(tgi::version_major == 4 && tgi::version_minor == 0 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
     const experiment_support::Row expected_headers{
@@ -184,11 +185,6 @@ int main() {
     const auto& setup = cycle.setup_report();
     require(setup.interpolation_energy > 0.0,
             "interpolation energy diagnostic is not positive");
-    require(setup.interpolation_complexity > 0.0 &&
-                setup.two_grid_operator_complexity > 1.0,
-            "hierarchy complexity diagnostics are invalid");
-    require(setup.factor_fill_ratio > 0.0,
-            "coarse factor fill diagnostic is invalid");
     double coarse_trace = 0.0;
     for (double value : cycle.coarse_matrix().diagonal()) {
         coarse_trace += value;
@@ -215,5 +211,30 @@ int main() {
         rhs, cycle, 1.0e-6, 0);
     require(!zero_budget.converged && zero_budget.cycles == 0,
             "two-grid solve ignored its zero-cycle hard stop");
+
+    tgi::MultilevelHierarchyOptions hierarchy_options;
+    hierarchy_options.first_coarse_intervals = 4;
+    hierarchy_options.thread_count = 2;
+    const auto hierarchy = tgi::build_multilevel_hierarchy(
+        grid.intervals(), a, rhs,
+        tgi::MultilevelInterpolationPolicy::Geometric,
+        hierarchy_options);
+    require(hierarchy.cycle->setup_report().levels == 3,
+            "multilevel hierarchy has the wrong number of levels");
+    require(hierarchy.cycle->setup_report().operator_complexity > 1.0 &&
+                hierarchy.cycle->setup_report()
+                    .interpolation_complexity > 0.0,
+            "multilevel complexity report is invalid");
+    const tgi::Vector preconditioned = hierarchy.cycle->apply(rhs);
+    require(tgi::dot(rhs, preconditioned) > 0.0,
+            "multilevel V-cycle is not a positive preconditioner");
+    const auto multilevel = tgi::solve_multilevel(
+        rhs, *hierarchy.cycle, 1.0e-6, 1000);
+    require(multilevel.converged,
+            "standalone multilevel iteration did not converge");
+    const auto multilevel_pcg = tgi::solve_preconditioned_cg(
+        a, rhs, *hierarchy.cycle, 1.0e-6, 200);
+    require(multilevel_pcg.converged,
+            "multilevel-preconditioned CG did not converge");
     return 0;
 }

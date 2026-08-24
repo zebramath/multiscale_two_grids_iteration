@@ -84,7 +84,7 @@ int run_oracle_quality(int argc, char** argv) {
             threads, maximum_cycles);
         tgi::GlobalEnergyPcgPath path(
             grid, problem.matrix, geometric.prolongation, threads);
-        for (int steps = 12; steps <= 48; steps += 2) {
+        for (int steps = 12; steps <= 56; steps += 2) {
             path.advance_to(steps);
             const tgi::SparseMatrix candidate = path.prolongation(0.0);
             const int cycles = cycles_for(
@@ -129,7 +129,7 @@ int run_oracle_quality(int argc, char** argv) {
         "Adaptive PCG versus an offline step-two oracle");
     report.add_summary({
         {"Version", std::string(tgi::version)},
-        {"Oracle candidates", "m=0 and m=12,14,...,48"},
+        {"Oracle candidates", "m=0 and m=12,14,...,56"},
         {"Solve tolerance", "1e-6"}});
     report.add_note(
         "The oracle is evaluation-only: it solves every candidate on the "

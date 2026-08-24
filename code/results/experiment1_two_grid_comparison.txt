@@ -1,0 +1,63 @@
+Cross-problem two-grid interpolation comparison
+===============================================
+
+Version         : 4.0.0
+Cases           : 12
+Mode            : full
+Solve tolerance : 1e-6
+Maximum cycles  : 6000
+
+Note: The primary v4.0 experiment varies fine/coarse size, contrast, seed and all six channel topologies. Every case uses the same coarse nodes and smoother. The comparison therefore isolates interpolation choice rather than comparing unrelated AMG implementations.
+
+All two-grid cases
+------------------
+1/h      1/H    Contrast    Seed              Topology           Method     Parameter  P density %     Ac nnz    Setup ms    Solve ms    Total ms        Cycles
+-----  -----  ----------  ------  --------------------  ---------------  ------------  -----------  ---------  ----------  ----------  ----------  ------------
+32         8       1e+02       1         cross-channel     adaptive-PCG           m=0       5.0989        361       1.106       0.827       1.934            38
+32         8       1e+02       1         cross-channel     global-exact     tol=1e-10      95.0052       2401      10.556       5.139      15.695            51
+32         8       1e+02       1         cross-channel        geometric           P_G       5.0989        361       0.146       0.785       0.931            38
+32         8       1e+04      17    meandering-channel     adaptive-PCG          m=12      44.2757       2341      33.912       2.322      36.234            56
+32         8       1e+04      17    meandering-channel     global-exact     tol=1e-10      95.0052       2401      10.450      15.201      25.651           284
+32         8       1e+04      17    meandering-channel        geometric           P_G       5.0989        361       0.149       5.463       5.612           257
+32         8       1e+06       1     diagonal-channels     adaptive-PCG          m=24      81.2695       2401      14.417       4.110      18.527            70
+32         8       1e+06       1     diagonal-channels     global-exact     tol=1e-10      94.8905       2401      10.333       9.930      20.263           182
+32         8       1e+06       1     diagonal-channels        geometric           P_G       5.0989        361       0.173       1.812       1.985            86
+
+64         8       1e+02      17     parallel-channels     adaptive-PCG          m=12      24.6651       1717      61.921      11.266      73.187           121
+64         8       1e+02      17     parallel-channels     global-exact     tol=1e-10      98.7906       2401      73.755      28.222     101.977           182
+64         8       1e+02      17     parallel-channels        geometric           P_G       5.6689        361       0.587      25.762      26.349           265
+64         8       1e+04       1    branching-channels     adaptive-PCG          m=34      65.7776       2401      58.511      32.022      90.533           226
+64         8       1e+04       1    branching-channels     global-exact     tol=1e-10      98.7906       2401      90.687      95.101     185.787           511
+64         8       1e+04       1    branching-channels        geometric           P_G       5.6689        361       0.305      47.215      47.520           515
+64         8       1e+06      17          winding-ring     adaptive-PCG          m=34      65.7776       2401      52.342      27.060      79.401           195
+64         8       1e+06      17          winding-ring     global-exact     tol=1e-10      98.7906       2401      94.525     101.271     195.795           575
+64         8       1e+06      17          winding-ring        geometric           P_G       5.6689        361       0.556     572.706     573.262   failed@6000
+64        16       1e+02       1         cross-channel     adaptive-PCG          m=12      13.1223      23381     250.599       8.618     259.217            54
+64        16       1e+02       1         cross-channel     global-exact     tol=1e-10      93.1743      50625     220.842      64.652     285.494           113
+64        16       1e+02       1         cross-channel        geometric           P_G       1.2346       1849       0.461      36.968      37.430           313
+64        16       1e+04      17    meandering-channel     adaptive-PCG          m=24      31.5204      43173     136.990      19.260     156.250            56
+64        16       1e+04      17    meandering-channel     global-exact     tol=1e-10      90.0878      50625     184.660      25.854     210.515            51
+64        16       1e+04      17    meandering-channel        geometric           P_G       1.2346       1849       0.691     617.099     617.790   failed@6000
+64        16       1e+06       1     diagonal-channels     adaptive-PCG          m=24      31.5204      43173     123.468      13.651     137.119            61
+64        16       1e+06       1     diagonal-channels     global-exact     tol=1e-10      87.3842      50619     175.691      27.119     202.810            51
+64        16       1e+06       1     diagonal-channels        geometric           P_G       1.2346       1849       0.469     664.627     665.096   failed@6000
+
+128       16       1e+02      17     parallel-channels     adaptive-PCG          m=34      21.9609      34561     663.883     132.831     796.714           173
+128       16       1e+02      17     parallel-channels     global-exact     tol=1e-10      98.0480      50625    1866.791     365.246    2232.036           170
+128       16       1e+02      17     parallel-channels        geometric           P_G       1.3950       1849       0.999     342.082     343.081          1101
+128       16       1e+04       1    branching-channels     adaptive-PCG          m=34      21.9609      34561     544.432     257.157     801.589           367
+128       16       1e+04       1    branching-channels     global-exact     tol=1e-10      97.4536      50625    1970.628    1320.625    3291.254           615
+128       16       1e+04       1    branching-channels        geometric           P_G       1.3950       1849       1.391    2011.115    2012.506   failed@6000
+128       16       1e+06      17          winding-ring     adaptive-PCG          m=56      40.9881      46621     594.142     366.793     960.935           292
+128       16       1e+06      17          winding-ring     global-exact     tol=1e-10      95.3886      50625    1898.822    1971.541    3870.363           869
+128       16       1e+06      17          winding-ring        geometric           P_G       1.3950       1849       1.903    1923.258    1925.161   failed@6000
+
+Aggregate comparison
+--------------------
+Method            Converged    Cycle sum  Mean density %   Setup sum ms  Solve sum ms  Total sum ms
+---------------  ----------  -----------  --------------  -------------  ------------  ------------
+adaptive-PCG          12/12         1709         37.3281       2535.722       875.918      3411.640
+global-exact          12/12         3654         95.2341       6607.740      4029.899     10637.640
+geometric              7/12        32575          3.3493          7.830      6248.892      6256.722
+
+

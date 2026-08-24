@@ -4,7 +4,7 @@
 \usepackage{mathstyle}
 \usepackage{reportstyle}
 
-\setinfo{局部能量插值、有限步 PCG 与成本感知自适应选择 v3.7}{崔正平}
+\setinfo{有限 Krylov 能量插值、两网格非单调性与多层推广 v4.0}{崔正平}
 
 \theoremstyle{chineseplain}
 \newtheorem{theorem}{定理}[section]
@@ -57,9 +57,11 @@
 $\norm{\bm Z}_{\bm A,F}^2=\tr(\bm Z^\T\bm A\bm Z)$。
 
 本文与代码的对应关系如下：局部或全局能量列求解的是 $\bm B$ 的主子系统；
-预条件器为 $\bm D=\diag(\bm B)$；experiment2--6 中的有限步构造从几何插值
-$\bm W_0$ 出发逐列运行 PCG；两网格循环使用一次前向 Gauss--Seidel、Galerkin 粗校正和
-一次后向 Gauss--Seidel。固定步数对应代码中的 \texttt{tolerance=0}。
+预条件器为 $\bm D=\diag(\bm B)$；有限步构造从几何插值 $\bm W_0$ 出发逐列运行
+PCG；两网格循环使用一次前向 Gauss--Seidel、Galerkin 粗校正和一次后向
+Gauss--Seidel。v4.0 的 experiment1 比较自适应有限步、全局能量极小和几何插值，
+experiment2 只保留能量单调与实际循环数非单调的最小证据，experiment3 检查候选内
+oracle 误差，experiment4 把同一插值规则逐层递归为多层 V-cycle。
 
 除非特别说明，PCG 结论均指精确算术下、组装输出前的迭代量。代码会删除绝对值不超过
 $10^{-14}$ 的输出条目，浮点运算也会破坏严格共轭，因此数值验证应把下文恒等式理解为
@@ -73,13 +75,13 @@ $10^{-14}$ 的输出条目，浮点运算也会破坏严格共轭，因此数值
     局部代数误差和支撑外残差严格联系起来；
     \item 解释全局目标 PCG 为何可能在到达精确能量极限之前经过更优的两网格粗空间，
     并给出全局、相邻步、局部渐近和有限尾部四种层次的判据；
-    \item 为阈值剪枝和自适应停止补充扰动界，明确哪些量可由代码直接估计，
-    以及谱半径结论与给定右端项循环数之间的关系。
-    \item 建立候选预测误差、实际循环数损失、Setup 成本和右端项数量之间的
-    定量关系，为 v3.7 的低预算选择规则和参数消融给出可检验的评价标准。
+    \item 为自适应停止补充扰动界，明确能量单调性、谱半径和给定右端项循环数
+    之间不能相互替代的关系；
+    \item 把两网格误差传播递归到多层 V-cycle，并说明对称递归循环为何可作为
+    共轭梯度的正定预条件子。
 \end{enumerate}
-前两类结论解释 experiment1、experiment2、experiment5 和 experiment6；
-第三类结论与 experiment3 的剪枝现象及后续自适应算法直接相关。为了避免逻辑过度外推，
+前两类结论解释 experiment1 和 experiment2；第三类结论对应 experiment3，
+第四类结论对应 experiment4。为了避免逻辑过度外推，
 每个条件性结论都会明确标出它对谱隙、通道、磨光器或 Ritz 分离的依赖。
 
 
@@ -673,7 +675,7 @@ $\bm Q_{\mathcal U}\bm T$ 的秩至多为 $n_C$，故最佳低秩逼近定理给
 这个上界解释了谱半径为何是通用预条件器的核心量，但它通常不是当前右端项循环数的
 精确预测：若 $\bm r_0$ 在最慢特征子空间上的投影很小，实际循环数会显著少于
 \cref{eq:cycle-upper}；反之，两个候选即使谱半径排序相同，也可能因当前右端项的
-模态权重不同而出现短期循环数排序变化。因此 experiment6 的 Cycles 现象应由
+模态权重不同而出现短期循环数排序变化。因此 experiment1 和 experiment2 的循环数应由
 谱半径和右端项投影共同解释，而不能只用其中一个量。
 
 
@@ -1406,79 +1408,44 @@ $\sigma_2(\bm X)^2$。
 \end{align}
 因此正确结论是条件性的结构定理，而不是“继续 PCG 必然先变好再变坏”的普遍规律。
 
-\subsection{v3.7 可直接输出的诊断量}
+\subsection{v4.0 有限路径的最小验证量}
 
-v3.7 在不显式形成理论坐标变换 $\bm\Phi$、$\bm K$ 的前提下，首先实现一组
-与现有 Galerkin 层次完全一致的基础诊断量。定义
+v4.0 不再把复杂度、填充和有限次幂迭代组织成独立诊断实验，而只保留验证中心命题
+所必需的能量量。定义
 \begin{align}
     \mathcal J_P&=\tr(\bm P^\T\bm A\bm P)=\tr(\bm A_c),\\
     \chi_m&=
     \frac{\mathcal J_{P_m}-\mathcal J_{P_\ast}}
-    {\mathcal J_{P_0}-\mathcal J_{P_\ast}},              \label{eq:v37-energy-excess}\\
-    C_P&=\frac{\operatorname{nnz}(\bm P)}
-    {\operatorname{nnz}(\bm A)},\qquad
-    C_{\rm op}^{(2)}=
-    \frac{\operatorname{nnz}(\bm A)+\operatorname{nnz}(\bm A_c)}
-    {\operatorname{nnz}(\bm A)},                         \label{eq:v37-complexities}\\
-    C_L&=\frac{\operatorname{nnz}(\bm L+\bm L^\T-\diag(\bm L))}
-    {\operatorname{nnz}(\bm A_c)},                       \label{eq:v37-factor-fill}
+    {\mathcal J_{P_0}-\mathcal J_{P_\ast}}.              \label{eq:v40-energy-excess}
 \end{align}
-其中 $\bm L$ 是实际稀疏 Cholesky 因子。
 
-\begin{proposition}[v3.7 能量诊断的一致性]\label{prop:v37-diagnostic-consistency}
+\begin{proposition}[有限路径能量的一致性]\label{prop:v40-energy-consistency}
 在精确算术下，若 $\bm P_m$ 来自同一条全局 PCG 路径，且 $\bm P_\ast$ 是精确能量
 插值，则
 \begin{align}
     \mathcal J_{P_m}-\mathcal J_{P_\ast}
     &=\norm{\bm W_m-\bm W^\ast}_{\bm B,F}^2,\\
-    1=\chi_0\ge\chi_1\ge\cdots\ge\chi_\nu=0.          \label{eq:v37-energy-chain}
+    1=\chi_0\ge\chi_1\ge\cdots\ge\chi_\nu=0.          \label{eq:v40-energy-chain}
 \end{align}
-因此代码通过粗矩阵对角线求得的 $\chi_m$ 是 PCG 能量误差的精确归一化量，
-而不是额外的经验代理。相比之下，$C_P,C_{\rm op}^{(2)},C_L$ 只描述存储与层次复杂度，
-它们本身不决定两网格谱半径。
+然而该单调链不蕴含 $\rhoTG(\bm P_m)$ 或给定右端项循环数的单调链。
 \end{proposition}
 
 \begin{proof}
-第一式由\cref{prop:energy-minimum}乘以 $2$ 得到；第二式再使用
-\cref{thm:pcg-tail} 的能量单调性与有限终止性。复杂度量的解释直接来自定义。
+第一式由\cref{prop:energy-minimum}乘以 $2$ 得到；第二式使用
+\cref{thm:pcg-tail} 的能量单调性与有限终止性。最后一句由
+\cref{thm:rho-formula,thm:finite-cancel} 中粗空间方向对误差传播的独立作用得到；
+experiment2 给出同一条离散 PCG 路径上的直接数值反例。
 \end{proof}
 
-代码还以实际的对称两网格误差传播进行固定次数幂迭代，输出
-$\widehat\rho_{\rm TG}$。若顶端特征值简单且初始随机向量在对应特征向量上的分量非零，
-则标准幂法保证该估计渐近收敛到 $\rhoTG$；有限迭代值仍只是谱代理，不应替代真实循环数。
-这些量使 experiment2 能在同一张表中对照“能量误差单调下降”和“两网格性能非单调”，
-但尚未验证 $\Gamma_m$、$\bm\Theta_m$ 或 Ritz 泄漏条件。
-
-为把全部理论链与数值结果继续对照，后续仍建议在诊断模式增加：
-\begin{enumerate}
-    \item 支撑外残差 $\bm g_{j,\ell}$、局部代数残差和相邻支撑的能量差。
-    它们分别检查空间截断误差、线性方程误差和扩展支撑的实际收益；
-    \item 矩阵残差 $\mathcal R_m$ 以及
-    $\tr(\mathcal R_m^\T\bm B^{-1}\mathcal R_m)$。
-    它与 $\norm{\bm E_m}_{\bm B,F}^2$ 完全相等，可用于核对实现；
-    \item $d_m^2=\sum_j\alpha_{m,j}\bm r_{m,j}^\T\bm D^{-1}\bm r_{m,j}$、
-    $\beta_m$、$\xi_m$ 及其块版本。前者是能量下降量，后两者给出方向和对齐程度；
-    \item 标量证书 $\Gamma_m$ 和矩阵 $\bm\Theta_m$ 的最小特征值。
-    $\Gamma_m>0$ 可证明实际下一步恶化，$\bm\Theta_m$ 则给出相邻步的精确比较；
-    \item 代表列的 Ritz 值、低模态保留量 $\tau$ 和高模态泄漏 $\bar\eps$，
-    用于验证选择性谱滤波是否真的发生；
-    \item 删除指示量 $\eta_{\mathrm{drop}}$ 与当前谱裕量，用来区分安全剪枝和
-    可能破坏两网格收敛性的剪枝；
-    \item $\sigma^2-\sigma_2^2$。若顶端奇异值成簇，则同时记录重数 $p$ 和
-    $\lambda_{\min}(\bm M(\bm H^{(l)}))$；
-    \item 当前右端项在慢模态上的投影、实测循环数和计时。它们用于解释
-    \cref{eq:residual-rho-bound} 的最坏情形界为何可能不紧。
-\end{enumerate}
-这些量用于验证理论链条，不应取代当前右端项下的循环数和计时结果。v3.7 只实现了
-\cref{eq:v37-energy-excess,eq:v37-complexities,eq:v37-factor-fill}和
-$\widehat\rho_{\rm TG}$，其余量保留为后续工作。
+因此 experiment2 只报告 $\chi_m$、插值密度和真实循环数。复杂度量在多层实验中作为
+层次规模的描述量出现，而不被解释成收敛性的替代指标。
 
 
-\section{成本感知自适应选择的理论框架}
+\section{有限预算自适应选择的理论框架}
 
 前文说明有限 PCG 中间点可能严格优于精确能量终点，但这并不自动给出一个低成本
-选择算法。本节把 v3.7 实际优化的量单独形式化。这样可以避免把“候选循环数较小”
-与“包含选择成本后的总时间较小”混为一谈。
+选择算法。本节把 v4.0 实际优化的候选循环数单独形式化；构造时间只作为补充评价，
+不改变本文关于粗空间质量的中心问题。
 
 \subsection{有限候选、预测误差与近似最优性}
 
@@ -1523,18 +1490,19 @@ $\widehat\rho_{\rm TG}$，其余量保留为后续工作。
 \end{proof}
 
 这个命题说明“允许13\%预测松弛”不能单靠把 $\gamma$ 设成 $0.13$ 就得到真实
-循环数保证：若短试运行预测本身误差很大，真实损失还会被放大。v3.7 使用至多四个
+循环数保证：若短试运行预测本身误差很大，真实损失还会被放大。v4.0 使用至多四个
 候选，写成
 \begin{align}
-    \mathcal M_{3.7}=\{0,m_{\min},m_{\rm mid},m_{\rm extra}\},
-                                                               \label{eq:v37-candidates}
+    \mathcal M_{4.0}=\{0,m_{\min},m_{\rm mid},m_{\rm extra}\},
+                                                               \label{eq:v40-candidates}
 \end{align}
 其中 $m_{\rm extra}$ 只在中点仍困难时出现，并由归一化 PCG 能量残差选择
-锚点--中点内点或中点--上界前向点。具体区间仍是实验设计，不是普适常数。
+锚点--中点内点或最大预算端点。端点覆盖使有限候选能够检测强非渐近路径在区间
+后段才出现的改善；具体区间仍是实验设计，不是普适常数。
 其合理评价方式是同时报告候选内 oracle 差距和候选离散化造成的遗漏，而不是把
 \cref{eq:cycle-regret-bound} 误写成无条件性能保证。
 
-\subsection{Setup 与多右端项盈亏平衡}
+\subsection{补充性的 Setup 成本模型}
 
 记构造候选 $m$ 的固定成本为 $S_m$，一次右端项求解的平均时间为 $Q_m$。
 若自适应选择本身花费 $S_{\rm sel}$，并返回 $\widehat m$，那么复用同一层次求解
@@ -1571,7 +1539,7 @@ $m=40$，两者每次求解的工作相同，自适应器不可能靠增加右�
 \begin{align}
     Q_m\approx \tau_m N_m
 \end{align}
-表示，其中 $\tau_m$ 是候选 $m$ 的平均单循环时间。v3.7 允许在预测值接近时偏向
+表示，其中 $\tau_m$ 是候选 $m$ 的平均单循环时间。v4.0 允许在预测值接近时偏向
 较早、较稀疏的候选，本质上就是在循环数与 $\tau_m$ 之间折中。
 
 \subsection{多个右端项时的目标边界}
@@ -1587,24 +1555,24 @@ $\mathcal B=\{\bm b_1,\ldots,\bm b_R\}$，可根据任务选择
 前者优化平均吞吐量，后者控制最坏右端项。若只用一个 $\bm b_{\rm rep}$ 选择，除非
 另有慢模态投影假设，否则不能由 $N_m(\bm b_{\rm rep})$ 推出
 \cref{eq:mean-rhs-cost,eq:max-rhs-cost} 的近似最优性。因此
-\texttt{experiment6} 使用五个不同形状的右端项重新测量平均和最大循环数；这属于
-必要的泛化检查，而不是重复实验。
+v4.0 不再把多右端项成本作为公开主实验；上述公式只用于说明代表性右端项选择的
+适用边界，不能被误写成对任意右端项分布的保证。
 
-\subsection{v3.7 低预算策略的可证明部分与经验部分}
+\subsection{v4.0 低预算策略的可证明部分与经验部分}
 
-v3.7 的实现遵循以下顺序：
+v4.0 的实现遵循以下顺序：
 \begin{enumerate}
     \item 对几何插值做短试运行；预测已经很小时立即返回；
     \item 沿同一全局 PCG 路径生成少量固定检查点，Krylov 工作不重新开始；
-    \item 检查最小步锚点和区间中点；中点仍困难时只补充一个内点或前向点；
+    \item 检查最小步锚点和区间中点；中点仍困难时只补充一个内点或最大预算端点；
     \item 在最优预测值的松弛范围内优先选择较小步数，并复用选中 Galerkin 层次；
     \item 不把候选继续到真实容差，最终真实循环数只在独立评价阶段测量；
-    \item 在主问题上报告 pilot 长度与预测松弛的小规模消融。
+    \item 在独立 oracle 实验中评价选择误差，而不把参数消融作为主结果。
 \end{enumerate}
 
 其中，PCG 路径复用严格删除了重复 Krylov 工作；
-\cref{prop:forecast-regret,prop:break-even-rhs} 分别给出预测可靠时的循环数界和总时间
-判据。候选位置、早停阈值、13\%松弛和 pilot 长度仍是经验参数。因而正确结论是：v3.7 有
+\cref{prop:forecast-regret,prop:break-even-rhs} 分别给出预测可靠时的循环数界和补充
+成本判据。候选位置、早停阈值、13\%松弛和 pilot 长度仍是经验参数。因而正确结论是：v4.0 有
 明确的成本模型和条件性性能界，但尚不存在对任意 SPD 系统都成立的30\% oracle
 保证。
 
@@ -1614,6 +1582,105 @@ $N_{\max}$ 次；全局 PCG 路径至多推进到 $\max\mathcal M$。因此即�
 停滞，选择阶段和最终求解也会在预设上限后返回“不收敛”，而不会依赖精确算术的
 有限步终止性质。外层墙钟超时只用于定位异常慢的实验，不参与算法选择，也不改变
 上述理论结论。
+
+
+\section{从两网格到递归多层 V-cycle}
+
+设 $\bm A_0=\bm A$。对 $\ell=0,\ldots,L-1$，给定满列秩插值
+$\bm P_\ell$，定义 Galerkin 递推
+\begin{align}
+    \bm A_{\ell+1}=\bm P_\ell^\T\bm A_\ell\bm P_\ell.
+                                                               \label{eq:ml-galerkin}
+\end{align}
+v4.0 在首层使用实验指定的粗网格，其后按因子 $2$ 递归粗化；几何、自适应有限
+PCG 和全局能量极小三种规则分别在每一层一致使用。
+
+\begin{proposition}[Galerkin 层次保持正定]\label{prop:ml-spd}
+若 $\bm A_\ell\succ\bm0$ 且 $\bm P_\ell$ 满列秩，则
+$\bm A_{\ell+1}\succ\bm0$。
+\end{proposition}
+
+\begin{proof}
+对任意非零 $\bm y$，满列秩给出 $\bm P_\ell\bm y\ne\bm0$，从而
+\begin{align}
+    \bm y^\T\bm A_{\ell+1}\bm y
+    =(\bm P_\ell\bm y)^\T\bm A_\ell
+      (\bm P_\ell\bm y)>0.
+\end{align}
+\end{proof}
+
+令 $\bm M_\ell$ 表示前向 Gauss--Seidel 三角部分，定义前平滑误差传播
+\begin{align}
+    \bm R_\ell=\bm I-\bm M_\ell^{-1}\bm A_\ell,
+\end{align}
+其 $\bm A_\ell$--伴随为
+\begin{align}
+    \bm R_\ell^\dagger
+    =\bm I-\bm M_\ell^{-\T}\bm A_\ell.
+\end{align}
+设 $\bm B_{\ell+1}$ 是下一层 V-cycle 的校正算子，则第 $\ell$ 层一次对称
+V-cycle 的误差传播满足递推
+\begin{align}
+    \bm E_\ell
+    =\bm R_\ell^\dagger
+      \left(\bm I-
+      \bm P_\ell\bm B_{\ell+1}\bm P_\ell^\T\bm A_\ell\right)
+      \bm R_\ell,
+    \qquad
+    \bm B_L=\bm A_L^{-1}.                              \label{eq:ml-error}
+\end{align}
+这个公式表明，多层误差传播不是各层插值能量的简单和。每个 $\bm P_\ell$ 都通过
+粗校正与上下层平滑器耦合；因此逐层令
+$\tr(\bm P_\ell^\T\bm A_\ell\bm P_\ell)$ 最小，并不推出
+$\rho(\bm E_0)$ 最小。
+
+\begin{proposition}[对称 V-cycle 的 PCG 可用性]\label{prop:ml-pcg-spd}
+假设每层 $\bm A_\ell\succ\bm0$，$\bm P_\ell$ 满列秩，前后平滑互为
+$\bm A_\ell$--伴随，并且平滑分裂满足
+\begin{align}
+    \bm M_\ell+\bm M_\ell^\T-\bm A_\ell\succ\bm0.
+                                                               \label{eq:smoother-spd}
+\end{align}
+若最粗层精确求解，则递归得到的校正算子 $\bm B_0$ 对称正定，可以作为标准 PCG
+的预条件子。一次前向和一次后向 Gauss--Seidel 满足上述条件。
+\end{proposition}
+
+\begin{proof}
+最粗层 $\bm B_L=\bm A_L^{-1}$ 对称正定。假设 $\bm B_{\ell+1}$ 对称正定，
+则 $\bm P_\ell\bm B_{\ell+1}\bm P_\ell^\T$ 是粗空间上的对称半正定校正。
+条件\cref{eq:smoother-spd}保证由前后伴随平滑组成的对称乘法校正为正定；把粗空间
+校正插入两个伴随平滑之间仍保持对称正定。由层数反向归纳得到 $\bm B_0\succ\bm0$。
+\end{proof}
+
+因此预条件 CG 的经典估计可直接应用。记
+\begin{align}
+    \kappa_L=\kappa(\bm B_0\bm A_0),
+\end{align}
+则第 $k$ 步满足
+\begin{align}
+    \frac{\norm{\bm e_k}_{\bm A_0}}
+         {\norm{\bm e_0}_{\bm A_0}}
+    \le
+    2\left(
+      \frac{\sqrt{\kappa_L}-1}{\sqrt{\kappa_L}+1}
+    \right)^k.                                         \label{eq:ml-pcg-bound}
+\end{align}
+外层 PCG 可以用 Krylov 多项式部分补偿 V-cycle 的非最优慢模态，所以不同插值层次
+在 PCG 迭代数上的差距通常小于独立 V-cycle；但若自适应层次改善了
+$\kappa_L$，这种优势仍会保留。experiment4 正是同时报告这两种用法。
+
+为描述层次规模，定义
+\begin{align}
+    C_{\rm op}^{(L)}
+      &=\frac{\sum_{\ell=0}^{L}\operatorname{nnz}(\bm A_\ell)}
+              {\operatorname{nnz}(\bm A_0)},\\
+    C_P^{(L)}
+      &=\frac{\sum_{\ell=0}^{L-1}\operatorname{nnz}(\bm P_\ell)}
+              {\operatorname{nnz}(\bm A_0)}.            \label{eq:ml-complexity}
+\end{align}
+二者只描述层次规模，不是收敛因子的替代量。v4.0 的多层比较把
+\cref{eq:ml-error,eq:ml-pcg-bound,eq:ml-complexity}并列报告，从而区分粗空间质量、
+外层 Krylov 加速和层次规模。
 
 
 \section{主要结论、定理层级与研究含义}
@@ -1739,24 +1806,22 @@ $N_{\max}$ 次；全局 PCG 路径至多推进到 $\max\mathcal M$。因此即�
 
 \subsection{对算法与实验设计的直接启示}
 
-上述结论支持一个较稳健的实现原则。首先，用支撑外残差决定是否扩展局部区域，
-用局部代数残差决定是否继续求解；二者同时足够小时才把该列视为收敛。其次，
-全局或局部 PCG 不应默认以最精确插值作为最终选择。高质量模式可在迭代路径上保存
-实测两网格指标最好的历史候选；低预算模式则应限制候选数，报告预测误差与独立
-oracle 差距。再次，剪枝应同时比较删除量和当前谱裕量；若不能满足
-\cref{eq:safe-pruning}，则需要重新测量两网格因子，而不能仅凭系数绝对值判断。
+上述结论支持一个简洁的实现原则。全局 PCG 不应默认以最精确插值作为最终选择；
+有限候选必须覆盖路径初段、中段以及必要时的最大预算端点，并以短网格迭代而不是
+单独的能量残差排序。低预算模式应限制候选数，并用独立 oracle 报告选择误差。
+多层情形则要求同一插值规则逐层递归，同时分别测量独立 V-cycle 和预条件 CG，
+以区分粗空间质量与外层 Krylov 补偿。
 
-从研究角度看，最值得继续追踪的不是单独的 PCG 残差，而是四组相互补充的量：
-支撑误差、PCG 能量尾、Ritz 选择性和两网格谱裕量；工程评价还必须加入 Setup 与
-多右端项平均成本。它们分别回答“区域是否够大”、
-“线性方程是否够准”、“哪些谱分量被恢复”和“这种恢复是否真正改善两网格”。
+从研究角度看，最值得继续追踪的是 PCG 能量尾、Ritz 选择性、两网格谱裕量以及
+递归多层误差传播。它们分别回答“线性方程离能量终点多远”、“哪些谱分量被恢复”、
+“这种恢复为何改善两网格”以及“该机制进入多层后是否保留”。
 因此，本文最终得到的核心结论可概括为：
 \begin{quote}
 能量极小化确定了唯一而稳定的精确终点；有限 PCG 的谱选择性则可能产生更好的
 两网格中间点。在明确的通道对齐、Ritz 分离和小尾部条件下，这种优势可以被严格
 证明、逐步比较并用显式裕量保护；离开这些条件时，应回到精确 LMI 或实测指标，
-而不能假设能量与两网格性能单调一致。低预算自适应的价值还取决于预测误差、
-候选构造成本和右端项数量，只有满足显式盈亏平衡条件时才具有时间优势。
+而不能假设能量与两网格性能单调一致。对称 Galerkin 递推把同一机制推广到多层，
+并产生可用于 PCG 的正定 V-cycle；外层 Krylov 会缩小但不必消除不同粗空间的差异。
 \end{quote}
 
 

@@ -1,0 +1,40 @@
+Finite-PCG path evidence for nonmonotone two-grid behavior
+==========================================================
+
+Version         : 4.0.0
+Grid            : h=1/64, H=1/16
+Cases           : 3
+Checkpoints     : m=0,12,24,36,48,60 and exact
+Solve tolerance : 1e-6
+
+Note: This compact mechanism experiment replaces the earlier diagnostic scan. It retains only the quantities needed for the central claim: the interpolation energy approaches its minimum monotonically while the actual two-grid iteration count need not do so.
+
+Finite path comparison
+----------------------
+Topology                Contrast          Method        m  Energy excess  P density %        Cycles
+--------------------  ----------  --------------  -------  -------------  -----------  ------------
+cross-channel              1e+04       geometric        0      1.000e+00       1.2346   failed@6000
+cross-channel              1e+04      finite-PCG       12      2.640e-03      13.1223           123
+cross-channel              1e+04      finite-PCG       24      1.287e-04      31.5204            77
+cross-channel              1e+04      finite-PCG       36      2.481e-06      51.8535           139
+cross-channel              1e+04      finite-PCG       48      3.332e-08      70.1912           295
+cross-channel              1e+04      finite-PCG       60      3.757e-10      83.1472           319
+cross-channel              1e+04    global-exact    exact      0.000e+00      92.2549           321
+
+branching-channels         1e+06       geometric        0      1.000e+00       1.2346   failed@6000
+branching-channels         1e+06      finite-PCG       12      1.786e-03      13.1223   failed@6000
+branching-channels         1e+06      finite-PCG       24      4.301e-06      31.5204            80
+branching-channels         1e+06      finite-PCG       36      9.692e-09      51.8535           126
+branching-channels         1e+06      finite-PCG       48      2.337e-11      70.1912            85
+branching-channels         1e+06      finite-PCG       60      7.519e-14      83.1472            98
+branching-channels         1e+06    global-exact    exact      0.000e+00      89.1618           100
+
+winding-ring               1e+06       geometric        0      1.000e+00       1.2346   failed@6000
+winding-ring               1e+06      finite-PCG       12      1.322e-03      13.1223          5714
+winding-ring               1e+06      finite-PCG       24      1.599e-06      31.5204            60
+winding-ring               1e+06      finite-PCG       36      2.493e-09      51.8535            79
+winding-ring               1e+06      finite-PCG       48      4.011e-12      70.1912            63
+winding-ring               1e+06      finite-PCG       60      1.058e-14      83.1472            64
+winding-ring               1e+06    global-exact    exact      0.000e+00      88.2450            63
+
+

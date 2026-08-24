@@ -1,0 +1,23 @@
+Adaptive PCG versus an offline step-two oracle
+==============================================
+
+Version           : 4.0.0
+Oracle candidates : m=0 and m=12,14,...,56
+Solve tolerance   : 1e-6
+
+Note: The oracle is evaluation-only: it solves every candidate on the representative RHS and is not charged to adaptive Setup. It measures selection quality, not a practical competing algorithm.
+
+Representative oracle gaps
+--------------------------
+1/h      1/H    Contrast              Topology  Selected m   Adaptive cycles   Oracle m   Oracle cycles     Gap %   Selection ms  P density %
+-----  -----  ----------  --------------------  ----------  ----------------  ---------  --------------  --------  -------------  -----------
+32         8       1e+02         cross-channel           0                38          0              38      0.00          0.771       5.0989
+32         8       1e+04     parallel-channels          12                54         20              45     20.00         15.743      44.2757
+32         8       1e+06          winding-ring          24                59         20              51     15.69         14.073      81.2695
+64         8       1e+02     diagonal-channels          12               228         12             228      0.00         50.710      24.6651
+64         8       1e+06     parallel-channels          12               160         22             144     11.11         52.854      24.6651
+64         8       1e+04    branching-channels          12               167         12             167      0.00         52.436      24.6651
+64        16       1e+04     diagonal-channels          24                55         30              50     10.00        131.436      31.5204
+64        16       1e+06    meandering-channel          34                58         40              51     13.73        256.592      48.2792
+
+

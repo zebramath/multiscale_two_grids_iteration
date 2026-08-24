@@ -542,11 +542,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
                         a, rhs, std::move(interior_prolongation),
                         interior, "interior", options, interior_report));
                 } else {
-                    const int forward = quantize(
-                        (midpoint + options.maximum_steps) / 2,
-                        options.step_quantum,
-                        midpoint + options.step_quantum,
-                        options.maximum_steps);
+                    const int forward = options.maximum_steps;
                     path.advance_to(forward);
                     path_report = path.report();
                     candidates.push_back(pilot_candidate(

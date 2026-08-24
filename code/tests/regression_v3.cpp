@@ -1,5 +1,6 @@
 #include "experiment/problem.hpp"
 #include "multigrid/global_pcg.hpp"
+#include "multigrid/multilevel_hierarchy.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -125,6 +126,34 @@ int main() {
                 &adaptive_rhs);
         },
         "adaptive PCG accepted an invalid one-step pilot");
+
+    tgi::MultilevelHierarchyOptions hierarchy_options;
+    hierarchy_options.first_coarse_intervals = 4;
+    hierarchy_options.thread_count = 2;
+    hierarchy_options.maximum_pilot_cycles = 1000;
+    hierarchy_options.first_level_adaptive.minimum_steps = 2;
+    hierarchy_options.first_level_adaptive.maximum_steps = 8;
+    hierarchy_options.first_level_adaptive.pilot_iterations = 4;
+    hierarchy_options.first_level_adaptive.tail_window = 2;
+    const auto adaptive_hierarchy = tgi::build_multilevel_hierarchy(
+        grid.intervals(), a, adaptive_rhs,
+        tgi::MultilevelInterpolationPolicy::AdaptiveGlobalPcg,
+        hierarchy_options);
+    const auto exact_hierarchy = tgi::build_multilevel_hierarchy(
+        grid.intervals(), a, adaptive_rhs,
+        tgi::MultilevelInterpolationPolicy::ExactGlobalEnergy,
+        hierarchy_options);
+    require(adaptive_hierarchy.cycle->setup_report().levels ==
+                exact_hierarchy.cycle->setup_report().levels,
+            "adaptive and exact hierarchies have inconsistent depth");
+    require(tgi::solve_preconditioned_cg(
+                a, adaptive_rhs, *adaptive_hierarchy.cycle,
+                1.0e-6, 200).converged,
+            "adaptive multilevel preconditioner did not converge");
+    require(tgi::solve_preconditioned_cg(
+                a, adaptive_rhs, *exact_hierarchy.cycle,
+                1.0e-6, 200).converged,
+            "exact multilevel preconditioner did not converge");
 
     return 0;
 }
