@@ -1,40 +1,44 @@
 Finite-PCG path evidence for nonmonotone two-grid behavior
 ==========================================================
 
-Version         : 4.0.0
-Grid            : h=1/64, H=1/16
+Version         : 4.1.0
 Cases           : 3
-Checkpoints     : m=0,12,24,36,48,60 and exact
+Checkpoints     : m=0,12,20,...,60 and exact
 Solve tolerance : 1e-6
 
-Note: This compact mechanism experiment replaces the earlier diagnostic scan. It retains only the quantities needed for the central claim: the interpolation energy approaches its minimum monotonically while the actual two-grid iteration count need not do so.
+Note: The three cross-channel cases isolate scale and contrast. Only the energy excess, interpolation density and independently measured two-grid cycles are retained: energy decreases along the PCG path, whereas the iteration count can attain a much better finite minimum.
 
 Finite path comparison
 ----------------------
-Topology                Contrast          Method        m  Energy excess  P density %        Cycles
---------------------  ----------  --------------  -------  -------------  -----------  ------------
-cross-channel              1e+04       geometric        0      1.000e+00       1.2346   failed@6000
-cross-channel              1e+04      finite-PCG       12      2.640e-03      13.1223           123
-cross-channel              1e+04      finite-PCG       24      1.287e-04      31.5204            77
-cross-channel              1e+04      finite-PCG       36      2.481e-06      51.8535           139
-cross-channel              1e+04      finite-PCG       48      3.332e-08      70.1912           295
-cross-channel              1e+04      finite-PCG       60      3.757e-10      83.1472           319
-cross-channel              1e+04    global-exact    exact      0.000e+00      92.2549           321
+1/h      1/H              Topology    Contrast          Method        m  Energy excess  P density %        Cycles
+-----  -----  --------------------  ----------  --------------  -------  -------------  -----------  ------------
+64        16         cross-channel       1e+04       geometric        0      1.000e+00       1.2346   failed@6000
+64        16         cross-channel       1e+04      finite-PCG       12      2.640e-03      13.1223           123
+64        16         cross-channel       1e+04      finite-PCG       20      3.164e-04      24.9629            68
+64        16         cross-channel       1e+04      finite-PCG       28      4.190e-05      38.2884           108
+64        16         cross-channel       1e+04      finite-PCG       36      2.481e-06      51.8535           139
+64        16         cross-channel       1e+04      finite-PCG       44      1.349e-07      64.5206           274
+64        16         cross-channel       1e+04      finite-PCG       52      7.450e-09      75.2594           313
+64        16         cross-channel       1e+04      finite-PCG       60      3.757e-10      83.1472           319
+64        16         cross-channel       1e+04    global-exact    exact      0.000e+00      92.2549           321
 
-branching-channels         1e+06       geometric        0      1.000e+00       1.2346   failed@6000
-branching-channels         1e+06      finite-PCG       12      1.786e-03      13.1223   failed@6000
-branching-channels         1e+06      finite-PCG       24      4.301e-06      31.5204            80
-branching-channels         1e+06      finite-PCG       36      9.692e-09      51.8535           126
-branching-channels         1e+06      finite-PCG       48      2.337e-11      70.1912            85
-branching-channels         1e+06      finite-PCG       60      7.519e-14      83.1472            98
-branching-channels         1e+06    global-exact    exact      0.000e+00      89.1618           100
-
-winding-ring               1e+06       geometric        0      1.000e+00       1.2346   failed@6000
-winding-ring               1e+06      finite-PCG       12      1.322e-03      13.1223          5714
-winding-ring               1e+06      finite-PCG       24      1.599e-06      31.5204            60
-winding-ring               1e+06      finite-PCG       36      2.493e-09      51.8535            79
-winding-ring               1e+06      finite-PCG       48      4.011e-12      70.1912            63
-winding-ring               1e+06      finite-PCG       60      1.058e-14      83.1472            64
-winding-ring               1e+06    global-exact    exact      0.000e+00      88.2450            63
+128       16         cross-channel       1e+04       geometric        0      1.000e+00       1.3950   failed@6000
+128       16         cross-channel       1e+04      finite-PCG       12      5.355e-02       6.7417          5523
+128       16         cross-channel       1e+04      finite-PCG       20      1.036e-02      11.6236          1861
+128       16         cross-channel       1e+04      finite-PCG       28      2.012e-03      17.3034           441
+128       16         cross-channel       1e+04      finite-PCG       36      5.207e-04      23.5999           268
+128       16         cross-channel       1e+04      finite-PCG       44      2.006e-04      30.3389           244
+128       16         cross-channel       1e+04      finite-PCG       52      1.062e-04      37.3532           276
+128       16         cross-channel       1e+04      finite-PCG       60      5.992e-05      44.4826           360
+128       16         cross-channel       1e+04    global-exact    exact      0.000e+00      97.8420          3227
+128       16         cross-channel       1e+06       geometric        0      1.000e+00       1.3950   failed@6000
+128       16         cross-channel       1e+06      finite-PCG       12      5.363e-02       6.7417   failed@6000
+128       16         cross-channel       1e+06      finite-PCG       20      1.038e-02      11.6236   failed@6000
+128       16         cross-channel       1e+06      finite-PCG       28      2.020e-03      17.3034   failed@6000
+128       16         cross-channel       1e+06      finite-PCG       36      5.246e-04      23.5999   failed@6000
+128       16         cross-channel       1e+06      finite-PCG       44      2.034e-04      30.3389          1590
+128       16         cross-channel       1e+06      finite-PCG       52      1.084e-04      37.3532           298
+128       16         cross-channel       1e+06      finite-PCG       60      6.152e-05      44.4826           279
+128       16         cross-channel       1e+06    global-exact    exact      0.000e+00      96.2311          3471
 
 

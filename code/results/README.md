@@ -1,12 +1,12 @@
-# v4.0 数值结果
+# v4.1 数值结果
 
-四份 TXT 均由 4.0.0 最终源码完整运行生成。实验结构围绕有限 PCG 插值与全局能量极小插值的受控比较重新组织；不再保留独立的复杂度/谱扫描、pilot 参数消融、附加诊断和压力测试入口。
+三份 TXT 均由 4.1.0 最终源码完整运行生成。
 
 | 文件 | 覆盖范围 | 核心结果 |
 |---|---|---|
-| `experiment1_two_grid_comparison.txt` | 4 组网格、3 个对比度、6 类拓扑 | 自适应 12/12 收敛，累计 1709 次；global-exact 累计 3654 次；平均密度 37.33% 对 95.23% |
-| `experiment2_finite_path.txt` | 3 个代表问题的有限 PCG 路径 | 插值能量单调逼近极小值，而两网格循环数在有限步达到更优区间后可再次增加 |
-| `experiment3_oracle_validation.txt` | 8 个问题、step-2 离线 oracle | 平均 gap 8.82%，最大 gap 20.00%，用于评价选择质量 |
-| `experiment4_multilevel_comparison.txt` | 与主比较相同的 12 个问题，4–5 层 | 独立 V-cycle：自适应 1717 次、exact 3668 次；作为 PCG 预条件子：313 次、350 次；自适应平均 $C_P$ 为 8.65，exact 为 26.27 |
+| `experiment1_two_grid_comparison.txt` | 11 个单因素尺寸/对比度/拓扑问题 | adaptive 2356 次、exact 11074 次，约 4.70 倍；两个高分离问题达到 13.79 和 12.44 倍 |
+| `experiment2_finite_path.txt` | 3 个 cross-channel 有限路径 | 能量持续下降，但两网格循环数在有限优势区间后显著回升 |
+| `experiment3_oracle_validation.txt` | 7 个问题、step--2 oracle | 平均 gap 0.62%，最大 gap 2.19% |
 
-所有逐问题数据都保存在对应 TXT 中；`research_report.md` 对每个实验展示核心子集和汇总结果。计时为单次 wall-clock 测量，只作为同次运行中的辅助量，理论和算法结论以收敛、迭代数、密度与层次复杂度为主。
+所有逐问题数据均保存在对应 TXT 中。计时是单次 wall-clock 辅助量；研究结论主要依据
+收敛、循环数、候选步数和插值密度。

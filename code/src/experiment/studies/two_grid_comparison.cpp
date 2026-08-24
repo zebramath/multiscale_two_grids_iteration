@@ -37,6 +37,7 @@ experiment_support::Row measurement_row(
     aggregate.setup_ms += setup_ms;
     aggregate.solve_ms += solve_ms;
     return {
+        item.axis,
         std::to_string(item.fine), std::to_string(item.coarse),
         experiment_support::scientific(item.contrast, 0),
         std::to_string(item.seed), item.field.name, method, parameter,
@@ -64,7 +65,7 @@ int run_two_grid_comparison(int argc, char** argv) {
     constexpr int maximum_cycles = 6000;
     const auto cases = experiment_support::comparison_cases(quick);
     const experiment_support::Row headers{
-        "1/h", "1/H", "Contrast", "Seed", "Topology", "Method",
+        "Axis", "1/h", "1/H", "Contrast", "Seed", "Topology", "Method",
         "Parameter", "P density %", "Ac nnz", "Setup ms", "Solve ms",
         "Total ms", "Cycles"};
     experiment_support::Rows rows;
@@ -88,7 +89,7 @@ int run_two_grid_comparison(int argc, char** argv) {
 
         tgi::AdaptiveGlobalPcgOptions adaptive_options;
         adaptive_options.minimum_steps = 12;
-        adaptive_options.maximum_steps = 56;
+        adaptive_options.maximum_steps = 60;
         adaptive_options.maximum_cycles = maximum_cycles;
         adaptive_options.thread_count = threads;
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
@@ -146,13 +147,13 @@ int run_two_grid_comparison(int argc, char** argv) {
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
-        "The primary v4.0 experiment varies fine/coarse size, contrast, seed "
-        "and all six channel topologies. Every case uses the same coarse "
-        "nodes and smoother. The comparison therefore isolates interpolation "
-        "choice rather than comparing unrelated AMG implementations.");
+        "The v4.1 matrix changes one axis at a time around the 128/16, "
+        "contrast 1e4 cross-channel center: four size pairs, three contrasts "
+        "and all six channel topologies. Every row uses identical coarse "
+        "nodes, right-hand side and smoother across interpolation methods.");
     report.add_table(
         "All two-grid cases", headers,
-        {5, 5, 10, 6, 20, 15, 12, 11, 9, 10, 10, 10, 12}, rows, true);
+        {10, 5, 5, 10, 6, 20, 15, 12, 11, 9, 10, 10, 10, 12}, rows, true);
     report.add_table(
         "Aggregate comparison",
         {"Method", "Converged", "Cycle sum", "Mean density %",

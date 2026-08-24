@@ -43,17 +43,16 @@ int run_oracle_quality(int argc, char** argv) {
             threads = std::stoi(argument.substr(10));
     }
     const auto& topology = experiment_support::channel_topologies();
-    const std::array<OracleCase, 8> cases{{
-        {32, 8, 1.0e2, 1, topology[0]},
-        {32, 8, 1.0e4, 17, topology[3]},
-        {32, 8, 1.0e6, 17, topology[5]},
-        {64, 8, 1.0e2, 1, topology[2]},
-        {64, 8, 1.0e6, 17, topology[3]},
-        {64, 8, 1.0e4, 31, topology[4]},
-        {64, 16, 1.0e4, 1, topology[2]},
-        {64, 16, 1.0e6, 17, topology[1]}
+    const std::array<OracleCase, 7> cases{{
+        {32, 8, 1.0e4, 1, topology[0]},
+        {64, 8, 1.0e4, 1, topology[0]},
+        {64, 16, 1.0e4, 1, topology[0]},
+        {128, 16, 1.0e4, 1, topology[0]},
+        {128, 16, 1.0e2, 1, topology[0]},
+        {128, 16, 1.0e6, 1, topology[0]},
+        {128, 16, 1.0e4, 1, topology[5]}
     }};
-    constexpr int maximum_cycles = 12000;
+    constexpr int maximum_cycles = 6000;
     const experiment_support::Row headers{
         "1/h", "1/H", "Contrast", "Topology", "Selected m",
         "Adaptive cycles", "Oracle m", "Oracle cycles", "Gap %",
@@ -84,7 +83,7 @@ int run_oracle_quality(int argc, char** argv) {
             threads, maximum_cycles);
         tgi::GlobalEnergyPcgPath path(
             grid, problem.matrix, geometric.prolongation, threads);
-        for (int steps = 12; steps <= 56; steps += 2) {
+        for (int steps = 12; steps <= 60; steps += 2) {
             path.advance_to(steps);
             const tgi::SparseMatrix candidate = path.prolongation(0.0);
             const int cycles = cycles_for(
@@ -98,7 +97,7 @@ int run_oracle_quality(int argc, char** argv) {
 
         tgi::AdaptiveGlobalPcgOptions options;
         options.minimum_steps = 12;
-        options.maximum_steps = 56;
+        options.maximum_steps = 60;
         options.maximum_cycles = maximum_cycles;
         options.thread_count = threads;
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
@@ -129,12 +128,14 @@ int run_oracle_quality(int argc, char** argv) {
         "Adaptive PCG versus an offline step-two oracle");
     report.add_summary({
         {"Version", std::string(tgi::version)},
-        {"Oracle candidates", "m=0 and m=12,14,...,56"},
+        {"Oracle candidates", "m=0 and m=12,14,...,60"},
         {"Solve tolerance", "1e-6"}});
     report.add_note(
-        "The oracle is evaluation-only: it solves every candidate on the "
-        "representative RHS and is not charged to adaptive Setup. It measures "
-        "selection quality, not a practical competing algorithm.");
+        "The step-two oracle is evaluation-only. The practical selector "
+        "screens m=0,12,20,...,60 for 64 cycles, confirms the three best "
+        "forecasts plus the minimum-step anchor and parsimonious screen "
+        "winner, and locally refines the best interval. It never reads "
+        "coefficient labels.");
     report.add_table(
         "Representative oracle gaps", headers,
         {5, 5, 10, 20, 10, 16, 9, 14, 8, 13, 11}, rows);

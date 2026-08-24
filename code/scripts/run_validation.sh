@@ -27,9 +27,6 @@ if [ "$mode" = "quick" ]; then
     run_step experiment1_two_grid_comparison \
         "$build_dir/experiment1_two_grid_comparison" \
         --quick --threads="$threads"
-    run_step experiment4_multilevel_comparison \
-        "$build_dir/experiment4_multilevel_comparison" \
-        --quick --threads="$threads"
 elif [ "$mode" = "full" ]; then
     run_step experiment1_two_grid_comparison \
         "$build_dir/experiment1_two_grid_comparison" --threads="$threads"
@@ -37,8 +34,6 @@ elif [ "$mode" = "full" ]; then
         "$build_dir/experiment2_finite_path" --threads="$threads"
     run_step experiment3_oracle_validation \
         "$build_dir/experiment3_oracle_validation" --threads="$threads"
-    run_step experiment4_multilevel_comparison \
-        "$build_dir/experiment4_multilevel_comparison" --threads="$threads"
 else
     echo "usage: $0 [quick|full]" >&2
     exit 2

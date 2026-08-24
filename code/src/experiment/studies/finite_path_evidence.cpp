@@ -7,6 +7,8 @@
 namespace {
 
 struct PathCase {
+    int fine;
+    int coarse;
     double contrast;
     std::uint64_t seed;
     experiment_support::FieldCase field;
@@ -25,6 +27,8 @@ experiment_support::Row path_row(
             initial_excess
         : 0.0;
     return {
+        std::to_string(item.fine),
+        std::to_string(item.coarse),
         item.field.name,
         experiment_support::scientific(item.contrast, 0),
         method,
@@ -43,17 +47,18 @@ int run_finite_path_evidence(int argc, char** argv) {
     const auto base = experiment_support::parse_config(argc, argv);
     const auto& topologies = experiment_support::channel_topologies();
     const std::array<PathCase, 3> cases{
-        PathCase{1.0e4, 1, topologies[0]},
-        PathCase{1.0e6, 17, topologies[4]},
-        PathCase{1.0e6, 1, topologies[5]}};
-    constexpr std::array<int, 5> checkpoints{12, 24, 36, 48, 60};
+        PathCase{64, 16, 1.0e4, 1, topologies[0]},
+        PathCase{128, 16, 1.0e4, 1, topologies[0]},
+        PathCase{128, 16, 1.0e6, 1, topologies[0]}};
+    constexpr std::array<int, 7> checkpoints{
+        12, 20, 28, 36, 44, 52, 60};
     constexpr int maximum_cycles = 6000;
     experiment_support::Rows rows;
 
     for (const auto& item : cases) {
         experiment_support::BasicConfig config = base;
-        config.fine_intervals = 64;
-        config.coarse_intervals = 16;
+        config.fine_intervals = item.fine;
+        config.coarse_intervals = item.coarse;
         config.contrast = item.contrast;
         config.max_cycles = maximum_cycles;
         const tgi::StructuredGrid grid = experiment_support::make_grid(config);
@@ -96,20 +101,19 @@ int run_finite_path_evidence(int argc, char** argv) {
         "Finite-PCG path evidence for nonmonotone two-grid behavior");
     report.add_summary({
         {"Version", std::string(tgi::version)},
-        {"Grid", "h=1/64, H=1/16"},
         {"Cases", std::to_string(cases.size())},
-        {"Checkpoints", "m=0,12,24,36,48,60 and exact"},
+        {"Checkpoints", "m=0,12,20,...,60 and exact"},
         {"Solve tolerance", "1e-6"}});
     report.add_note(
-        "This compact mechanism experiment replaces the earlier diagnostic "
-        "scan. It retains only the quantities needed for the central claim: "
-        "the interpolation energy approaches its minimum monotonically while "
-        "the actual two-grid iteration count need not do so.");
+        "The three cross-channel cases isolate scale and contrast. Only the "
+        "energy excess, interpolation density and independently measured "
+        "two-grid cycles are retained: energy decreases along the PCG path, "
+        "whereas the iteration count can attain a much better finite minimum.");
     report.add_table(
         "Finite path comparison",
-        {"Topology", "Contrast", "Method", "m", "Energy excess",
+        {"1/h", "1/H", "Topology", "Contrast", "Method", "m", "Energy excess",
          "P density %", "Cycles"},
-        {20, 10, 14, 7, 13, 11, 12}, rows, true);
+        {5, 5, 20, 10, 14, 7, 13, 11, 12}, rows, true);
     report.save("finite_path_evidence");
     return 0;
 }

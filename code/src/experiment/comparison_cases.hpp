@@ -2,7 +2,6 @@
 
 #include "experiment/problem.hpp"
 
-#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -10,6 +9,7 @@
 namespace experiment_support {
 
 struct ComparisonCase {
+    std::string axis;
     int fine = 32;
     int coarse = 8;
     double contrast = 1.0e4;
@@ -18,24 +18,21 @@ struct ComparisonCase {
 };
 
 inline std::vector<ComparisonCase> comparison_cases(bool quick) {
-    const std::array<std::pair<int, int>, 4> grids{
-        std::pair<int, int>{32, 8}, {64, 8}, {64, 16}, {128, 16}};
-    const std::array<double, 3> contrasts{1.0e2, 1.0e4, 1.0e6};
     const auto& topologies = channel_topologies();
-    std::vector<ComparisonCase> cases;
-    int index = 0;
-    for (const auto& grid : grids) {
-        for (double contrast : contrasts) {
-            cases.push_back({
-                grid.first, grid.second, contrast,
-                index % 2 == 0 ? 1U : 17U,
-                topologies[static_cast<std::size_t>(index) %
-                           topologies.size()]});
-            ++index;
-        }
-    }
+    const std::vector<ComparisonCase> cases{
+        {"size", 32, 8, 1.0e4, 1, topologies[0]},
+        {"size", 64, 8, 1.0e4, 1, topologies[0]},
+        {"size", 64, 16, 1.0e4, 1, topologies[0]},
+        {"center", 128, 16, 1.0e4, 1, topologies[0]},
+        {"contrast", 128, 16, 1.0e2, 1, topologies[0]},
+        {"contrast", 128, 16, 1.0e6, 1, topologies[0]},
+        {"topology", 128, 16, 1.0e4, 1, topologies[1]},
+        {"topology", 128, 16, 1.0e4, 1, topologies[2]},
+        {"topology", 128, 16, 1.0e4, 1, topologies[3]},
+        {"topology", 128, 16, 1.0e4, 1, topologies[4]},
+        {"topology", 128, 16, 1.0e4, 1, topologies[5]}};
     if (!quick) return cases;
-    return {cases[0], cases[4], cases[8], cases[10]};
+    return {cases[0], cases[3], cases[10]};
 }
 
 inline BasicConfig comparison_config(
