@@ -40,6 +40,28 @@ experiment_support::Row measure(
         experiment_support::fixed(interpolation_ms + metric.total_ms)};
 }
 
+experiment_support::Row measure(
+    const SweepCase& item, const std::string& method,
+    const std::string& parameter, const tgi::Vector& rhs,
+    const tgi::SparseMatrix& p, const tgi::TwoGridCycle& cycle,
+    double interpolation_ms, int max_cycles,
+    const std::string& selector_cycles) {
+    const auto metric = experiment_support::evaluate_two_grid(
+        rhs, cycle, 1.0e-6, max_cycles);
+    return {
+        std::to_string(item.fine), std::to_string(item.coarse),
+        std::to_string(item.fine / item.coarse),
+        experiment_support::scientific(item.contrast, 0),
+        std::to_string(item.seed), item.field.name, method, parameter,
+        experiment_support::fixed(
+            experiment_support::interpolation_density_percent(p), 4),
+        selector_cycles,
+        metric.converged ? std::to_string(metric.cycles)
+            : "failed@" + std::to_string(metric.cycles),
+        experiment_support::fixed(interpolation_ms),
+        experiment_support::fixed(interpolation_ms + metric.total_ms)};
+}
+
 }
 
 int run_robustness_matrix(int argc, char** argv) {
@@ -148,9 +170,9 @@ int run_robustness_matrix(int argc, char** argv) {
         rows.push_back(measure(
             item, "PCG-adaptive",
             "m=" + std::to_string(adaptive.report.selected_steps),
-            problem.matrix, problem.rhs, adaptive.prolongation,
+            problem.rhs, *adaptive.prolongation, *adaptive.cycle,
             geometric_ms + adaptive.report.selection_wall_ms,
-            threads, max_cycles,
+            max_cycles,
             std::to_string(adaptive.report.estimated_selected_cycles)));
 
     }
@@ -165,7 +187,7 @@ int run_robustness_matrix(int argc, char** argv) {
         {"Maximum cycles", std::to_string(max_cycles)}});
     report.add_note(
         "The full matrix contains 18 coefficient problems: three grids, "
-        "three contrasts, two seeds, and four channel topologies assigned in "
+        "three contrasts, two seeds, and six channel topologies assigned in "
         "balanced rotation. Each problem compares the geometric basis, fixed "
         "m=40 PCG, and the midpoint adaptive selector without case-specific "
         "tuning.");

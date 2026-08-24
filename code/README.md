@@ -1,4 +1,4 @@
-# two_grids_iteration v3.5.0
+# two_grids_iteration v3.6.0
 
 ## 目录结构
 
@@ -15,9 +15,9 @@
 
 ## 自适应算法
 
-选择器复用一条增量式全局能量 PCG 路径，最多建立四个层次：几何初值、最小步锚点、区间中点和至多一次二分细化。每个候选运行 24 个两网格 pilot，不在 setup 阶段求解到完整容差。候选位置不读取系数场名称、对比度、种子或预设最优步数。
+选择器复用一条增量式全局能量 PCG 路径，最多建立四个层次：几何初值、最小步锚点、区间中点和一个补充点。每个候选运行至多 24 个两网格 pilot，不在 setup 阶段求解到完整容差。候选位置不读取系数场名称、对比度、种子或预设最优步数。
 
-中点已经足够好时立即停止；中点仍较差且归一化预条件能量残差低于 `sqrt(solve_tolerance)` 时向后二分，否则仅在预测明显很差时向前二分。在最小预测的 8% 范围内选择最小 `m`。
+几何初值或最小步锚点已经足够好时立即停止；否则检查中点。中点仍较难时，仅用归一化 PCG 能量残差与求解容差的平方根比较，选择锚点—中点内点或中点—上界前向点。在最小预测的 13% 范围内选择最小 `m`。选中的插值矩阵、Galerkin 粗算子、排序和稀疏 Cholesky 因子直接交给正式求解与多右端项工作负载复用。
 
 ## 构建
 
@@ -42,8 +42,8 @@ ctest --test-dir build --output-on-failure
 |---|---|
 | `experiment1_localization` | 支撑半径、局部 PCG 容差、全局剪枝、支撑扩张 |
 | `experiment2_pcg_path` | 有限 PCG 预算、步长 2 密集扫描、pilot 排序 |
-| `experiment3_adaptive_oracle` | 主问题自适应轨迹、六问题 step-2 oracle |
-| `experiment4_robustness` | 18 问题网格、对比度、种子与通道拓扑矩阵 |
+| `experiment3_adaptive_oracle` | 主问题自适应轨迹、八问题 step-2 oracle |
+| `experiment4_robustness` | 18 问题网格、对比度、种子与六类通道拓扑矩阵 |
 | `experiment5_diagnostics` | 八问题附加诊断和八问题压力测试 |
 | `experiment6_workload` | 五右端项摊销与 break-even |
 

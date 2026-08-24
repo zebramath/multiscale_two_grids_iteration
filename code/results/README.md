@@ -1,14 +1,14 @@
-# v3.5 数值结果
+# v3.6 数值结果
 
-六份 TXT 均由 3.5.0 源码在最终验证阶段重新生成。每份文件包含一个整合实验的全部内部研究表格；results 目录不包含 CSV。
+六份 TXT 均由 3.6.0 最终源码重新生成。每份文件整合一个公开实验入口下的全部内部研究；本目录不包含 CSV。
 
-| 文件 | 重要结果 |
+| 文件 | 关键结果 |
 |---|---|
-| `experiment1_localization.txt` | 通道 layers 2/3/4/global 为 6840/6050/5275/3227 cycles；残差预算支撑为 3553 |
-| `experiment2_pcg_path.txt` | 主通道步长 2 oracle 为 `m=38, 231 cycles`；`m=40` 为 234 |
-| `experiment3_adaptive_oracle.txt` | 主问题自适应 `m=40, 234 cycles`，gap 1.30%；六问题平均 gap 7.81% |
-| `experiment4_robustness.txt` | 自适应 18/18 收敛，总 cycles 1858；固定 `m=40` 为 2586 |
-| `experiment5_diagnostics.txt` | 两组平均 gap 为 4.77% 和 3.51%，最大为 13.79% 和 28.10% |
-| `experiment6_workload.txt` | 相对固定 `m=40` 的 break-even 为 34、35、5、74 RHS |
+| `experiment1_localization.txt` | 连续场 local layers=4 达到 global 的 90 次循环；通道自适应支撑在约 6.24% 密度下由 6840 降至 3553 次 |
+| `experiment2_pcg_path.txt` | 主通道密集扫描最优为 $m=38$、231 次；$m=40$ 为 234 次；高精度 global 为 3227 次 |
+| `experiment3_adaptive_oracle.txt` | 主问题自适应选 $m=40$、234 次，距最优 1.30%；8 问题 oracle 平均 gap 8.82%、最大 20.00% |
+| `experiment4_robustness.txt` | 18 问题全部收敛；自适应总循环 1900，fixed-$m40$ 为 2431，降低 21.84% |
+| `experiment5_diagnostics.txt` | 附加组平均/最大 gap 4.96%/13.79%；压力组为 6.73%/28.10% |
+| `experiment6_workload.txt` | 分支、曲环与交叉通道上复用选中层次；相对 fixed-$m40$ 的 break-even 为 2–20 个 RHS |
 
-墙钟时间来自单机单次测量，只适合同一实验内的相对比较。
+计时为单次 wall-clock 测量。循环数、密度和 oracle gap 可重复用于算法比较；绝对毫秒数应结合机器与负载解释。

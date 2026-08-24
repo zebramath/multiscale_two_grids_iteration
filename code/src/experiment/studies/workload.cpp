@@ -56,12 +56,11 @@ struct WorkloadMetric {
 };
 
 WorkloadMetric evaluate_workload(
-    const tgi::SparseMatrix& a, const tgi::SparseMatrix& p,
-    const std::vector<tgi::Vector>& rhs_set, int threads,
-    int maximum_cycles) {
+    const tgi::TwoGridCycle& cycle,
+    const std::vector<tgi::Vector>& rhs_set,
+    int maximum_cycles, double hierarchy_setup_ms) {
     WorkloadMetric result;
-    const tgi::TwoGridCycle cycle(a, p, 1, threads);
-    result.hierarchy_setup_ms = cycle.setup_report().total_ms;
+    result.hierarchy_setup_ms = hierarchy_setup_ms;
     tgi::Vector warm_solution(rhs_set.front().size(), 0.0);
     tgi::Vector warm_residual = rhs_set.front();
     tgi::TwoGridCycle::Workspace warm_workspace;
@@ -98,6 +97,16 @@ WorkloadMetric evaluate_workload(
     return result;
 }
 
+WorkloadMetric evaluate_workload(
+    const tgi::SparseMatrix& a, const tgi::SparseMatrix& p,
+    const std::vector<tgi::Vector>& rhs_set, int threads,
+    int maximum_cycles) {
+    const tgi::TwoGridCycle cycle(a, p, 1, threads);
+    return evaluate_workload(
+        cycle, rhs_set, maximum_cycles,
+        cycle.setup_report().total_ms);
+}
+
 std::string break_even_rhs(
     double adaptive_setup, double adaptive_solve,
     double baseline_setup, double baseline_solve) {
@@ -119,8 +128,8 @@ int run_workload(int argc, char** argv) {
     }
     const auto& topology = experiment_support::channel_topologies();
     const std::array<WorkloadCase, 4> cases{{
-        {64, 8, 1.0e4, 17, topology[1]},
-        {64, 16, 1.0e4, 1, topology[2]},
+        {64, 8, 1.0e4, 17, topology[4]},
+        {64, 16, 1.0e4, 1, topology[5]},
         {64, 16, 1.0e6, 1, topology[0]},
         {128, 16, 1.0e4, 1, topology[0]}
     }};
@@ -174,11 +183,9 @@ int run_workload(int argc, char** argv) {
             grid, problem.matrix, geometric.prolongation,
             adaptive_options, &problem.rhs);
         const WorkloadMetric adaptive_metric = evaluate_workload(
-            problem.matrix, adaptive.prolongation, rhs_set,
-            threads, maximum_cycles);
+            *adaptive.cycle, rhs_set, maximum_cycles, 0.0);
         const double adaptive_setup = geometric.report.timing.total_ms +
-            adaptive.report.selection_wall_ms +
-            adaptive_metric.hierarchy_setup_ms;
+            adaptive.report.selection_wall_ms;
 
         const auto append = [&](const std::string& method, int steps,
                                 double setup, const WorkloadMetric& metric) {
@@ -201,7 +208,7 @@ int run_workload(int argc, char** argv) {
         };
         append("geometric", 0, geometric_setup, geometric_metric);
         append("fixed", 40, fixed_setup, fixed_metric);
-        append("adaptive-v3.5", adaptive.report.selected_steps,
+        append("adaptive-v3.6", adaptive.report.selected_steps,
                adaptive_setup, adaptive_metric);
     }
 

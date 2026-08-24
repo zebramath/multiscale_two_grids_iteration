@@ -26,6 +26,13 @@ int cycles_for(
     return solved.converged ? solved.cycles : maximum + 1;
 }
 
+int cycles_for(
+    const tgi::Vector& rhs, const tgi::TwoGridCycle& cycle, int maximum) {
+    const auto solved = tgi::solve_two_grid(
+        rhs, cycle, 1.0e-6, maximum);
+    return solved.converged ? solved.cycles : maximum + 1;
+}
+
 }
 
 int run_oracle_quality(int argc, char** argv) {
@@ -36,11 +43,13 @@ int run_oracle_quality(int argc, char** argv) {
             threads = std::stoi(argument.substr(10));
     }
     const auto& topology = experiment_support::channel_topologies();
-    const std::array<OracleCase, 6> cases{{
+    const std::array<OracleCase, 8> cases{{
         {32, 8, 1.0e2, 1, topology[0]},
         {32, 8, 1.0e4, 17, topology[3]},
+        {32, 8, 1.0e6, 17, topology[5]},
         {64, 8, 1.0e2, 1, topology[2]},
         {64, 8, 1.0e6, 17, topology[3]},
+        {64, 8, 1.0e4, 31, topology[4]},
         {64, 16, 1.0e4, 1, topology[2]},
         {64, 16, 1.0e6, 17, topology[1]}
     }};
@@ -96,8 +105,7 @@ int run_oracle_quality(int argc, char** argv) {
             grid, problem.matrix, geometric.prolongation,
             options, &problem.rhs);
         const int adaptive_cycles = cycles_for(
-            problem.matrix, problem.rhs, adaptive.prolongation,
-            threads, maximum_cycles);
+            problem.rhs, *adaptive.cycle, maximum_cycles);
         const double gap = oracle_cycles > 0
             ? 100.0 * static_cast<double>(
                   adaptive_cycles - oracle_cycles) /
@@ -114,7 +122,7 @@ int run_oracle_quality(int argc, char** argv) {
             experiment_support::fixed(adaptive.report.selection_wall_ms),
             experiment_support::fixed(
                 experiment_support::interpolation_density_percent(
-                    adaptive.prolongation), 4)});
+                    *adaptive.prolongation), 4)});
     }
 
     experiment_support::Report report(

@@ -35,12 +35,12 @@ int run_diagnostic_cases(int argc, char** argv) {
     const auto& channels = experiment_support::channel_topologies();
     const auto& standard = experiment_support::standard_fields();
     const std::array<ValidationCase, 8> cases{{
-        {32, 8, 1.0e4, 101, channels[3]},
-        {32, 8, 1.0e6, 313, channels[1]},
+        {32, 8, 1.0e4, 101, channels[4]},
+        {32, 8, 1.0e6, 313, channels[5]},
         {64, 8, 1.0e2, 101, channels[0]},
         {64, 8, 1.0e4, 313, channels[1]},
         {64, 16, 1.0e4, 101, channels[2]},
-        {64, 16, 1.0e6, 313, channels[3]},
+        {64, 16, 1.0e6, 313, channels[4]},
         {64, 8, 1.0e4, 701, standard[0]},
         {64, 16, 1.0e6, 907, standard[2]}
     }};
@@ -103,13 +103,11 @@ int run_diagnostic_cases(int argc, char** argv) {
             grid, problem.matrix, geometric.prolongation,
             options, &problem.rhs);
         const auto adaptive_metric = experiment_support::evaluate_two_grid(
-            problem.matrix, problem.rhs, adaptive.prolongation,
-            threads, 1.0e-6, maximum_cycles);
+            problem.rhs, *adaptive.cycle, 1.0e-6, maximum_cycles);
         const int adaptive_cycles = reported_cycles(
             adaptive_metric, maximum_cycles);
         const double adaptive_setup = geometric.report.timing.total_ms +
-            adaptive.report.selection_wall_ms +
-            adaptive_metric.coarse_setup_ms;
+            adaptive.report.selection_wall_ms;
         const double gap = oracle_cycles > 0
             ? 100.0 * static_cast<double>(adaptive_cycles - oracle_cycles) /
                 static_cast<double>(oracle_cycles)

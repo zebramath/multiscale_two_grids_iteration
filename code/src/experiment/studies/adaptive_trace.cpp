@@ -36,14 +36,11 @@ int run_adaptive_trace(int argc, char** argv) {
     const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
         grid, problem.matrix, geometric.prolongation, options,
         &problem.rhs);
-    experiment_support::StudyCandidate adaptive_candidate{
-        "PCG-adaptive",
+    rows.push_back(experiment_support::evaluate_existing_candidate(
+        problem.field_name, "PCG-adaptive",
         "selected m=" + std::to_string(adaptive.report.selected_steps),
-        adaptive.prolongation,
-        geometric_ms + adaptive.report.selection_wall_ms};
-    rows.push_back(experiment_support::evaluate_candidate(
-        problem.field_name, problem.matrix, problem.rhs,
-        adaptive_candidate, config));
+        problem.rhs, *adaptive.prolongation, *adaptive.cycle,
+        geometric_ms + adaptive.report.selection_wall_ms, config));
 
     const experiment_support::Row history_headers{
         "m", "phase", "pilot", "rho_tail", "uncertainty",
@@ -73,10 +70,11 @@ int run_adaptive_trace(int argc, char** argv) {
     report.add_summary(experiment_support::fixed_study_summary(
         config, "Selector", "midpoint adaptive screen"));
     report.add_note(
-        "The selector evaluates the geometric basis, a minimum-step anchor and "
-        "an interval midpoint. At most one midpoint refinement is added from "
-        "the pilot forecast and normalized PCG energy residual; no full "
-        "confirmation solve is used during setup.");
+        "The selector evaluates the geometric basis, a minimum-step anchor "
+        "and an interval midpoint. If the midpoint remains hard, its "
+        "normalized PCG energy residual chooses one interior or forward "
+        "checkpoint. No full confirmation "
+        "solve is used during setup, and the selected hierarchy is reused.");
     report.add_table(
         "End-to-end verification", experiment_support::study_headers(),
         experiment_support::study_widths(), rows);

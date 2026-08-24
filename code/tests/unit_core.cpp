@@ -41,8 +41,8 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "3.5.0", "wrong package version");
-    require(tgi::version_major == 3 && tgi::version_minor == 5 &&
+    require(tgi::version == "3.6.0", "wrong package version");
+    require(tgi::version_major == 3 && tgi::version_minor == 6 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
     const experiment_support::Row expected_headers{
@@ -68,6 +68,26 @@ int main() {
     coefficient_options.contrast = 1.0e4;
     coefficient_options.channel_background_block_size = 4;
     const auto coefficient = tgi::make_coefficient(grid, coefficient_options);
+    std::vector<tgi::Vector> complex_topologies;
+    for (const auto distribution : {
+             tgi::CoefficientDistribution::BranchingChannelsBinary,
+             tgi::CoefficientDistribution::WindingRingBinary}) {
+        coefficient_options.distribution = distribution;
+        const auto field = tgi::make_coefficient(grid, coefficient_options);
+        require(field.actual_contrast == coefficient_options.contrast,
+                "complex topology lost the requested contrast");
+        require(std::find(field.values.begin(), field.values.end(), 1.0) !=
+                    field.values.end(),
+                "complex topology has no background region");
+        require(std::find(
+                    field.values.begin(), field.values.end(),
+                    coefficient_options.contrast) != field.values.end(),
+                "complex topology has no high-conductivity region");
+        complex_topologies.push_back(field.values);
+    }
+    require(tgi::norm2(tgi::subtract(
+                complex_topologies[0], complex_topologies[1])) > 0.0,
+            "complex coefficient topologies are indistinguishable");
     const tgi::SparseMatrix a = tgi::assemble_diffusion(
         grid, coefficient.values);
     require(a.rows() == grid.fine_size(), "wrong matrix dimension");

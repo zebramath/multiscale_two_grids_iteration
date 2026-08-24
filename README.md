@@ -1,4 +1,4 @@
-# multiscale_two_grids_iteration v3.5
+# multiscale_two_grids_iteration v3.6
 
 二维高对比扩散问题的能量插值、有限步全局 PCG 与两网格收敛研究。
 

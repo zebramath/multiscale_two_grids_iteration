@@ -184,9 +184,15 @@ inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
 inline SparseMatrix GlobalEnergyPcgPath::prolongation(
     double drop_tolerance) {
     std::vector<Triplet> entries;
-    entries.reserve(
-        static_cast<std::size_t>(grid_.coarse_size()) *
-        (system_.f_nodes.size() + 1U));
+    std::size_t entry_count = static_cast<std::size_t>(grid_.coarse_size());
+    for (const ColumnState& state : columns_) {
+        entry_count += static_cast<std::size_t>(std::count_if(
+            state.solution.begin(), state.solution.end(),
+            [drop_tolerance](double value) {
+                return std::abs(value) > drop_tolerance;
+            }));
+    }
+    entries.reserve(entry_count);
     for (int coarse = 0; coarse < grid_.coarse_size(); ++coarse) {
         entries.push_back({grid_.coarse_fine_id(coarse), coarse, 1.0});
         const Vector& weights =
@@ -229,8 +235,7 @@ struct AdaptiveGlobalPcgOptions {
     int pilot_iterations = 24;
     int tail_window = 8;
     double early_accept_forecast_multiple = 2.0;
-    double forward_refinement_forecast_multiple = 4.0;
-    double acceptable_cycle_slack = 0.08;
+    double acceptable_cycle_slack = 0.13;
     int maximum_cycles = 40000;
     int smoothing_steps = 1;
     int thread_count = 1;
@@ -261,7 +266,8 @@ struct AdaptiveGlobalPcgReport {
 };
 
 struct AdaptiveGlobalPcgResult {
-    SparseMatrix prolongation;
+    std::shared_ptr<SparseMatrix> prolongation;
+    std::unique_ptr<TwoGridCycle> cycle;
     AdaptiveGlobalPcgReport report;
 };
 
@@ -469,19 +475,15 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
                 options.step_quantum,
                 options.minimum_steps + options.step_quantum,
                 options.maximum_steps);
-            const int backward = quantize(
+            const int interior = quantize(
                 (options.minimum_steps + midpoint) / 2,
                 options.step_quantum,
                 options.minimum_steps + options.step_quantum,
-                midpoint);
-            SparseMatrix backward_prolongation;
-            GlobalPcgPathReport backward_report;
-            if (backward < midpoint) {
-                path.advance_to(backward);
-                backward_report = path.report();
-                backward_prolongation = path.prolongation(
-                    options.drop_tolerance);
-            }
+                midpoint - options.step_quantum);
+            path.advance_to(interior);
+            SparseMatrix interior_prolongation = path.prolongation(
+                options.drop_tolerance);
+            const GlobalPcgPathReport interior_report = path.report();
             path.advance_to(midpoint);
             path_report = path.report();
             candidates.push_back(pilot_candidate(
@@ -491,20 +493,13 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
             const int midpoint_forecast =
                 candidates.back()->checkpoint.predicted_cycles;
             if (midpoint_forecast > easy_limit) {
-                if (midpoint_forecast >
-                        easy_limit + options.pilot_iterations &&
-                    candidates.back()->checkpoint
-                            .preconditioned_pcg_residual <=
-                        std::sqrt(options.solve_tolerance) &&
-                    backward_prolongation.rows() > 0) {
+                if (candidates.back()->checkpoint
+                        .preconditioned_pcg_residual <=
+                    std::sqrt(options.solve_tolerance)) {
                     candidates.push_back(pilot_candidate(
-                        a, rhs, std::move(backward_prolongation),
-                        backward, "refine-backward", options,
-                        backward_report));
-                } else if (midpoint_forecast >
-                        options.forward_refinement_forecast_multiple *
-                            easy_limit &&
-                    midpoint < options.maximum_steps) {
+                        a, rhs, std::move(interior_prolongation),
+                        interior, "interior", options, interior_report));
+                } else {
                     const int forward = quantize(
                         (midpoint + options.maximum_steps) / 2,
                         options.step_quantum,
@@ -514,7 +509,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
                     path_report = path.report();
                     candidates.push_back(pilot_candidate(
                         a, rhs, path.prolongation(options.drop_tolerance),
-                        forward, "refine-forward", options, path_report));
+                        forward, "forward", options, path_report));
                 }
             }
         }
@@ -523,7 +518,8 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
     const std::size_t selected = select_candidate(
         candidates, options.acceptable_cycle_slack);
     candidates[selected]->checkpoint.selected = true;
-    result.prolongation = *candidates[selected]->prolongation;
+    result.prolongation = std::move(candidates[selected]->prolongation);
+    result.cycle = std::move(candidates[selected]->cycle);
     result.report.selected_steps = candidates[selected]->checkpoint.steps;
     result.report.estimated_selected_cycles =
         candidates[selected]->checkpoint.predicted_cycles;

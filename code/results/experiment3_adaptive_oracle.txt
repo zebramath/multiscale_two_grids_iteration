@@ -1,7 +1,7 @@
 Adaptive finite-PCG checkpoint selection
 ========================================
 
-Version         : 3.5.0
+Version         : 3.6.0
 Fine grid       : h=1/128
 Coarse grid     : H=1/16
 Contrast        : 1e+04
@@ -10,34 +10,35 @@ Solve tolerance : 1e-6
 Timing          : one end-to-end run per candidate
 Selector        : midpoint adaptive screen
 
-Note: The selector evaluates the geometric basis, a minimum-step anchor and an interval midpoint. At most one midpoint refinement is added from the pilot forecast and normalized PCG energy residual; no full confirmation solve is used during setup.
+Note: The selector evaluates the geometric basis, a minimum-step anchor and an interval midpoint. If the midpoint remains hard, its normalized PCG energy residual chooses one interior or forward checkpoint. No full confirmation solve is used during setup, and the selected hierarchy is reused.
 
 End-to-end verification
 -----------------------
 Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
 -----------  ------------------  --------------------  -----------  ----------  ----------  ------------
-cross-channel           PCG-fixed                  m=16       9.1300     718.996    4482.499          4043
-cross-channel           PCG-fixed                  m=24      14.4398     830.993    1951.323           926
-cross-channel           PCG-fixed                  m=32      20.4547     959.452    1389.600           347
-cross-channel           PCG-fixed                  m=36      23.5999    1034.516    1449.532           268
-cross-channel           PCG-fixed                  m=38      25.2786    1027.978    1438.363           231
-cross-channel           PCG-fixed                  m=40      26.9969    1187.158    1539.114           234
-cross-channel           PCG-fixed                  m=48      33.8960    1231.052    1805.238           256
-cross-channel        PCG-adaptive         selected m=40      26.9969    1479.502    1881.628           234
+cross-channel           PCG-fixed                  m=16       9.1300     138.823    1800.368          4043
+cross-channel           PCG-fixed                  m=24      14.4398     190.374     647.708           926
+cross-channel           PCG-fixed                  m=32      20.4547     236.723     488.192           347
+cross-channel           PCG-fixed                  m=36      23.5999     262.717     443.159           268
+cross-channel           PCG-fixed                  m=38      25.2786     277.160     441.553           231
+cross-channel           PCG-fixed                  m=40      26.9969     295.550     467.483           234
+cross-channel           PCG-fixed                  m=48      33.8960     341.906     554.127           256
+cross-channel        PCG-adaptive         selected m=40      26.9969     555.233     737.023           234
 
 Adaptive decision trace
 -----------------------
 m           phase    pilot     rho_tail   uncertainty   pilot residual  PCG energy residual  pred cycles  P density %     path ms    pilot ms   selected
 -----  ----------  -------  -----------  ------------  ---------------  ------------------  -----------  -----------  ----------  ----------  ---------
-0         initial       24     0.994006        0.1079        5.654e+00           1.000e+00         2611       1.3950       0.000      15.780         no
-16         anchor       24     0.990369        0.0116        2.364e+01           1.101e-01         1779       9.1300     561.042      71.746         no
-40       midpoint       24     0.912467        0.0128        3.438e+00           1.112e-02          189      26.9969     786.609     114.907        yes
+0         initial       24     0.994006        0.1079        5.654e+00           1.000e+00         2611       1.3950       0.000       7.471         no
+16         anchor       24     0.990369        0.0116        2.364e+01           1.101e-01         1779       9.1300     128.031      18.632         no
+40       midpoint       24     0.912467        0.0128        3.438e+00           1.112e-02          189      26.9969     247.050      48.358        yes
+52        forward       24     0.907640        0.0165        1.126e+00           5.154e-03          168      37.3532     308.841      71.865         no
 
 
 Adaptive PCG versus an offline step-two oracle
 ==============================================
 
-Version           : 3.5.0
+Version           : 3.6.0
 Oracle candidates : m=0 and m=12,14,...,48
 Solve tolerance   : 1e-6
 
@@ -47,11 +48,13 @@ Representative oracle gaps
 --------------------------
 1/h      1/H    Contrast              Topology  Selected m   Adaptive cycles   Oracle m   Oracle cycles     Gap %   Selection ms  P density %
 -----  -----  ----------  --------------------  ----------  ----------------  ---------  --------------  --------  -------------  -----------
-32         8       1e+02         cross-channel           0                38          0              38      0.00          1.123       5.0989
-32         8       1e+04     parallel-channels          12                54         20              45     20.00         16.521      44.2757
-64         8       1e+02     diagonal-channels          12               228         12             228      0.00         86.470      24.6651
-64         8       1e+06     parallel-channels          12               160         22             144     11.11         80.210      24.6651
-64        16       1e+04     diagonal-channels          34                51         30              50      2.00        217.087      48.2792
-64        16       1e+06    meandering-channel          34                58         40              51     13.73        207.811      48.2792
+32         8       1e+02         cross-channel           0                38          0              38      0.00          0.603       5.0989
+32         8       1e+04     parallel-channels          12                54         20              45     20.00         12.568      44.2757
+32         8       1e+06          winding-ring          24                59         20              51     15.69         13.008      81.2695
+64         8       1e+02     diagonal-channels          12               228         12             228      0.00         49.078      24.6651
+64         8       1e+06     parallel-channels          12               160         22             144     11.11         45.957      24.6651
+64         8       1e+04    branching-channels          12               167         12             167      0.00         44.915      24.6651
+64        16       1e+04     diagonal-channels          24                55         30              50     10.00        130.738      31.5204
+64        16       1e+06    meandering-channel          34                58         40              51     13.73        132.156      48.2792
 
 

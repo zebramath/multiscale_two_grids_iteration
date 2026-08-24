@@ -83,7 +83,11 @@ inline const std::vector<FieldCase>& channel_topologies() {
         {"diagonal-channels",
          tgi::CoefficientDistribution::DiagonalChannelsBinary},
         {"parallel-channels",
-         tgi::CoefficientDistribution::ParallelChannelsBinary}
+         tgi::CoefficientDistribution::ParallelChannelsBinary},
+        {"branching-channels",
+         tgi::CoefficientDistribution::BranchingChannelsBinary},
+        {"winding-ring",
+         tgi::CoefficientDistribution::WindingRingBinary}
     };
     return fields;
 }

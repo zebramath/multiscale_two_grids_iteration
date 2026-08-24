@@ -48,7 +48,9 @@ enum class CoefficientDistribution {
     ChannelizedBinary,
     MeanderingChannelBinary,
     DiagonalChannelsBinary,
-    ParallelChannelsBinary
+    ParallelChannelsBinary,
+    BranchingChannelsBinary,
+    WindingRingBinary
 };
 
 struct CoefficientOptions {
@@ -194,7 +196,9 @@ inline bool is_channel_distribution(CoefficientDistribution distribution) {
     return distribution == CoefficientDistribution::ChannelizedBinary ||
         distribution == CoefficientDistribution::MeanderingChannelBinary ||
         distribution == CoefficientDistribution::DiagonalChannelsBinary ||
-        distribution == CoefficientDistribution::ParallelChannelsBinary;
+        distribution == CoefficientDistribution::ParallelChannelsBinary ||
+        distribution == CoefficientDistribution::BranchingChannelsBinary ||
+        distribution == CoefficientDistribution::WindingRingBinary;
 }
 
 inline bool is_high_conductivity_topology(
@@ -220,6 +224,29 @@ inline bool is_high_conductivity_topology(
         return std::abs(y - (0.25 + wobble)) <= 0.5 * width ||
             std::abs(y - (0.50 - wobble)) <= 0.5 * width ||
             std::abs(y - (0.75 + wobble)) <= 0.5 * width;
+    }
+    if (distribution == CoefficientDistribution::BranchingChannelsBinary) {
+        const double trunk = 0.50 + 0.04 *
+            std::sin(2.0 * pi * x + phase);
+        const double branch_origin = 0.42;
+        const double branch_distance = std::max(0.0, x - branch_origin);
+        const double branch_wobble = 0.018 *
+            std::sin(5.0 * pi * x + phase);
+        const double upper = 0.50 + 0.72 * branch_distance + branch_wobble;
+        const double lower = 0.50 - 0.72 * branch_distance - branch_wobble;
+        return std::abs(y - trunk) <= 0.5 * width ||
+            (x >= branch_origin &&
+             (std::abs(y - upper) <= 0.5 * width ||
+              std::abs(y - lower) <= 0.5 * width));
+    }
+    if (distribution == CoefficientDistribution::WindingRingBinary) {
+        const double dx = x - 0.50;
+        const double dy = y - 0.50;
+        const double angle = std::atan2(dy, dx);
+        const double radius = std::sqrt(dx * dx + dy * dy);
+        const double target = 0.29 + 0.035 *
+            std::sin(5.0 * angle + phase);
+        return std::abs(radius - target) <= 0.5 * width;
     }
     return false;
 }

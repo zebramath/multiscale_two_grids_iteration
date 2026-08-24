@@ -87,8 +87,10 @@ int main() {
             "adaptive PCG did not record its decisions");
     require(adaptive.report.history.size() <= 4U,
             "budget adaptive PCG exceeded its finite candidate budget");
-    require(adaptive.prolongation.rows() == grid.fine_size(),
+    require(adaptive.prolongation->rows() == grid.fine_size(),
             "adaptive PCG returned an invalid prolongation");
+    require(adaptive.cycle->coarse_size() == grid.coarse_size(),
+            "adaptive PCG returned an invalid reusable hierarchy");
 
     return 0;
 }

@@ -61,6 +61,20 @@ inline CycleMetrics evaluate_two_grid(
         std::chrono::duration<double, std::milli>(end - begin).count()};
 }
 
+inline CycleMetrics evaluate_two_grid(
+    const tgi::Vector& rhs, const tgi::TwoGridCycle& cycle,
+    double solve_tolerance, int max_cycles) {
+    const auto begin = std::chrono::steady_clock::now();
+    const auto result = tgi::solve_two_grid(
+        rhs, cycle, solve_tolerance, max_cycles);
+    const auto end = std::chrono::steady_clock::now();
+    return {
+        result.cycles,
+        result.converged,
+        0.0,
+        std::chrono::duration<double, std::milli>(end - begin).count()};
+}
+
 inline const Row& study_headers() {
     static const Row headers{
         "Field", "Method", "Parameter", "P density %",
@@ -91,6 +105,26 @@ inline Row evaluate_candidate(
         cycle.converged
             ? std::to_string(cycle.cycles)
             : "failed@" + std::to_string(cycle.cycles)};
+}
+
+inline Row evaluate_existing_candidate(
+    const std::string& field, const std::string& method,
+    const std::string& parameter, const tgi::Vector& rhs,
+    const tgi::SparseMatrix& prolongation,
+    const tgi::TwoGridCycle& cycle, double setup_ms,
+    const BasicConfig& config) {
+    const CycleMetrics metric = evaluate_two_grid(
+        rhs, cycle, 1.0e-6, config.max_cycles);
+    return {
+        field,
+        method,
+        parameter,
+        fixed(interpolation_density_percent(prolongation), 4),
+        fixed(setup_ms),
+        fixed(setup_ms + metric.total_ms),
+        metric.converged
+            ? std::to_string(metric.cycles)
+            : "failed@" + std::to_string(metric.cycles)};
 }
 
 inline Summary fixed_study_summary(
