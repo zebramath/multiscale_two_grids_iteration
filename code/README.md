@@ -1,45 +1,47 @@
-# two_grids_iteration v4.1.0
+# two_grids_iteration v4.2.0
 
 ## 核心模块
 
 | 模块 | 内容 |
 |---|---|
 | `energy_interpolation.hpp` | 几何、局部和全局能量插值 |
-| `global_pcg.hpp` | 增量全局 PCG 路径和渐进式候选竞速 |
+| `global_pcg.hpp` | 增量全局 PCG 路径和 v4.2 可调选择器 |
 | `two_grid_solver.hpp` | Galerkin 粗算子、对称平滑和两网格循环 |
-| `support_expansion.hpp` | 局部支撑研究基础设施 |
 
-v4.1 不包含递归多层层次、V-cycle 或多层预条件 CG。
+代码不包含递归多层层次、V-cycle 或多层预条件 CG。未进入研究主线的支撑扩张模块
+和旧版多阶段候选路由已删除。
 
-## 自适应算法
+## 自适应策略
 
-若几何候选不够好，选择器沿同一增量 PCG 路径广筛
-`m=12,20,28,36,44,52,60`，每个候选运行至多 64 次两网格 pilot。随后确认预测最好
-的三个候选、最小步锚点和 3% 松弛下的稀疏优先候选，确认上限为 384 次；最后检查
-优胜者的 step--2 邻点和它与次优者之间的中点。
+默认候选为 `m=0,12,20,...,60`，以代表性右端项的短两网格残差尾预测完整循环数。
+公开参数 `expected_rhs_count=R` 连续控制 pilot 长度和近优容忍度；较大 `R` 还允许在
+预测优胜者的 `m±2` 处做至多两次细化。策略不读取尺寸、对比度、拓扑或 oracle。
 
-候选规则不读取拓扑、对比度、种子或 oracle 步数。选择墙钟时间包括所有候选两网格
-层次的建立和 pilot；主实验的 Setup 还包括几何初值构造。
+典型设置：
+
+```cpp
+tgi::AdaptiveGlobalPcgOptions options;
+options.expected_rhs_count = 1.0;    // 低 setup
+// options.expected_rhs_count = 256; // 多右端项，偏向低循环数
+```
 
 ## 构建与验证
 
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-cmake --build build --parallel 4
-ctest --test-dir build --output-on-failure
 ./scripts/run_validation.sh quick
 ./scripts/run_validation.sh full
 ```
 
-可通过 `TGI_THREADS` 和 `TGI_STEP_TIMEOUT_SECONDS` 调整线程数与单步超时。
+脚本优先使用 CMake；没有 CMake 时自动使用 C++17 严格直接构建。可通过
+`TGI_THREADS`、`TGI_BUILD_DIR` 和 `TGI_STEP_TIMEOUT_SECONDS` 调整运行。
 
 ## 三个实验
 
 | 入口 | 内容 |
 |---|---|
-| `experiment1_two_grid_comparison` | 单因素尺寸、对比度、六拓扑两网格主比较 |
-| `experiment2_finite_path` | 三个 cross-channel 问题的有限路径机制证据 |
-| `experiment3_oracle_validation` | 七问题 step--2 离线 oracle 选择质量 |
+| `experiment1_two_grid_comparison` | 尺寸、对比度、六拓扑的两网格主比较 |
+| `experiment2_finite_path` | 三个问题上的能量单调/循环非单调证据 |
+| `experiment3_oracle_validation` | 七问题 step--2 离线 oracle 质量 |
 
-每个入口生成一份同名 TXT，不生成 CSV。所有公开循环数均由候选独立求解到相对残差
-`1e-6` 得到。
+每个入口生成同名 TXT。正式循环数均从零初值独立求解到相对残差 `1e-6`，不复用
+候选 pilot 状态。

@@ -5,6 +5,8 @@ mode="${1:-quick}"
 threads="${TGI_THREADS:-4}"
 build_dir="${TGI_BUILD_DIR:-build}"
 step_timeout="${TGI_STEP_TIMEOUT_SECONDS:-900}"
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+cd "$script_dir/.."
 
 run_step() {
     label="$1"
@@ -18,21 +20,58 @@ run_step() {
     echo "[done]  $label"
 }
 
-run_step configure cmake -S . -B "$build_dir" \
-    -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-run_step build cmake --build "$build_dir" --parallel "$threads"
-run_step tests ctest --test-dir "$build_dir" --output-on-failure
+build_direct() {
+    cxx="${CXX:-c++}"
+    mkdir -p "$build_dir"
+    common="-std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror -pthread -I src"
+    if "$cxx" -fopenmp -x c++ -E /dev/null >/dev/null 2>&1; then
+        common="$common -fopenmp"
+    fi
+    # shellcheck disable=SC2086
+    "$cxx" $common tests/unit_core.cpp -o "$build_dir/unit_core"
+    # shellcheck disable=SC2086
+    "$cxx" $common tests/regression_v42.cpp -o "$build_dir/regression_v42"
+    # shellcheck disable=SC2086
+    "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
+        experiments/experiment1_two_grid_comparison.cpp \
+        src/experiment/studies/two_grid_comparison.cpp \
+        -o "$build_dir/experiment1_two_grid_comparison"
+    # shellcheck disable=SC2086
+    "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
+        experiments/experiment2_finite_path.cpp \
+        src/experiment/studies/finite_path_evidence.cpp \
+        -o "$build_dir/experiment2_finite_path"
+    # shellcheck disable=SC2086
+    "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
+        experiments/experiment3_oracle_validation.cpp \
+        src/experiment/studies/oracle_quality.cpp \
+        -o "$build_dir/experiment3_oracle_validation"
+}
+
+if command -v cmake >/dev/null 2>&1; then
+    run_step configure cmake -S . -B "$build_dir" \
+        -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+    run_step build cmake --build "$build_dir" --parallel "$threads"
+    run_step tests ctest --test-dir "$build_dir" --output-on-failure
+else
+    echo "[info] cmake unavailable; using the direct C++17 build"
+    echo "[start] build-direct"
+    build_direct
+    echo "[done]  build-direct"
+    run_step unit-core "$build_dir/unit_core"
+    run_step regression-v42 "$build_dir/regression_v42"
+fi
 
 if [ "$mode" = "quick" ]; then
-    run_step experiment1_two_grid_comparison \
+    run_step experiment1-two-grid \
         "$build_dir/experiment1_two_grid_comparison" \
         --quick --threads="$threads"
 elif [ "$mode" = "full" ]; then
-    run_step experiment1_two_grid_comparison \
+    run_step experiment1-two-grid \
         "$build_dir/experiment1_two_grid_comparison" --threads="$threads"
-    run_step experiment2_finite_path \
+    run_step experiment2-finite-path \
         "$build_dir/experiment2_finite_path" --threads="$threads"
-    run_step experiment3_oracle_validation \
+    run_step experiment3-oracle \
         "$build_dir/experiment3_oracle_validation" --threads="$threads"
 else
     echo "usage: $0 [quick|full]" >&2

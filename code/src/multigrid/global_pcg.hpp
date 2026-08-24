@@ -240,13 +240,7 @@ struct AdaptiveGlobalPcgOptions {
     int minimum_steps = 12;
     int maximum_steps = 60;
     int step_quantum = 2;
-    int screening_stride = 8;
-    int pilot_iterations = 64;
-    int confirmation_iterations = 384;
-    int confirmation_candidates = 3;
-    int tail_window = 24;
-    double early_accept_forecast_multiple = 2.0;
-    double acceptable_cycle_slack = 0.03;
+    double expected_rhs_count = 1.0;
     int maximum_cycles = 40000;
     int smoothing_steps = 1;
     int thread_count = 1;
@@ -265,15 +259,21 @@ struct AdaptiveGlobalPcgCheckpoint {
     double forecast_relative_uncertainty = 0.0;
     double preconditioned_pcg_residual = 0.0;
     double path_ms = 0.0;
+    double cycle_setup_ms = 0.0;
     double pilot_ms = 0.0;
+    double predicted_solve_ms = 0.0;
+    double amortized_cost_ms = 0.0;
     bool pilot_converged = false;
-    bool confirmed = false;
     bool selected = false;
 };
 
 struct AdaptiveGlobalPcgReport {
     int selected_steps = 0;
     int estimated_selected_cycles = 0;
+    int checkpoint_stride = 0;
+    int pilot_iterations = 0;
+    double expected_rhs_count = 1.0;
+    bool used_local_refinement = false;
     double selection_wall_ms = 0.0;
     std::vector<AdaptiveGlobalPcgCheckpoint> history;
 };
@@ -290,6 +290,30 @@ using Clock = std::chrono::steady_clock;
 
 inline double milliseconds(Clock::time_point begin, Clock::time_point end) {
     return std::chrono::duration<double, std::milli>(end - begin).count();
+}
+
+inline int quantize(int value, int quantum) {
+    return std::max(quantum, ((value + quantum / 2) / quantum) * quantum);
+}
+
+struct SelectionProfile {
+    int stride = 8;
+    int pilot_iterations = 64;
+    double near_optimal_slack = 0.05;
+    bool refine = false;
+};
+
+inline SelectionProfile selection_profile(
+    const AdaptiveGlobalPcgOptions& options) {
+    const double detail = std::min(
+        1.0, std::max(0.0, std::log2(options.expected_rhs_count) / 7.0));
+    SelectionProfile profile;
+    profile.stride = quantize(8, options.step_quantum);
+    profile.pilot_iterations = static_cast<int>(
+        std::lround(64.0 + 96.0 * detail));
+    profile.near_optimal_slack = 0.05 - 0.03 * detail;
+    profile.refine = detail >= 0.5;
+    return profile;
 }
 
 inline double median(std::vector<double> values) {
@@ -312,50 +336,28 @@ struct TailModel {
     double relative_uncertainty = 1.0;
 };
 
-inline TailModel fit_tail(
-    const std::vector<double>& norms, int tail_window) {
+inline TailModel fit_tail(const std::vector<double>& norms) {
     const int completed = static_cast<int>(norms.size()) - 1;
     if (completed <= 0) return {};
-    if (completed == 1) {
-        const double current = std::max(norms.back(), 1.0e-300);
-        const double previous = std::max(norms.front(), 1.0e-300);
-        TailModel model;
-        model.rho = std::exp(std::min(
-            -1.0e-10, std::log(current / previous)));
-        model.relative_uncertainty = 1.0;
-        return model;
-    }
-    const int block = std::max(2, tail_window / 2);
-    const int begin = std::max(block, completed - tail_window + 1);
+    const int begin = std::max(1, completed / 2);
     std::vector<double> rates;
     rates.reserve(static_cast<std::size_t>(completed - begin + 1));
     for (int iteration = begin; iteration <= completed; ++iteration) {
         const double current = std::max(
             norms[static_cast<std::size_t>(iteration)], 1.0e-300);
         const double previous = std::max(norms[
-            static_cast<std::size_t>(iteration - block)], 1.0e-300);
-        rates.push_back(
-            std::log(current / previous) / static_cast<double>(block));
+            static_cast<std::size_t>(iteration - 1)], 1.0e-300);
+        rates.push_back(std::log(current / previous));
     }
     const double center = median(rates);
     std::vector<double> deviations;
     deviations.reserve(rates.size());
     for (double rate : rates) deviations.push_back(std::abs(rate - center));
     const double scale = 1.4826 * median(std::move(deviations));
-    const double uncertainty = scale /
-        std::sqrt(static_cast<double>(rates.size()));
-    const int first = std::max(0, completed - tail_window);
-    const double long_rate = (
-        std::log(std::max(norms.back(), 1.0e-300)) -
-        std::log(std::max(
-            norms[static_cast<std::size_t>(first)], 1.0e-300))) /
-        static_cast<double>(completed - first);
-    const double blended = 0.65 * center + 0.35 * long_rate;
-    const double conservative = blended + 0.25 * scale;
     TailModel model;
-    model.rho = std::exp(std::min(-1.0e-10, conservative));
+    model.rho = std::exp(std::min(-1.0e-10, center + 0.25 * scale));
     model.relative_uncertainty = std::min(
-        2.0, uncertainty / std::max(std::abs(center), 1.0e-10));
+        2.0, scale / std::max(std::abs(center), 1.0e-10));
     return model;
 }
 
@@ -405,20 +407,20 @@ inline std::unique_ptr<Candidate> make_candidate(
     candidate->cycle = std::make_unique<TwoGridCycle>(
         a, *candidate->prolongation,
         options.smoothing_steps, options.thread_count);
+    checkpoint.cycle_setup_ms =
+        candidate->cycle->setup_report().total_ms;
     candidate->solution.assign(rhs.size(), 0.0);
     candidate->residual = rhs;
     candidate->initial_norm = std::max(norm2(rhs), 1.0e-300);
-    candidate->norms.reserve(
-        static_cast<std::size_t>(options.confirmation_iterations) + 1U);
     candidate->norms.push_back(candidate->initial_norm);
     return candidate;
 }
 
-inline void advance_candidate(
-    Candidate& candidate, const Vector& rhs, int target_iterations,
-    const AdaptiveGlobalPcgOptions& options, bool confirmation) {
+inline void probe_candidate(
+    Candidate& candidate, const Vector& rhs, int pilot_iterations,
+    const AdaptiveGlobalPcgOptions& options) {
     const auto begin = Clock::now();
-    while (candidate.checkpoint.pilot_iterations < target_iterations &&
+    while (candidate.checkpoint.pilot_iterations < pilot_iterations &&
            !candidate.checkpoint.pilot_converged) {
         const double squared = candidate.cycle->iterate(
             rhs, candidate.solution, candidate.residual,
@@ -430,14 +432,9 @@ inline void advance_candidate(
             current / candidate.initial_norm <= options.solve_tolerance;
     }
     candidate.checkpoint.pilot_ms += milliseconds(begin, Clock::now());
-    candidate.checkpoint.confirmed =
-        candidate.checkpoint.confirmed || confirmation;
     candidate.checkpoint.pilot_relative_residual =
         candidate.norms.back() / candidate.initial_norm;
-    const TailModel model = fit_tail(
-        candidate.norms,
-        std::min(options.tail_window,
-                 candidate.checkpoint.pilot_iterations));
+    const TailModel model = fit_tail(candidate.norms);
     candidate.checkpoint.rho_rhs_pilot = model.rho;
     candidate.checkpoint.forecast_relative_uncertainty =
         model.relative_uncertainty;
@@ -446,11 +443,15 @@ inline void advance_candidate(
         candidate.checkpoint.pilot_relative_residual,
         candidate.checkpoint.rho_rhs_pilot,
         options.solve_tolerance, options.maximum_cycles);
-}
-
-inline int quantize(int steps, int quantum, int lower, int upper) {
-    const int rounded = ((steps + quantum / 2) / quantum) * quantum;
-    return std::max(lower, std::min(upper, rounded));
+    const double cycle_ms = candidate.checkpoint.pilot_ms /
+        static_cast<double>(
+            std::max(1, candidate.checkpoint.pilot_iterations));
+    candidate.checkpoint.predicted_solve_ms = cycle_ms *
+        static_cast<double>(candidate.checkpoint.predicted_cycles);
+    candidate.checkpoint.amortized_cost_ms =
+        candidate.checkpoint.cycle_setup_ms /
+            options.expected_rhs_count +
+        candidate.checkpoint.predicted_solve_ms;
 }
 
 inline std::size_t select_candidate(
@@ -460,25 +461,12 @@ inline std::size_t select_candidate(
     for (const auto& candidate : candidates) {
         best = std::min(best, candidate->checkpoint.predicted_cycles);
     }
-    if (best == candidates.front()->checkpoint.predicted_cycles &&
-        std::all_of(
-            candidates.begin(), candidates.end(),
-            [&](const auto& candidate) {
-                return candidate->checkpoint.predicted_cycles == best;
-            })) {
-        return static_cast<std::size_t>(std::min_element(
-            candidates.begin(), candidates.end(),
-            [](const auto& lhs, const auto& rhs) {
-                return lhs->checkpoint.preconditioned_pcg_residual <
-                    rhs->checkpoint.preconditioned_pcg_residual;
-            }) - candidates.begin());
-    }
     const double limit = (1.0 + slack) * static_cast<double>(best);
     std::size_t selected = 0;
     bool found = false;
     for (std::size_t index = 0; index < candidates.size(); ++index) {
-        if (static_cast<double>(
-                candidates[index]->checkpoint.predicted_cycles) <= limit &&
+        const auto& checkpoint = candidates[index]->checkpoint;
+        if (static_cast<double>(checkpoint.predicted_cycles) <= limit &&
             (!found || candidates[index]->checkpoint.steps <
                 candidates[selected]->checkpoint.steps)) {
             selected = index;
@@ -488,15 +476,13 @@ inline std::size_t select_candidate(
     return selected;
 }
 
-inline std::vector<int> screening_steps(
-    const AdaptiveGlobalPcgOptions& options) {
+inline std::vector<int> sampled_steps(
+    const AdaptiveGlobalPcgOptions& options, int stride) {
     std::vector<int> steps;
     for (int value = options.minimum_steps;
          value < options.maximum_steps;
-         value += options.screening_stride) {
-        steps.push_back(quantize(
-            value, options.step_quantum,
-            options.minimum_steps, options.maximum_steps));
+         value += stride) {
+        steps.push_back(value);
     }
     if (steps.empty() || steps.back() != options.maximum_steps) {
         steps.push_back(options.maximum_steps);
@@ -524,161 +510,57 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
     }
     if (options.minimum_steps < 0 ||
         options.maximum_steps <= options.minimum_steps ||
-        options.step_quantum <= 0 || options.screening_stride <= 0 ||
-        options.pilot_iterations < 2 ||
-        options.confirmation_iterations < options.pilot_iterations ||
-        options.confirmation_candidates <= 0 ||
-        options.tail_window < 2 || options.maximum_cycles <= 0 ||
+        options.step_quantum <= 0 || options.maximum_cycles <= 0 ||
         options.smoothing_steps <= 0 ||
+        !(options.expected_rhs_count >= 1.0) ||
+        !std::isfinite(options.expected_rhs_count) ||
         !(options.solve_tolerance > 0.0) ||
         !(options.solve_tolerance < 1.0) ||
-        options.drop_tolerance < 0.0 ||
-        options.acceptable_cycle_slack < 0.0) {
+        options.drop_tolerance < 0.0) {
         throw std::invalid_argument(
             "adaptive global PCG received invalid options");
     }
     const auto begin = Clock::now();
     const Vector& rhs = *representative_rhs;
+    const SelectionProfile profile = selection_profile(options);
     std::vector<std::unique_ptr<Candidate>> candidates;
-    std::vector<AdaptiveGlobalPcgCheckpoint> archived_checkpoints;
     GlobalPcgPathReport initial_report;
     initial_report.relative_preconditioned_residual = 1.0;
     candidates.push_back(make_candidate(
-        a, rhs, initial_prolongation, 0, "initial",
+        a, rhs, initial_prolongation, 0, "sample",
         options, initial_report));
-    advance_candidate(
-        *candidates.back(), rhs, options.pilot_iterations,
-        options, false);
+    probe_candidate(
+        *candidates.back(), rhs, profile.pilot_iterations, options);
 
     AdaptiveGlobalPcgResult result;
-    const double easy_limit = options.early_accept_forecast_multiple *
-        static_cast<double>(options.pilot_iterations);
-    if (candidates.front()->checkpoint.predicted_cycles > easy_limit) {
-        GlobalEnergyPcgPath path(
-            grid, a, initial_prolongation, options.thread_count);
-        for (int steps : screening_steps(options)) {
-            path.advance_to(steps);
-            candidates.push_back(make_candidate(
-                a, rhs, path.prolongation(options.drop_tolerance),
-                steps, "screen", options, path.report()));
-            advance_candidate(
-                *candidates.back(), rhs, options.pilot_iterations,
-                options, false);
-        }
+    GlobalEnergyPcgPath path(
+        grid, a, initial_prolongation, options.thread_count);
+    for (int steps : sampled_steps(options, profile.stride)) {
+        path.advance_to(steps);
+        candidates.push_back(make_candidate(
+            a, rhs, path.prolongation(options.drop_tolerance),
+            steps, "sample", options, path.report()));
+        probe_candidate(
+            *candidates.back(), rhs, profile.pilot_iterations, options);
+    }
 
-        std::vector<std::size_t> ranking(candidates.size());
-        for (std::size_t index = 0; index < ranking.size(); ++index) {
-            ranking[index] = index;
-        }
-        std::stable_sort(
-            ranking.begin(), ranking.end(),
-            [&](std::size_t lhs, std::size_t rhs_index) {
-                const auto& left = candidates[lhs]->checkpoint;
-                const auto& right = candidates[rhs_index]->checkpoint;
-                if (left.predicted_cycles != right.predicted_cycles) {
-                    return left.predicted_cycles < right.predicted_cycles;
-                }
-                return left.preconditioned_pcg_residual <
-                    right.preconditioned_pcg_residual;
-            });
-        const int ranked_confirmations = std::min(
-            options.confirmation_candidates,
-            static_cast<int>(ranking.size()));
-        std::vector<std::size_t> confirmation_indices;
-        confirmation_indices.reserve(
-            static_cast<std::size_t>(ranked_confirmations) + 1U);
-        for (int index = 0; index < ranked_confirmations; ++index) {
-            confirmation_indices.push_back(
-                ranking[static_cast<std::size_t>(index)]);
-        }
-        const std::size_t parsimonious_screen_winner =
-            select_candidate(candidates, options.acceptable_cycle_slack);
-        if (std::find(
-                confirmation_indices.begin(), confirmation_indices.end(),
-                parsimonious_screen_winner) ==
-            confirmation_indices.end()) {
-            confirmation_indices.push_back(parsimonious_screen_winner);
-        }
-        const auto anchor = std::find_if(
-            candidates.begin(), candidates.end(),
-            [&](const auto& candidate) {
-                return candidate->checkpoint.steps == options.minimum_steps;
-            });
-        if (anchor != candidates.end()) {
-            const std::size_t anchor_index = static_cast<std::size_t>(
-                anchor - candidates.begin());
-            if (std::find(
-                    confirmation_indices.begin(), confirmation_indices.end(),
-                    anchor_index) == confirmation_indices.end()) {
-                confirmation_indices.push_back(anchor_index);
-            }
-        }
-        std::vector<bool> confirmed(candidates.size(), false);
-        for (std::size_t candidate_index : confirmation_indices) {
-            confirmed[candidate_index] = true;
-            advance_candidate(
-                *candidates[candidate_index],
-                rhs, options.confirmation_iterations, options, true);
-        }
-
-        std::vector<std::unique_ptr<Candidate>> finalists;
-        finalists.reserve(
-            confirmation_indices.size() + 3U);
-        for (std::size_t index = 0; index < candidates.size(); ++index) {
-            if (confirmed[index]) {
-                finalists.push_back(std::move(candidates[index]));
-            } else {
-                archived_checkpoints.push_back(candidates[index]->checkpoint);
-            }
-        }
-        candidates = std::move(finalists);
-
+    if (profile.refine) {
         const std::size_t provisional = select_candidate(candidates, 0.0);
-        std::size_t runner_up = provisional;
-        for (std::size_t index = 0; index < candidates.size(); ++index) {
-            if (index == provisional) continue;
-            if (runner_up == provisional ||
-                candidates[index]->checkpoint.predicted_cycles <
-                    candidates[runner_up]->checkpoint.predicted_cycles) {
-                runner_up = index;
-            }
-        }
-        const int best_steps = candidates[provisional]->checkpoint.steps;
+        const int center = candidates[provisional]->checkpoint.steps;
         std::vector<int> refinement_steps;
-        for (int value : {
-                 best_steps - options.step_quantum,
-                 best_steps + options.step_quantum}) {
-            if (value > options.minimum_steps &&
-                value < options.maximum_steps) {
-                refinement_steps.push_back(value);
-            }
-        }
-        if (runner_up != provisional) {
-            const int other_steps =
-                candidates[runner_up]->checkpoint.steps;
-            if (std::abs(best_steps - other_steps) >
-                2 * options.step_quantum) {
-                refinement_steps.push_back(quantize(
-                    (best_steps + other_steps) / 2,
-                    options.step_quantum,
-                    options.minimum_steps, options.maximum_steps));
+        for (int steps : {center - options.step_quantum,
+                          center + options.step_quantum}) {
+            if (steps >= options.minimum_steps &&
+                steps <= options.maximum_steps &&
+                std::none_of(
+                    candidates.begin(), candidates.end(),
+                    [&](const auto& candidate) {
+                        return candidate->checkpoint.steps == steps;
+                    })) {
+                refinement_steps.push_back(steps);
             }
         }
         std::sort(refinement_steps.begin(), refinement_steps.end());
-        refinement_steps.erase(
-            std::unique(refinement_steps.begin(), refinement_steps.end()),
-            refinement_steps.end());
-        refinement_steps.erase(
-            std::remove_if(
-                refinement_steps.begin(), refinement_steps.end(),
-                [&](int steps) {
-                    return std::any_of(
-                        candidates.begin(), candidates.end(),
-                        [&](const auto& candidate) {
-                            return candidate->checkpoint.steps == steps;
-                        });
-                }),
-            refinement_steps.end());
         if (!refinement_steps.empty()) {
             GlobalEnergyPcgPath refinement_path(
                 grid, a, initial_prolongation, options.thread_count);
@@ -687,26 +569,26 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
                 candidates.push_back(make_candidate(
                     a, rhs,
                     refinement_path.prolongation(options.drop_tolerance),
-                    steps, "refine", options,
-                    refinement_path.report()));
-                advance_candidate(
+                    steps, "refine", options, refinement_path.report()));
+                probe_candidate(
                     *candidates.back(), rhs,
-                    options.confirmation_iterations, options, true);
+                    profile.pilot_iterations, options);
             }
+            result.report.used_local_refinement = true;
         }
     }
 
     const std::size_t selected = select_candidate(
-        candidates, options.acceptable_cycle_slack);
+        candidates, profile.near_optimal_slack);
     candidates[selected]->checkpoint.selected = true;
     result.prolongation = std::move(candidates[selected]->prolongation);
     result.cycle = std::move(candidates[selected]->cycle);
     result.report.selected_steps = candidates[selected]->checkpoint.steps;
     result.report.estimated_selected_cycles =
         candidates[selected]->checkpoint.predicted_cycles;
-    for (const auto& checkpoint : archived_checkpoints) {
-        result.report.history.push_back(checkpoint);
-    }
+    result.report.checkpoint_stride = profile.stride;
+    result.report.pilot_iterations = profile.pilot_iterations;
+    result.report.expected_rhs_count = options.expected_rhs_count;
     for (const auto& candidate : candidates) {
         result.report.history.push_back(candidate->checkpoint);
     }

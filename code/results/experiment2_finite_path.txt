@@ -1,7 +1,8 @@
 Finite-PCG path evidence for nonmonotone two-grid behavior
 ==========================================================
 
-Version         : 4.1.0
+Version         : 4.2.0
+Threads         : 4
 Cases           : 3
 Checkpoints     : m=0,12,20,...,60 and exact
 Solve tolerance : 1e-6

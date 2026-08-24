@@ -5,6 +5,7 @@
 #include <chrono>
 #include <map>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -87,20 +88,28 @@ int run_two_grid_comparison(int argc, char** argv) {
             grid, problem.matrix);
         const double geometric_ms = geometric.report.timing.total_ms;
 
-        tgi::AdaptiveGlobalPcgOptions adaptive_options;
-        adaptive_options.minimum_steps = 12;
-        adaptive_options.maximum_steps = 60;
-        adaptive_options.maximum_cycles = maximum_cycles;
-        adaptive_options.thread_count = threads;
-        const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
-            grid, problem.matrix, geometric.prolongation, adaptive_options,
-            &problem.rhs);
-        rows.push_back(measurement_row(
-            item, "adaptive-PCG",
-            "m=" + std::to_string(adaptive.report.selected_steps),
-            *adaptive.prolongation, *adaptive.cycle, problem.rhs,
-            geometric_ms + adaptive.report.selection_wall_ms,
-            maximum_cycles, aggregates["adaptive-PCG"]));
+        for (const auto& policy : {
+                 std::pair<const char*, double>{"adaptive-fast", 1.0},
+                 std::pair<const char*, double>{"adaptive-reuse", 256.0}}) {
+            tgi::AdaptiveGlobalPcgOptions adaptive_options;
+            adaptive_options.minimum_steps = 12;
+            adaptive_options.maximum_steps = 60;
+            adaptive_options.expected_rhs_count = policy.second;
+            adaptive_options.maximum_cycles = maximum_cycles;
+            adaptive_options.thread_count = threads;
+            const auto adaptive =
+                tgi::build_adaptive_global_pcg_interpolation(
+                    grid, problem.matrix, geometric.prolongation,
+                    adaptive_options, &problem.rhs);
+            rows.push_back(measurement_row(
+                item, policy.first,
+                "R=" + experiment_support::fixed(policy.second, 0) +
+                    ",m=" +
+                    std::to_string(adaptive.report.selected_steps),
+                *adaptive.prolongation, *adaptive.cycle, problem.rhs,
+                geometric_ms + adaptive.report.selection_wall_ms,
+                maximum_cycles, aggregates[policy.first]));
+        }
 
         const auto exact = experiment_support::build_global_reference(
             grid, problem.matrix, threads);
@@ -124,7 +133,8 @@ int run_two_grid_comparison(int argc, char** argv) {
 
     experiment_support::Rows summary_rows;
     for (const std::string method :
-         {"adaptive-PCG", "global-exact", "geometric"}) {
+         {"adaptive-fast", "adaptive-reuse",
+          "global-exact", "geometric"}) {
         const Aggregate& value = aggregates[method];
         summary_rows.push_back({
             method,
@@ -135,7 +145,9 @@ int run_two_grid_comparison(int argc, char** argv) {
                 value.density / static_cast<double>(value.cases), 4),
             experiment_support::fixed(value.setup_ms),
             experiment_support::fixed(value.solve_ms),
-            experiment_support::fixed(value.setup_ms + value.solve_ms)});
+            experiment_support::fixed(value.setup_ms + value.solve_ms),
+            experiment_support::fixed(
+                value.setup_ms + 256.0 * value.solve_ms)});
     }
 
     experiment_support::Report report(
@@ -144,21 +156,24 @@ int run_two_grid_comparison(int argc, char** argv) {
         {"Version", std::string(tgi::version)},
         {"Cases", std::to_string(cases.size())},
         {"Mode", quick ? "quick" : "full"},
+        {"Threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
-        "The v4.1 matrix changes one axis at a time around the 128/16, "
+        "The v4.2 matrix changes one axis at a time around the 128/16, "
         "contrast 1e4 cross-channel center: four size pairs, three contrasts "
-        "and all six channel topologies. Every row uses identical coarse "
-        "nodes, right-hand side and smoother across interpolation methods.");
+        "and all six channel topologies. Adaptive-fast uses R=1; "
+        "adaptive-reuse uses R=256. Every row uses identical coarse nodes, "
+        "right-hand side and smoother across interpolation methods. The "
+        "reuse policy represents a many-right-hand-side workload (R=256).");
     report.add_table(
         "All two-grid cases", headers,
         {10, 5, 5, 10, 6, 20, 15, 12, 11, 9, 10, 10, 10, 12}, rows, true);
     report.add_table(
         "Aggregate comparison",
         {"Method", "Converged", "Cycle sum", "Mean density %",
-         "Setup sum ms", "Solve sum ms", "Total sum ms"},
-        {15, 10, 11, 14, 13, 12, 12}, summary_rows);
+         "Setup sum ms", "Solve sum ms", "Total R=1 ms", "Total R=256 ms"},
+        {15, 10, 11, 14, 13, 12, 13, 14}, summary_rows);
     report.save("two_grid_comparison");
     return 0;
 }

@@ -1,22 +1,32 @@
 Adaptive PCG versus an offline step-two oracle
 ==============================================
 
-Version           : 4.1.0
+Version           : 4.2.0
+Threads           : 4
 Oracle candidates : m=0 and m=12,14,...,60
 Solve tolerance   : 1e-6
 
-Note: The step-two oracle is evaluation-only. The practical selector screens m=0,12,20,...,60 for 64 cycles, confirms the three best forecasts plus the minimum-step anchor and parsimonious screen winner, and locally refines the best interval. It never reads coefficient labels.
+Note: The step-two oracle is evaluation-only. Both policies sample m=0,12,20,...,60. Fast uses a 64-cycle pilot; reuse uses a 160-cycle pilot and at most two neighboring step-two refinements. Neither policy reads scale, contrast or topology labels.
 
 Representative oracle gaps
 --------------------------
-1/h      1/H    Contrast              Topology  Selected m   Adaptive cycles   Oracle m   Oracle cycles     Gap %   Selection ms  P density %
------  -----  ----------  --------------------  ----------  ----------------  ---------  --------------  --------  -------------  -----------
-32         8       1e+04         cross-channel           0                40          0              40      0.00          0.953       5.0989
-64         8       1e+04         cross-channel          12               204         12             204      0.00        285.229      24.6651
-64        16       1e+04         cross-channel          18                54         18              54      0.00        598.933      21.5991
-128       16       1e+04         cross-channel          40               234         38             231      1.30       3016.564      26.9969
-128       16       1e+02         cross-channel          20               228         26             226      0.88       2105.040      11.6236
-128       16       1e+06         cross-channel          60               279         60             279      0.00       3404.864      44.4826
-128       16       1e+04          winding-ring          44               233         52             228      2.19       2967.371      30.3389
+1/h      1/H    Contrast              Topology   Policy     R  Selected m    Cycles   Oracle m   Oracle cycles     Gap %   Selection ms  Candidates    Pilot   Refine
+-----  -----  ----------  --------------------  -------  ----  ----------  --------  ---------  --------------  --------  -------------  ----------  -------  -------
+32         8       1e+04         cross-channel     fast     1           0        40          0              40      0.00         50.926           8       64       no
+32         8       1e+04         cross-channel    reuse   256           0        40          0              40      0.00         44.041           8      160       no
+
+64         8       1e+04         cross-channel     fast     1          12       204         12             204      0.00        197.175           8       64       no
+64         8       1e+04         cross-channel    reuse   256          12       204         12             204      0.00        600.225           9      160      yes
+64        16       1e+04         cross-channel     fast     1          20        68         18              54     25.93        755.262           8       64       no
+64        16       1e+04         cross-channel    reuse   256          18        54         18              54      0.00       1250.420          10      160      yes
+
+128       16       1e+04         cross-channel     fast     1          44       244         38             231      5.63       1425.734           8       64       no
+128       16       1e+04         cross-channel    reuse   256          42       238         38             231      3.03       3221.650          10      160      yes
+128       16       1e+02         cross-channel     fast     1          20       228         26             226      0.88       1748.332           8       64       no
+128       16       1e+02         cross-channel    reuse   256          20       228         26             226      0.88       3496.119          10      160      yes
+128       16       1e+06         cross-channel     fast     1          60       279         60             279      0.00       2400.343           8       64       no
+128       16       1e+06         cross-channel    reuse   256          52       298         60             279      6.81       9760.060          10      160      yes
+128       16       1e+04          winding-ring     fast     1          44       233         52             228      2.19      13721.662           8       64       no
+128       16       1e+04          winding-ring    reuse   256          44       233         52             228      2.19      14317.549          10      160      yes
 
 

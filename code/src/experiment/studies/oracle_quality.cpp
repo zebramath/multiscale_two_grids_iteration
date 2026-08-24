@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -54,9 +55,9 @@ int run_oracle_quality(int argc, char** argv) {
     }};
     constexpr int maximum_cycles = 6000;
     const experiment_support::Row headers{
-        "1/h", "1/H", "Contrast", "Topology", "Selected m",
-        "Adaptive cycles", "Oracle m", "Oracle cycles", "Gap %",
-        "Selection ms", "P density %"};
+        "1/h", "1/H", "Contrast", "Topology", "Policy", "R",
+        "Selected m", "Cycles", "Oracle m", "Oracle cycles", "Gap %",
+        "Selection ms", "Candidates", "Pilot", "Refine"};
     experiment_support::Rows rows;
 
     int case_index = 0;
@@ -95,50 +96,59 @@ int run_oracle_quality(int argc, char** argv) {
             }
         }
 
-        tgi::AdaptiveGlobalPcgOptions options;
-        options.minimum_steps = 12;
-        options.maximum_steps = 60;
-        options.maximum_cycles = maximum_cycles;
-        options.thread_count = threads;
-        const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
-            grid, problem.matrix, geometric.prolongation,
-            options, &problem.rhs);
-        const int adaptive_cycles = cycles_for(
-            problem.rhs, *adaptive.cycle, maximum_cycles);
-        const double gap = oracle_cycles > 0
-            ? 100.0 * static_cast<double>(
-                  adaptive_cycles - oracle_cycles) /
-                  static_cast<double>(oracle_cycles)
-            : 0.0;
-        rows.push_back({
-            std::to_string(item.fine), std::to_string(item.coarse),
-            experiment_support::scientific(item.contrast, 0),
-            item.field.name,
-            std::to_string(adaptive.report.selected_steps),
-            std::to_string(adaptive_cycles),
-            std::to_string(oracle_steps), std::to_string(oracle_cycles),
-            experiment_support::fixed(gap, 2),
-            experiment_support::fixed(adaptive.report.selection_wall_ms),
-            experiment_support::fixed(
-                experiment_support::interpolation_density_percent(
-                    *adaptive.prolongation), 4)});
+        for (const auto& policy : {
+                 std::pair<const char*, double>{"fast", 1.0},
+                 std::pair<const char*, double>{"reuse", 256.0}}) {
+            tgi::AdaptiveGlobalPcgOptions options;
+            options.minimum_steps = 12;
+            options.maximum_steps = 60;
+            options.expected_rhs_count = policy.second;
+            options.maximum_cycles = maximum_cycles;
+            options.thread_count = threads;
+            const auto adaptive =
+                tgi::build_adaptive_global_pcg_interpolation(
+                    grid, problem.matrix, geometric.prolongation,
+                    options, &problem.rhs);
+            const int adaptive_cycles = cycles_for(
+                problem.rhs, *adaptive.cycle, maximum_cycles);
+            const double gap = oracle_cycles > 0
+                ? 100.0 * static_cast<double>(
+                      adaptive_cycles - oracle_cycles) /
+                      static_cast<double>(oracle_cycles)
+                : 0.0;
+            rows.push_back({
+                std::to_string(item.fine), std::to_string(item.coarse),
+                experiment_support::scientific(item.contrast, 0),
+                item.field.name, policy.first,
+                experiment_support::fixed(policy.second, 0),
+                std::to_string(adaptive.report.selected_steps),
+                std::to_string(adaptive_cycles),
+                std::to_string(oracle_steps),
+                std::to_string(oracle_cycles),
+                experiment_support::fixed(gap, 2),
+                experiment_support::fixed(
+                    adaptive.report.selection_wall_ms),
+                std::to_string(adaptive.report.history.size()),
+                std::to_string(adaptive.report.pilot_iterations),
+                adaptive.report.used_local_refinement ? "yes" : "no"});
+        }
     }
 
     experiment_support::Report report(
         "Adaptive PCG versus an offline step-two oracle");
     report.add_summary({
         {"Version", std::string(tgi::version)},
+        {"Threads", std::to_string(threads)},
         {"Oracle candidates", "m=0 and m=12,14,...,60"},
         {"Solve tolerance", "1e-6"}});
     report.add_note(
-        "The step-two oracle is evaluation-only. The practical selector "
-        "screens m=0,12,20,...,60 for 64 cycles, confirms the three best "
-        "forecasts plus the minimum-step anchor and parsimonious screen "
-        "winner, and locally refines the best interval. It never reads "
-        "coefficient labels.");
+        "The step-two oracle is evaluation-only. Both policies sample "
+        "m=0,12,20,...,60. Fast uses a 64-cycle pilot; reuse uses a "
+        "160-cycle pilot and at most two neighboring step-two refinements. "
+        "Neither policy reads scale, contrast or topology labels.");
     report.add_table(
         "Representative oracle gaps", headers,
-        {5, 5, 10, 20, 10, 16, 9, 14, 8, 13, 11}, rows);
+        {5, 5, 10, 20, 7, 4, 10, 8, 9, 14, 8, 13, 10, 7, 7}, rows, true);
     report.save("oracle_quality");
     return 0;
 }

@@ -1,61 +1,74 @@
 Cross-problem two-grid interpolation comparison
 ===============================================
 
-Version         : 4.1.0
+Version         : 4.2.0
 Cases           : 11
 Mode            : full
+Threads         : 4
 Solve tolerance : 1e-6
 Maximum cycles  : 6000
 
-Note: The v4.1 matrix changes one axis at a time around the 128/16, contrast 1e4 cross-channel center: four size pairs, three contrasts and all six channel topologies. Every row uses identical coarse nodes, right-hand side and smoother across interpolation methods.
+Note: The v4.2 matrix changes one axis at a time around the 128/16, contrast 1e4 cross-channel center: four size pairs, three contrasts and all six channel topologies. Adaptive-fast uses R=1; adaptive-reuse uses R=256. Every row uses identical coarse nodes, right-hand side and smoother across interpolation methods. The reuse policy represents a many-right-hand-side workload (R=256).
 
 All two-grid cases
 ------------------
 Axis          1/h    1/H    Contrast    Seed              Topology           Method     Parameter  P density %     Ac nnz    Setup ms    Solve ms    Total ms        Cycles
 ----------  -----  -----  ----------  ------  --------------------  ---------------  ------------  -----------  ---------  ----------  ----------  ----------  ------------
-size           32      8       1e+04       1         cross-channel     adaptive-PCG           m=0       5.0989        361       1.277       0.821       2.098            40
-size           32      8       1e+04       1         cross-channel     global-exact     tol=1e-10      95.0052       2401       8.702       2.139      10.841            54
-size           32      8       1e+04       1         cross-channel        geometric           P_G       5.0989        361       0.094       0.834       0.928            40
-size           64      8       1e+04       1         cross-channel     adaptive-PCG          m=12      24.6651       1717     252.634      21.462     274.096           204
-size           64      8       1e+04       1         cross-channel     global-exact     tol=1e-10      98.7906       2401      78.269      39.507     117.776           264
-size           64      8       1e+04       1         cross-channel        geometric           P_G       5.6689        361       0.316      26.321      26.637           302
-size           64     16       1e+04       1         cross-channel     adaptive-PCG          m=18      21.5991      34561     609.040      11.114     620.153            54
-size           64     16       1e+04       1         cross-channel     global-exact     tol=1e-10      92.2549      50625     206.513     160.268     366.781           321
-size           64     16       1e+04       1         cross-channel        geometric           P_G       1.2346       1849       0.362     644.416     644.778   failed@6000
+size           32      8       1e+04       1         cross-channel    adaptive-fast       R=1,m=0       5.0989        361      65.501       0.835      66.337            40
+size           32      8       1e+04       1         cross-channel   adaptive-reuse     R=256,m=0       5.0989        361      63.501       0.775      64.276            40
+size           32      8       1e+04       1         cross-channel     global-exact     tol=1e-10      95.0052       2401       9.872       4.098      13.970            54
+size           32      8       1e+04       1         cross-channel        geometric           P_G       5.0989        361       0.159       0.806       0.965            40
+size           64      8       1e+04       1         cross-channel    adaptive-fast      R=1,m=12      24.6651       1717     222.275      36.239     258.513           204
+size           64      8       1e+04       1         cross-channel   adaptive-reuse    R=256,m=12      24.6651       1717     420.585      37.155     457.739           204
+size           64      8       1e+04       1         cross-channel     global-exact     tol=1e-10      98.7906       2401      95.397      60.136     155.532           264
+size           64      8       1e+04       1         cross-channel        geometric           P_G       5.6689        361       0.508      26.294      26.802           302
+size           64     16       1e+04       1         cross-channel    adaptive-fast      R=1,m=20      24.9629      37809     791.002      26.620     817.621            68
+size           64     16       1e+04       1         cross-channel   adaptive-reuse    R=256,m=18      21.5991      34561    1106.994      13.884    1120.878            54
+size           64     16       1e+04       1         cross-channel     global-exact     tol=1e-10      92.2549      50625     271.350     199.107     470.457           321
+size           64     16       1e+04       1         cross-channel        geometric           P_G       1.2346       1849       0.626     539.395     540.021   failed@6000
 
-center        128     16       1e+04       1         cross-channel     adaptive-PCG          m=40      26.9969      37809    2979.041     194.852    3173.893           234
-center        128     16       1e+04       1         cross-channel     global-exact     tol=1e-10      97.8420      50625    1965.083    6918.143    8883.226          3227
-center        128     16       1e+04       1         cross-channel        geometric           P_G       1.3950       1849       1.310    1802.332    1803.641   failed@6000
+center        128     16       1e+04       1         cross-channel    adaptive-fast      R=1,m=44      30.3389      40701    1708.374     301.649    2010.022           244
+center        128     16       1e+04       1         cross-channel   adaptive-reuse    R=256,m=42      28.6040      40701    3430.684     248.247    3678.931           238
+center        128     16       1e+04       1         cross-channel     global-exact     tol=1e-10      97.8420      50625    2516.919   10337.652   12854.571          3227
+center        128     16       1e+04       1         cross-channel        geometric           P_G       1.3950       1849       2.403    6023.969    6026.371   failed@6000
 
-contrast      128     16       1e+02       1         cross-channel     adaptive-PCG          m=20      11.6236      19429    2064.620     112.130    2176.750           228
-contrast      128     16       1e+02       1         cross-channel     global-exact     tol=1e-10      98.4106      50625    2028.657    1692.203    3720.860           756
-contrast      128     16       1e+02       1         cross-channel        geometric           P_G       1.3950       1849       1.478     424.607     426.085          1501
-contrast      128     16       1e+06       1         cross-channel     adaptive-PCG          m=60      44.4826      47765    3169.266     357.116    3526.381           279
-contrast      128     16       1e+06       1         cross-channel     global-exact     tol=1e-10      96.2311      50625    2024.620    7251.576    9276.196          3471
-contrast      128     16       1e+06       1         cross-channel        geometric           P_G       1.3950       1849       1.348    1748.008    1749.356   failed@6000
+contrast      128     16       1e+02       1         cross-channel    adaptive-fast      R=1,m=20      11.6236      19429   10399.694     540.488   10940.182           228
+contrast      128     16       1e+02       1         cross-channel   adaptive-reuse    R=256,m=20      11.6236      19429    3372.341     282.610    3654.952           228
+contrast      128     16       1e+02       1         cross-channel     global-exact     tol=1e-10      98.4106      50625    2226.247    2527.654    4753.901           756
+contrast      128     16       1e+02       1         cross-channel        geometric           P_G       1.3950       1849       2.094     829.933     832.027          1501
+contrast      128     16       1e+06       1         cross-channel    adaptive-fast      R=1,m=60      44.4826      47765    1203.452     277.034    1480.485           279
+contrast      128     16       1e+06       1         cross-channel   adaptive-reuse    R=256,m=52      37.3532      45165    2798.381     291.857    3090.238           298
+contrast      128     16       1e+06       1         cross-channel     global-exact     tol=1e-10      96.2311      50625    2185.243    8926.676   11111.919          3471
+contrast      128     16       1e+06       1         cross-channel        geometric           P_G       1.3950       1849       1.884    2191.631    2193.515   failed@6000
 
-topology      128     16       1e+04       1    meandering-channel     adaptive-PCG          m=42      28.6040      40701    2714.201     186.306    2900.507           251
-topology      128     16       1e+04       1    meandering-channel     global-exact     tol=1e-10      97.3763      50625    1793.514    1799.360    3592.873           759
-topology      128     16       1e+04       1    meandering-channel        geometric           P_G       1.3950       1849       2.049    1801.447    1803.496   failed@6000
-topology      128     16       1e+04       1     diagonal-channels     adaptive-PCG          m=42      28.6040      40701    3627.164     279.908    3907.072           331
-topology      128     16       1e+04       1     diagonal-channels     global-exact     tol=1e-10      97.5489      50625    1713.960     905.398    2619.358           418
-topology      128     16       1e+04       1     diagonal-channels        geometric           P_G       1.3950       1849       2.048    1792.557    1794.605   failed@6000
-topology      128     16       1e+04       1     parallel-channels     adaptive-PCG          m=40      26.9969      37809    2881.642     181.765    3063.407           235
-topology      128     16       1e+04       1     parallel-channels     global-exact     tol=1e-10      97.4038      50625    1690.208     898.380    2588.588           421
-topology      128     16       1e+04       1     parallel-channels        geometric           P_G       1.3950       1849       1.689    1770.573    1772.261   failed@6000
-topology      128     16       1e+04       1    branching-channels     adaptive-PCG          m=36      23.5999      34561    3022.317     200.041    3222.358           267
-topology      128     16       1e+04       1    branching-channels     global-exact     tol=1e-10      97.4536      50625    1826.815    1409.978    3236.794           615
-topology      128     16       1e+04       1    branching-channels        geometric           P_G       1.3950       1849       1.683    1857.618    1859.301   failed@6000
-topology      128     16       1e+04       1          winding-ring     adaptive-PCG          m=44      30.3389      40701    3214.378     207.831    3422.209           233
-topology      128     16       1e+04       1          winding-ring     global-exact     tol=1e-10      97.3042      50625    1834.367    1691.294    3525.661           768
-topology      128     16       1e+04       1          winding-ring        geometric           P_G       1.3950       1849       2.063    1822.634    1824.698   failed@6000
+topology      128     16       1e+04       1    meandering-channel    adaptive-fast      R=1,m=44      30.3389      40701    1344.743     253.456    1598.199           271
+topology      128     16       1e+04       1    meandering-channel   adaptive-reuse    R=256,m=36      23.5999      34561    2640.823     226.565    2867.389           272
+topology      128     16       1e+04       1    meandering-channel     global-exact     tol=1e-10      97.3763      50625    2030.118    1691.232    3721.350           759
+topology      128     16       1e+04       1    meandering-channel        geometric           P_G       1.3950       1849       1.267    2750.155    2751.422   failed@6000
+topology      128     16       1e+04       1     diagonal-channels    adaptive-fast      R=1,m=44      30.3389      40701    1483.620     463.632    1947.252           351
+topology      128     16       1e+04       1     diagonal-channels   adaptive-reuse    R=256,m=36      23.5999      34561    3037.610     300.631    3338.240           297
+topology      128     16       1e+04       1     diagonal-channels     global-exact     tol=1e-10      97.5489      50625    2025.154     977.338    3002.492           418
+topology      128     16       1e+04       1     diagonal-channels        geometric           P_G       1.3950       1849       1.867    3147.362    3149.229   failed@6000
+topology      128     16       1e+04       1     parallel-channels    adaptive-fast      R=1,m=44      30.3389      40701    3200.157     283.326    3483.483           273
+topology      128     16       1e+04       1     parallel-channels   adaptive-reuse    R=256,m=42      28.6040      40701    3014.372     397.718    3412.090           251
+topology      128     16       1e+04       1     parallel-channels     global-exact     tol=1e-10      97.4038      50625    2947.560    1680.984    4628.544           421
+topology      128     16       1e+04       1     parallel-channels        geometric           P_G       1.3950       1849       1.390    1908.338    1909.728   failed@6000
+topology      128     16       1e+04       1    branching-channels    adaptive-fast      R=1,m=36      23.5999      34561    1393.941     220.072    1614.014           267
+topology      128     16       1e+04       1    branching-channels   adaptive-reuse    R=256,m=36      23.5999      34561    2787.232     218.305    3005.537           267
+topology      128     16       1e+04       1    branching-channels     global-exact     tol=1e-10      97.4536      50625    2225.270    1435.491    3660.760           615
+topology      128     16       1e+04       1    branching-channels        geometric           P_G       1.3950       1849       1.328    1924.071    1925.399   failed@6000
+topology      128     16       1e+04       1          winding-ring    adaptive-fast      R=1,m=44      30.3389      40701    1322.435     227.883    1550.318           233
+topology      128     16       1e+04       1          winding-ring   adaptive-reuse    R=256,m=44      30.3389      40701    2908.496     230.545    3139.040           233
+topology      128     16       1e+04       1          winding-ring     global-exact     tol=1e-10      97.3042      50625    2074.084    1739.836    3813.920           768
+topology      128     16       1e+04       1          winding-ring        geometric           P_G       1.3950       1849       1.682    1917.327    1919.008   failed@6000
 
 Aggregate comparison
 --------------------
-Method            Converged    Cycle sum  Mean density %   Setup sum ms  Solve sum ms  Total sum ms
----------------  ----------  -----------  --------------  -------------  ------------  ------------
-adaptive-PCG          11/11         2356         24.7827      24535.579      1753.344     26288.923
-global-exact          11/11        11074         96.8747      15170.706     22768.247     37938.954
-geometric              3/11        49843          2.1057         14.441     13691.346     13705.787
+Method            Converged    Cycle sum  Mean density %   Setup sum ms  Solve sum ms   Total R=1 ms  Total R=256 ms
+---------------  ----------  -----------  --------------  -------------  ------------  -------------  --------------
+adaptive-fast         11/11         2458         26.0116      23135.192      2631.234      25766.426      696731.049
+adaptive-reuse        11/11         2382         23.5169      25581.019      2248.292      27829.310      601143.669
+global-exact          11/11        11074         96.8747      18607.213     29580.203      48187.416     7591139.097
+geometric              3/11        49843          2.1057         15.208     21259.280      21274.488     5442390.840
 
 

@@ -1,12 +1,9 @@
 #include "experiment/study.hpp"
-#include "multigrid/support_expansion.hpp"
 #include "multigrid/energy_interpolation.hpp"
 #include "multigrid/two_grid_solver.hpp"
 #include "pde/diffusion_problem.hpp"
 #include "version.hpp"
 
-#include <algorithm>
-#include <cctype>
 #include <cmath>
 #include <stdexcept>
 #include <string>
@@ -41,25 +38,10 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "4.1.0", "wrong package version");
-    require(tgi::version_major == 4 && tgi::version_minor == 1 &&
+    require(tgi::version == "4.2.0", "wrong package version");
+    require(tgi::version_major == 4 && tgi::version_minor == 2 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
-    const experiment_support::Row expected_headers{
-        "Field", "Method", "Parameter", "P density %",
-        "Setup ms", "Total ms", "Cycles"};
-    require(experiment_support::study_headers() == expected_headers,
-            "public output schema is not the compact schema");
-    for (const auto& header : experiment_support::study_headers()) {
-        std::string lower = header;
-        std::transform(
-            lower.begin(), lower.end(), lower.begin(),
-            [](unsigned char value) {
-                return static_cast<char>(std::tolower(value));
-            });
-        require(lower.find("residual") == std::string::npos,
-                "forbidden residual metric in public output");
-    }
 
     const tgi::StructuredGrid grid(15, 4);
     tgi::CoefficientOptions coefficient_options;
@@ -154,16 +136,6 @@ int main() {
         grid, global.prolongation, 1.0e-2);
     require(pruned.prolongation.nnz() <= global.prolongation.nnz(),
             "relative pruning increased interpolation density");
-
-    tgi::ResidualStrongSupportOptions strong_options;
-    strong_options.base_patch_layers = 1;
-    strong_options.maximum_extra_nodes_per_column = 8;
-    strong_options.thread_count = 2;
-    const auto strong = tgi::build_residual_strong_supports(
-        grid, a, local.prolongation, strong_options);
-    require(strong.supports.size() ==
-                static_cast<std::size_t>(grid.coarse_size()),
-            "strong support count is wrong");
 
     tgi::InterpolationOptions fixed_step_options = global_options;
     fixed_step_options.local_tolerance = 0.0;

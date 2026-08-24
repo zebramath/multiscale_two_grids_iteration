@@ -101,6 +101,7 @@ int run_finite_path_evidence(int argc, char** argv) {
         "Finite-PCG path evidence for nonmonotone two-grid behavior");
     report.add_summary({
         {"Version", std::string(tgi::version)},
+        {"Threads", std::to_string(base.threads)},
         {"Cases", std::to_string(cases.size())},
         {"Checkpoints", "m=0,12,20,...,60 and exact"},
         {"Solve tolerance", "1e-6"}});
