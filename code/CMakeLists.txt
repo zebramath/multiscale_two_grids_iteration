@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 3.6.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 3.7.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -61,7 +61,8 @@ tgi_add_program(experiment2_pcg_path
 tgi_add_program(experiment3_adaptive_oracle
     experiments/experiment3_adaptive_oracle.cpp
     src/experiment/studies/adaptive_trace.cpp
-    src/experiment/studies/oracle_quality.cpp)
+    src/experiment/studies/oracle_quality.cpp
+    src/experiment/studies/selector_ablation.cpp)
 tgi_add_program(experiment4_robustness
     experiments/experiment4_robustness.cpp
     src/experiment/studies/robustness_matrix.cpp)
@@ -86,7 +87,7 @@ if(BUILD_TESTING)
         set_property(TARGET unit_core PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
     endif()
     add_test(NAME unit_core COMMAND unit_core)
-    add_executable(regression_v36 tests/regression_v3.cpp)
-    target_link_libraries(regression_v36 PRIVATE tgi_headers)
-    add_test(NAME regression_v36 COMMAND regression_v36)
+    add_executable(regression_v37 tests/regression_v3.cpp)
+    target_link_libraries(regression_v37 PRIVATE tgi_headers)
+    add_test(NAME regression_v37 COMMAND regression_v37)
 endif()

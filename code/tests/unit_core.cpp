@@ -41,8 +41,8 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "3.6.0", "wrong package version");
-    require(tgi::version_major == 3 && tgi::version_minor == 6 &&
+    require(tgi::version == "3.7.0", "wrong package version");
+    require(tgi::version_major == 3 && tgi::version_minor == 7 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
     const experiment_support::Row expected_headers{
@@ -181,6 +181,21 @@ int main() {
     const tgi::Vector rhs(
         static_cast<std::size_t>(grid.fine_size()), 1.0);
     const tgi::TwoGridCycle cycle(a, global.prolongation, 1, 2);
+    const auto& setup = cycle.setup_report();
+    require(setup.interpolation_energy > 0.0,
+            "interpolation energy diagnostic is not positive");
+    require(setup.interpolation_complexity > 0.0 &&
+                setup.two_grid_operator_complexity > 1.0,
+            "hierarchy complexity diagnostics are invalid");
+    require(setup.factor_fill_ratio > 0.0,
+            "coarse factor fill diagnostic is invalid");
+    double coarse_trace = 0.0;
+    for (double value : cycle.coarse_matrix().diagonal()) {
+        coarse_trace += value;
+    }
+    require(std::abs(coarse_trace - setup.interpolation_energy) <=
+                1.0e-12 * coarse_trace,
+            "interpolation energy does not match trace(P^T A P)");
     tgi::Vector coarse_rhs(
         static_cast<std::size_t>(cycle.coarse_size()), 1.0);
     tgi::Vector coarse_solution;

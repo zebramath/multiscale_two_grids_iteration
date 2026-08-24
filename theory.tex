@@ -4,7 +4,7 @@
 \usepackage{mathstyle}
 \usepackage{reportstyle}
 
-\setinfo{局部能量插值、有限步 PCG 与成本感知自适应选择}{崔正平}
+\setinfo{局部能量插值、有限步 PCG 与成本感知自适应选择 v3.7}{崔正平}
 
 \theoremstyle{chineseplain}
 \newtheorem{theorem}{定理}[section]
@@ -57,8 +57,8 @@
 $\norm{\bm Z}_{\bm A,F}^2=\tr(\bm Z^\T\bm A\bm Z)$。
 
 本文与代码的对应关系如下：局部或全局能量列求解的是 $\bm B$ 的主子系统；
-预条件器为 $\bm D=\diag(\bm B)$；experiment5--6 从几何插值 $\bm W_0$
-出发逐列运行 PCG；两网格循环使用一次前向 Gauss--Seidel、Galerkin 粗校正和
+预条件器为 $\bm D=\diag(\bm B)$；experiment2--6 中的有限步构造从几何插值
+$\bm W_0$ 出发逐列运行 PCG；两网格循环使用一次前向 Gauss--Seidel、Galerkin 粗校正和
 一次后向 Gauss--Seidel。固定步数对应代码中的 \texttt{tolerance=0}。
 
 除非特别说明，PCG 结论均指精确算术下、组装输出前的迭代量。代码会删除绝对值不超过
@@ -76,7 +76,7 @@ $10^{-14}$ 的输出条目，浮点运算也会破坏严格共轭，因此数值
     \item 为阈值剪枝和自适应停止补充扰动界，明确哪些量可由代码直接估计，
     以及谱半径结论与给定右端项循环数之间的关系。
     \item 建立候选预测误差、实际循环数损失、Setup 成本和右端项数量之间的
-    定量关系，为 v3.2 的低预算选择规则给出可检验的评价标准。
+    定量关系，为 v3.7 的低预算选择规则和参数消融给出可检验的评价标准。
 \end{enumerate}
 前两类结论解释 experiment1、experiment2、experiment5 和 experiment6；
 第三类结论与 experiment3 的剪枝现象及后续自适应算法直接相关。为了避免逻辑过度外推，
@@ -1406,7 +1406,50 @@ $\sigma_2(\bm X)^2$。
 \end{align}
 因此正确结论是条件性的结构定理，而不是“继续 PCG 必然先变好再变坏”的普遍规律。
 
-若要把理论与 experiment6 直接对照，建议保留现有正式指标，并仅在诊断模式增加：
+\subsection{v3.7 可直接输出的诊断量}
+
+v3.7 在不显式形成理论坐标变换 $\bm\Phi$、$\bm K$ 的前提下，首先实现一组
+与现有 Galerkin 层次完全一致的基础诊断量。定义
+\begin{align}
+    \mathcal J_P&=\tr(\bm P^\T\bm A\bm P)=\tr(\bm A_c),\\
+    \chi_m&=
+    \frac{\mathcal J_{P_m}-\mathcal J_{P_\ast}}
+    {\mathcal J_{P_0}-\mathcal J_{P_\ast}},              \label{eq:v37-energy-excess}\\
+    C_P&=\frac{\operatorname{nnz}(\bm P)}
+    {\operatorname{nnz}(\bm A)},\qquad
+    C_{\rm op}^{(2)}=
+    \frac{\operatorname{nnz}(\bm A)+\operatorname{nnz}(\bm A_c)}
+    {\operatorname{nnz}(\bm A)},                         \label{eq:v37-complexities}\\
+    C_L&=\frac{\operatorname{nnz}(\bm L+\bm L^\T-\diag(\bm L))}
+    {\operatorname{nnz}(\bm A_c)},                       \label{eq:v37-factor-fill}
+\end{align}
+其中 $\bm L$ 是实际稀疏 Cholesky 因子。
+
+\begin{proposition}[v3.7 能量诊断的一致性]\label{prop:v37-diagnostic-consistency}
+在精确算术下，若 $\bm P_m$ 来自同一条全局 PCG 路径，且 $\bm P_\ast$ 是精确能量
+插值，则
+\begin{align}
+    \mathcal J_{P_m}-\mathcal J_{P_\ast}
+    &=\norm{\bm W_m-\bm W^\ast}_{\bm B,F}^2,\\
+    1=\chi_0\ge\chi_1\ge\cdots\ge\chi_\nu=0.          \label{eq:v37-energy-chain}
+\end{align}
+因此代码通过粗矩阵对角线求得的 $\chi_m$ 是 PCG 能量误差的精确归一化量，
+而不是额外的经验代理。相比之下，$C_P,C_{\rm op}^{(2)},C_L$ 只描述存储与层次复杂度，
+它们本身不决定两网格谱半径。
+\end{proposition}
+
+\begin{proof}
+第一式由\cref{prop:energy-minimum}乘以 $2$ 得到；第二式再使用
+\cref{thm:pcg-tail} 的能量单调性与有限终止性。复杂度量的解释直接来自定义。
+\end{proof}
+
+代码还以实际的对称两网格误差传播进行固定次数幂迭代，输出
+$\widehat\rho_{\rm TG}$。若顶端特征值简单且初始随机向量在对应特征向量上的分量非零，
+则标准幂法保证该估计渐近收敛到 $\rhoTG$；有限迭代值仍只是谱代理，不应替代真实循环数。
+这些量使 experiment2 能在同一张表中对照“能量误差单调下降”和“两网格性能非单调”，
+但尚未验证 $\Gamma_m$、$\bm\Theta_m$ 或 Ritz 泄漏条件。
+
+为把全部理论链与数值结果继续对照，后续仍建议在诊断模式增加：
 \begin{enumerate}
     \item 支撑外残差 $\bm g_{j,\ell}$、局部代数残差和相邻支撑的能量差。
     它们分别检查空间截断误差、线性方程误差和扩展支撑的实际收益；
@@ -1426,13 +1469,15 @@ $\sigma_2(\bm X)^2$。
     \item 当前右端项在慢模态上的投影、实测循环数和计时。它们用于解释
     \cref{eq:residual-rho-bound} 的最坏情形界为何可能不紧。
 \end{enumerate}
-这些量用于验证理论链条，不应取代当前右端项下的循环数和计时结果。
+这些量用于验证理论链条，不应取代当前右端项下的循环数和计时结果。v3.7 只实现了
+\cref{eq:v37-energy-excess,eq:v37-complexities,eq:v37-factor-fill}和
+$\widehat\rho_{\rm TG}$，其余量保留为后续工作。
 
 
 \section{成本感知自适应选择的理论框架}
 
 前文说明有限 PCG 中间点可能严格优于精确能量终点，但这并不自动给出一个低成本
-选择算法。本节把 v3.2 实际优化的量单独形式化。这样可以避免把“候选循环数较小”
+选择算法。本节把 v3.7 实际优化的量单独形式化。这样可以避免把“候选循环数较小”
 与“包含选择成本后的总时间较小”混为一谈。
 
 \subsection{有限候选、预测误差与近似最优性}
@@ -1477,13 +1522,15 @@ $\sigma_2(\bm X)^2$。
 除以 $1-\delta$ 即得结论。
 \end{proof}
 
-这个命题说明“允许30\%循环差距”不能只靠把 $\gamma$ 设成 $0.3$ 来保证：若短
-试运行预测本身误差很大，真实损失还会被放大。因此 v3.2 不再使用两个相距很远的
-正步数候选，而使用
+这个命题说明“允许13\%预测松弛”不能单靠把 $\gamma$ 设成 $0.13$ 就得到真实
+循环数保证：若短试运行预测本身误差很大，真实损失还会被放大。v3.7 使用至多四个
+候选，写成
 \begin{align}
-    \mathcal M_{3.2}=\{0,m_{\min},m_{\min}+12,40\},       \label{eq:v32-candidates}
+    \mathcal M_{3.7}=\{0,m_{\min},m_{\rm mid},m_{\rm extra}\},
+                                                               \label{eq:v37-candidates}
 \end{align}
-并在大网格上为控制成本省略中间点。这个集合是实验驱动的离散设计，不是普适常数。
+其中 $m_{\rm extra}$ 只在中点仍困难时出现，并由归一化 PCG 能量残差选择
+锚点--中点内点或中点--上界前向点。具体区间仍是实验设计，不是普适常数。
 其合理评价方式是同时报告候选内 oracle 差距和候选离散化造成的遗漏，而不是把
 \cref{eq:cycle-regret-bound} 误写成无条件性能保证。
 
@@ -1524,7 +1571,7 @@ $m=40$，两者每次求解的工作相同，自适应器不可能靠增加右�
 \begin{align}
     Q_m\approx \tau_m N_m
 \end{align}
-表示，其中 $\tau_m$ 是候选 $m$ 的平均单循环时间。v3.2 允许在预测值接近时偏向
+表示，其中 $\tau_m$ 是候选 $m$ 的平均单循环时间。v3.7 允许在预测值接近时偏向
 较早、较稀疏的候选，本质上就是在循环数与 $\tau_m$ 之间折中。
 
 \subsection{多个右端项时的目标边界}
@@ -1540,23 +1587,24 @@ $\mathcal B=\{\bm b_1,\ldots,\bm b_R\}$，可根据任务选择
 前者优化平均吞吐量，后者控制最坏右端项。若只用一个 $\bm b_{\rm rep}$ 选择，除非
 另有慢模态投影假设，否则不能由 $N_m(\bm b_{\rm rep})$ 推出
 \cref{eq:mean-rhs-cost,eq:max-rhs-cost} 的近似最优性。因此
-\texttt{experiment14} 使用五个不同形状的右端项重新测量平均和最大循环数；这属于
+\texttt{experiment6} 使用五个不同形状的右端项重新测量平均和最大循环数；这属于
 必要的泛化检查，而不是重复实验。
 
-\subsection{v3.2 低预算策略的可证明部分与经验部分}
+\subsection{v3.7 低预算策略的可证明部分与经验部分}
 
-v3.2 的实现遵循以下顺序：
+v3.7 的实现遵循以下顺序：
 \begin{enumerate}
     \item 对几何插值做短试运行；预测已经很小时立即返回；
     \item 沿同一全局 PCG 路径生成少量固定检查点，Krylov 工作不重新开始；
-    \item pilot 长度随 $H/h$ 增加，以缓解慢瞬态导致的预测偏差；
-    \item 大网格减少一个中间检查点，使候选数随单候选构造成本受控；
-    \item 不再把两个候选都继续到真实容差，最终真实循环数只在独立评价阶段测量。
+    \item 检查最小步锚点和区间中点；中点仍困难时只补充一个内点或前向点；
+    \item 在最优预测值的松弛范围内优先选择较小步数，并复用选中 Galerkin 层次；
+    \item 不把候选继续到真实容差，最终真实循环数只在独立评价阶段测量；
+    \item 在主问题上报告 pilot 长度与预测松弛的小规模消融。
 \end{enumerate}
 
 其中，PCG 路径复用严格删除了重复 Krylov 工作；
 \cref{prop:forecast-regret,prop:break-even-rhs} 分别给出预测可靠时的循环数界和总时间
-判据。候选位置、早停阈值和 pilot 长度仍是经验参数。因而正确结论是：v3.2 有
+判据。候选位置、早停阈值、13\%松弛和 pilot 长度仍是经验参数。因而正确结论是：v3.7 有
 明确的成本模型和条件性性能界，但尚不存在对任意 SPD 系统都成立的30\% oracle
 保证。
 
@@ -1742,4 +1790,3 @@ G. L. G. Sleijpen, A. van der Sluis,
 \end{thebibliography}
 
 \end{document}
-

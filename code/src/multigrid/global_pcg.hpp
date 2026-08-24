@@ -114,6 +114,14 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
 }
 
 inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
+    if (target_steps < steps_) {
+        throw std::invalid_argument(
+            "GlobalEnergyPcgPath checkpoints must be nondecreasing");
+    }
+    if (target_steps < 0) {
+        throw std::invalid_argument(
+            "GlobalEnergyPcgPath target steps must be nonnegative");
+    }
     if (target_steps == steps_) return;
     const auto solve_begin = Clock::now();
     std::atomic<int> next_column{0};
@@ -280,6 +288,9 @@ inline double milliseconds(Clock::time_point begin, Clock::time_point end) {
 }
 
 inline double median(std::vector<double> values) {
+    if (values.empty()) {
+        throw std::invalid_argument("median requires at least one value");
+    }
     const std::size_t middle = values.size() / 2U;
     std::nth_element(values.begin(), values.begin() + middle, values.end());
     double value = values[middle];
@@ -299,6 +310,16 @@ struct TailModel {
 inline TailModel fit_tail(
     const std::vector<double>& norms, int tail_window) {
     const int completed = static_cast<int>(norms.size()) - 1;
+    if (completed <= 0) return {};
+    if (completed == 1) {
+        const double current = std::max(norms.back(), 1.0e-300);
+        const double previous = std::max(norms.front(), 1.0e-300);
+        TailModel model;
+        model.rho = std::exp(std::min(
+            -1.0e-10, std::log(current / previous)));
+        model.relative_uncertainty = 1.0;
+        return model;
+    }
     const int block = std::max(2, tail_window / 2);
     const int begin = std::max(block, completed - tail_window + 1);
     std::vector<double> rates;
@@ -446,6 +467,27 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
     const AdaptiveGlobalPcgOptions& options,
     const Vector* representative_rhs) {
     using namespace adaptive_global_pcg_detail;
+    if (representative_rhs == nullptr) {
+        throw std::invalid_argument(
+            "adaptive global PCG requires a representative right-hand side");
+    }
+    if (representative_rhs->size() !=
+        static_cast<std::size_t>(a.rows())) {
+        throw std::invalid_argument(
+            "adaptive global PCG right-hand side has the wrong size");
+    }
+    if (options.minimum_steps < 0 ||
+        options.maximum_steps <= options.minimum_steps ||
+        options.step_quantum <= 0 || options.pilot_iterations < 2 ||
+        options.tail_window < 2 || options.maximum_cycles <= 0 ||
+        options.smoothing_steps <= 0 ||
+        !(options.solve_tolerance > 0.0) ||
+        !(options.solve_tolerance < 1.0) ||
+        options.drop_tolerance < 0.0 ||
+        options.acceptable_cycle_slack < 0.0) {
+        throw std::invalid_argument(
+            "adaptive global PCG received invalid options");
+    }
     const auto begin = Clock::now();
     const Vector& rhs = *representative_rhs;
     std::vector<std::unique_ptr<Candidate>> candidates;

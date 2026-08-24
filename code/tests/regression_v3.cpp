@@ -12,6 +12,16 @@ void require(bool condition, const std::string& message) {
     if (!condition) throw std::runtime_error(message);
 }
 
+template <class Action>
+void require_throws(Action&& action, const std::string& message) {
+    try {
+        action();
+    } catch (const std::exception&) {
+        return;
+    }
+    throw std::runtime_error(message);
+}
+
 double relative_action_difference(
     const tgi::SparseMatrix& lhs, const tgi::SparseMatrix& rhs) {
     tgi::Vector input(static_cast<std::size_t>(lhs.cols()));
@@ -50,6 +60,7 @@ int main() {
     tgi::GlobalEnergyPcgPath path(
         grid, a, geometric.prolongation, 2);
     path.advance_to(2);
+    const tgi::SparseMatrix checkpoint_two = path.prolongation(0.0);
     path.advance_to(5);
     const tgi::SparseMatrix continued = path.prolongation(0.0);
     tgi::InterpolationOptions fixed_options;
@@ -67,6 +78,14 @@ int main() {
             "continued PCG path differs from the fixed-budget reference");
     require(path.report().steps == 5,
             "continued PCG path reported the wrong checkpoint");
+    const tgi::TwoGridCycle cycle_two(a, checkpoint_two, 1, 2);
+    const tgi::TwoGridCycle cycle_five(a, continued, 1, 2);
+    require(cycle_five.setup_report().interpolation_energy <=
+                cycle_two.setup_report().interpolation_energy,
+            "global PCG checkpoint increased interpolation energy");
+    require_throws(
+        [&]() { path.advance_to(4); },
+        "continued PCG path accepted a decreasing checkpoint");
 
     tgi::AdaptiveGlobalPcgOptions adaptive_options;
     adaptive_options.minimum_steps = 2;
@@ -91,6 +110,21 @@ int main() {
             "adaptive PCG returned an invalid prolongation");
     require(adaptive.cycle->coarse_size() == grid.coarse_size(),
             "adaptive PCG returned an invalid reusable hierarchy");
+    require_throws(
+        [&]() {
+            (void)tgi::build_adaptive_global_pcg_interpolation(
+                grid, a, geometric.prolongation, adaptive_options, nullptr);
+        },
+        "adaptive PCG accepted a missing representative right-hand side");
+    tgi::AdaptiveGlobalPcgOptions invalid_options = adaptive_options;
+    invalid_options.pilot_iterations = 1;
+    require_throws(
+        [&]() {
+            (void)tgi::build_adaptive_global_pcg_interpolation(
+                grid, a, geometric.prolongation, invalid_options,
+                &adaptive_rhs);
+        },
+        "adaptive PCG accepted an invalid one-step pilot");
 
     return 0;
 }

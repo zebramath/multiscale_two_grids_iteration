@@ -1,7 +1,7 @@
 Global-target finite-PCG construction
 =====================================
 
-Version               : 3.6.0
+Version               : 3.7.0
 Fine grid             : h=1/128
 Coarse grid           : H=1/16
 Contrast              : 1e+04
@@ -16,35 +16,35 @@ Global-target finite-PCG construction
 -------------------------------------
 Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
 -----------  ------------------  --------------------  -----------  ----------  ----------  ------------
-continuous            geometric                   P_G       1.3950       2.372      38.120           131
-continuous           PCG-global                   m=4       2.8455      43.833      76.187            90
-continuous           PCG-global                   m=8       4.7096      68.458     101.440            86
-continuous           PCG-global                  m=16       9.1300     176.240     225.200           116
-continuous           PCG-global                  m=32      20.4547     242.680     300.583            93
-continuous           PCG-global                  m=64      48.1166     500.735     613.600            90
-continuous         global-exact             tol=1e-10      95.7222    1290.806    1466.085            90
+continuous            geometric                   P_G       1.3950       2.197      41.206           131
+continuous           PCG-global                   m=4       2.8455      47.587      87.772            90
+continuous           PCG-global                   m=8       4.7096      92.809     122.794            86
+continuous           PCG-global                  m=16       9.1300     164.717     220.041           116
+continuous           PCG-global                  m=32      20.4547     346.902     411.832            93
+continuous           PCG-global                  m=64      48.1166     593.178     728.214            90
+continuous         global-exact             tol=1e-10      95.7222    1740.189    1941.679            90
 
-channel               geometric                   P_G       1.3950       1.458   11439.751  failed@40000
-channel              PCG-global                   m=4       2.8455      45.584    6099.908         19396
-channel              PCG-global                   m=8       4.7096      74.246    3086.834          9058
-channel              PCG-global                  m=16       9.1300     133.649    1782.676          4043
-channel              PCG-global                  m=32      20.4547     287.973     501.092           347
-channel              PCG-global                  m=64      48.1166     484.167     912.568           366
-channel            global-exact             tol=1e-10      97.8420    1788.420    8601.016          3227
+channel               geometric                   P_G       1.3950       1.934   12362.866  failed@40000
+channel              PCG-global                   m=4       2.8455      42.517    6449.947         19397
+channel              PCG-global                   m=8       4.7096      81.481    3449.871          9058
+channel              PCG-global                  m=16       9.1300     155.864    2042.916          4043
+channel              PCG-global                  m=32      20.4547     289.583     539.097           347
+channel              PCG-global                  m=64      48.1166     555.642    1005.236           366
+channel            global-exact             tol=1e-10      97.8420    2242.328    9584.664          3227
 
-checker               geometric                   P_G       1.3950       1.584   11044.828  failed@40000
-checker              PCG-global                   m=4       2.8455      37.387    6003.842         19695
-checker              PCG-global                   m=8       4.7096      62.772    2722.084          7360
-checker              PCG-global                  m=16       9.1300     133.130    1794.042          4040
-checker              PCG-global                  m=32      20.4547     241.179     451.815           347
-checker              PCG-global                  m=64      48.1166     458.237     739.095           226
-checker            global-exact             tol=1e-10      96.9969    1437.248    1904.275           228
+checker               geometric                   P_G       1.3950       1.611   12196.400  failed@40000
+checker              PCG-global                   m=4       2.8455      54.915    6596.679         19695
+checker              PCG-global                   m=8       4.7096      79.166    2798.992          7360
+checker              PCG-global                  m=16       9.1300     153.366    2064.164          4040
+checker              PCG-global                  m=32      20.4547     295.344     541.760           347
+checker              PCG-global                  m=64      48.1166     641.835     986.786           226
+checker            global-exact             tol=1e-10      96.9969    1843.281    2459.611           228
 
 
 Channel finite PCG-step scan
 ============================
 
-Version         : 3.6.0
+Version         : 3.7.0
 Fine grid       : h=1/128
 Coarse grid     : H=1/16
 Contrast        : 1e+04
@@ -53,44 +53,80 @@ Solve tolerance : 1e-6
 Timing          : one end-to-end run per candidate
 PCG scan        : m=16,18,...,64
 
-Note: Each finite-step interpolation is evaluated by an independent two-grid solve. Setup ms contains interpolation construction and the production sparse Galerkin hierarchy.
+Note: Every finite checkpoint reuses one incremental global PCG path. Each interpolation is still evaluated by an independent Galerkin hierarchy and an independent solve. Setup ms is the cost of reaching that checkpoint plus its production hierarchy.
 
 Channel finite-step PCG scan
 ----------------------------
 Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
 -----------  ------------------  --------------------  -----------  ----------  ----------  ------------
-channel              PCG-global                  m=16       9.1300     115.771    1807.368          4043
-channel              PCG-global                  m=18      10.3088     136.497    1560.641          3291
-channel              PCG-global                  m=20      11.6236     135.184    1011.505          1861
-channel              PCG-global                  m=22      13.0007     151.649     684.731          1148
-channel              PCG-global                  m=24      14.4398     166.038     632.177           926
-channel              PCG-global                  m=26      15.8038     193.574     558.810           644
-channel              PCG-global                  m=28      17.3034     214.651     479.459           441
-channel              PCG-global                  m=30      18.8537     209.895     410.663           336
-channel              PCG-global                  m=32      20.4547     224.322     429.048           347
-channel              PCG-global                  m=34      21.9609     247.495     477.787           367
-channel              PCG-global                  m=36      23.5999     255.124     453.541           268
-channel              PCG-global                  m=38      25.2786     268.112     425.427           231
-channel              PCG-global                  m=40      26.9969     277.105     451.313           234
-channel              PCG-global                  m=42      28.6040     287.657     476.975           238
-channel              PCG-global                  m=44      30.3389     304.445     514.829           244
-channel              PCG-global                  m=46      32.1029     321.174     526.811           252
-channel              PCG-global                  m=48      33.8960     343.012     579.125           256
-channel              PCG-global                  m=50      35.5642     352.296     591.275           263
-channel              PCG-global                  m=52      37.3532     396.468     671.829           276
-channel              PCG-global                  m=54      39.1612     435.451     715.968           288
-channel              PCG-global                  m=56      40.9881     427.903     772.952           276
-channel              PCG-global                  m=58      42.6795     414.944     778.074           324
-channel              PCG-global                  m=60      44.4826     465.081     894.837           360
-channel              PCG-global                  m=62      46.2950     459.399     898.923           364
-channel              PCG-global                  m=64      48.1166     572.691    1048.743           366
-channel            global-exact             tol=1e-10      97.8420    1768.775    8761.642          3227
+channel              PCG-global                  m=16       9.1300     143.158    1977.203          4043
+channel              PCG-global                  m=18      10.3088     155.181    1743.783          3291
+channel              PCG-global                  m=20      11.6236     168.695    1119.250          1861
+channel              PCG-global                  m=22      13.0007     180.991     795.508          1148
+channel              PCG-global                  m=24      14.4398     193.098     684.183           926
+channel              PCG-global                  m=26      15.8038     210.072     585.745           644
+channel              PCG-global                  m=28      17.3034     224.698     494.812           441
+channel              PCG-global                  m=30      18.8537     244.876     460.271           336
+channel              PCG-global                  m=32      20.4547     261.071     501.365           347
+channel              PCG-global                  m=34      21.9609     274.100     537.355           367
+channel              PCG-global                  m=36      23.5999     284.640     489.276           268
+channel              PCG-global                  m=38      25.2786     304.036     484.668           231
+channel              PCG-global                  m=40      26.9969     314.981     503.602           234
+channel              PCG-global                  m=42      28.6040     327.967     533.508           238
+channel              PCG-global                  m=44      30.3389     338.672     546.230           244
+channel              PCG-global                  m=46      32.1029     352.814     590.281           252
+channel              PCG-global                  m=48      33.8960     368.432     598.707           256
+channel              PCG-global                  m=50      35.5642     379.782     624.054           263
+channel              PCG-global                  m=52      37.3532     393.892     677.014           276
+channel              PCG-global                  m=54      39.1612     411.276     719.623           288
+channel              PCG-global                  m=56      40.9881     428.811     736.665           276
+channel              PCG-global                  m=58      42.6795     463.191     868.990           324
+channel              PCG-global                  m=60      44.4826     461.561     891.373           360
+channel              PCG-global                  m=62      46.2950     483.344     946.650           364
+channel              PCG-global                  m=64      48.1166     495.468     945.601           366
+channel            global-exact             tol=1e-10      97.8420    2138.820    9271.381          3227
+
+Note: The normalized energy excess is [trace(P^T A P)-trace(P_*^T A P_*)] divided by the same difference for P_G. C_P=nnz(P)/nnz(A), C_op=(nnz(A)+nnz(A_c))/nnz(A), and factor fill=nnz(L+L^T-diag(L))/nnz(A_c). rho_est uses 60 power iterations of the implemented symmetric two-grid error propagation. Diagnostic power iterations are excluded from Setup and Total timing.
+
+Energy, hierarchy and spectral diagnostics
+------------------------------------------
+Method         Parameter      PCG eta  Energy excess  P density %       C_P     Ac nnz      L nnz      C_op      L/Ac     rho_est        Cycles
+------------  ----------  -----------  -------------  -----------  --------  ---------  ---------  --------  --------  ----------  ------------
+geometric            P_G    1.000e+00      1.000e+00       1.3950    0.6317       1849       3182    1.0231    3.3202    0.980622  failed@40000
+
+PCG-global          m=16    1.101e-01      2.148e-02       9.1300    4.1345      15501      14347    1.1934    1.8366    0.991614          4043
+PCG-global          m=18    9.711e-02      1.588e-02      10.3088    4.6684      19429      16349    1.2424    1.6714    0.991192          3291
+PCG-global          m=20    8.634e-02      1.036e-02      11.6236    5.2638      19429      16349    1.2424    1.6714    0.990427          1861
+PCG-global          m=22    6.801e-02      7.152e-03      13.0007    5.8874      23381      18215    1.2918    1.5485    0.985625          1148
+PCG-global          m=24    5.958e-02      4.771e-03      14.4398    6.5391      23381      18215    1.2918    1.5485    0.979180           926
+PCG-global          m=26    4.683e-02      3.059e-03      15.8038    7.1568      27273      19861    1.3403    1.4482    0.972369           644
+PCG-global          m=28    3.663e-02      2.012e-03      17.3034    7.8359      27273      19861    1.3403    1.4482    0.932097           441
+PCG-global          m=30    2.806e-02      1.396e-03      18.8537    8.5379      31025      21286    1.3871    1.3649    0.950704           336
+PCG-global          m=32    2.377e-02      1.012e-03      20.4547    9.2629      31025      21286    1.3871    1.3649    0.954326           347
+PCG-global          m=34    2.078e-02      7.232e-04      21.9609    9.9450      34561      22489    1.4313    1.2949    0.957729           367
+PCG-global          m=36    1.638e-02      5.207e-04      23.5999   10.6873      34561      22489    1.4313    1.2949    0.940855           268
+PCG-global          m=38    1.339e-02      3.920e-04      25.2786   11.4475      37809      23469    1.4718    1.2355    0.922342           231
+PCG-global          m=40    1.112e-02      3.030e-04      26.9969   12.2256      37809      23469    1.4718    1.2355    0.921142           234
+PCG-global          m=42    9.291e-03      2.433e-04      28.6040   12.9534      40701      24225    1.5079    1.1849    0.937746           238
+PCG-global          m=44    7.747e-03      2.006e-04      30.3389   13.7390      40701      24225    1.5079    1.1849    0.943459           244
+PCG-global          m=46    7.128e-03      1.677e-04      32.1029   14.5379      43173      24756    1.5387    1.1416    0.941753           252
+PCG-global          m=48    6.028e-03      1.422e-04      33.8960   15.3499      43173      24756    1.5387    1.1416    0.940080           256
+PCG-global          m=50    5.506e-03      1.227e-04      35.5642   16.1053      45165      25061    1.5636    1.1048    0.939796           263
+PCG-global          m=52    5.154e-03      1.062e-04      37.3532   16.9155      45165      25061    1.5636    1.1048    0.940737           276
+PCG-global          m=54    4.763e-03      9.167e-05      39.1612   17.7342      46621      25139    1.5818    1.0736    0.943272           288
+PCG-global          m=56    4.422e-03      7.928e-05      40.9881   18.5616      46621      25139    1.5818    1.0736    0.948354           276
+PCG-global          m=58    4.044e-03      6.905e-05      42.6795   19.3275      47765      25205    1.5960    1.0507    0.951950           324
+PCG-global          m=60    3.783e-03      5.992e-05      44.4826   20.1441      47765      25205    1.5960    1.0507    0.955204           360
+PCG-global          m=62    3.544e-03      5.220e-05      46.2950   20.9648      48645      25260    1.6070    1.0339    0.957667           364
+PCG-global          m=64    3.386e-03      4.520e-05      48.1166   21.7897      48645      25260    1.6070    1.0339    0.958315           366
+
+global-exact   tol=1e-10            -      0.000e+00      97.8420   44.3080      50625      25425    1.6317    1.0000    0.968713          3227
 
 
 Pilot residual ranking diagnostic
 =================================
 
-Version         : 3.6.0
+Version         : 3.7.0
 Fine grid       : h=1/128
 Coarse grid     : H=1/16
 Contrast        : 1e+04

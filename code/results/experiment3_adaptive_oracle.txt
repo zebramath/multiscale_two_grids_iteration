@@ -1,7 +1,7 @@
 Adaptive finite-PCG checkpoint selection
 ========================================
 
-Version         : 3.6.0
+Version         : 3.7.0
 Fine grid       : h=1/128
 Coarse grid     : H=1/16
 Contrast        : 1e+04
@@ -16,29 +16,29 @@ End-to-end verification
 -----------------------
 Field                    Method             Parameter  P density %    Setup ms    Total ms        Cycles
 -----------  ------------------  --------------------  -----------  ----------  ----------  ------------
-cross-channel           PCG-fixed                  m=16       9.1300     138.823    1800.368          4043
-cross-channel           PCG-fixed                  m=24      14.4398     190.374     647.708           926
-cross-channel           PCG-fixed                  m=32      20.4547     236.723     488.192           347
-cross-channel           PCG-fixed                  m=36      23.5999     262.717     443.159           268
-cross-channel           PCG-fixed                  m=38      25.2786     277.160     441.553           231
-cross-channel           PCG-fixed                  m=40      26.9969     295.550     467.483           234
-cross-channel           PCG-fixed                  m=48      33.8960     341.906     554.127           256
-cross-channel        PCG-adaptive         selected m=40      26.9969     555.233     737.023           234
+cross-channel           PCG-fixed                  m=16       9.1300     164.613    2045.074          4043
+cross-channel           PCG-fixed                  m=24      14.4398     222.702     732.960           926
+cross-channel           PCG-fixed                  m=32      20.4547     278.528     518.884           347
+cross-channel           PCG-fixed                  m=36      23.5999     303.368     487.992           268
+cross-channel           PCG-fixed                  m=38      25.2786     316.632     486.851           231
+cross-channel           PCG-fixed                  m=40      26.9969     329.763     508.339           234
+cross-channel           PCG-fixed                  m=48      33.8960     392.417     630.443           256
+cross-channel        PCG-adaptive         selected m=40      26.9969     583.248     772.875           234
 
 Adaptive decision trace
 -----------------------
 m           phase    pilot     rho_tail   uncertainty   pilot residual  PCG energy residual  pred cycles  P density %     path ms    pilot ms   selected
 -----  ----------  -------  -----------  ------------  ---------------  ------------------  -----------  -----------  ----------  ----------  ---------
-0         initial       24     0.994006        0.1079        5.654e+00           1.000e+00         2611       1.3950       0.000       7.471         no
-16         anchor       24     0.990369        0.0116        2.364e+01           1.101e-01         1779       9.1300     128.031      18.632         no
-40       midpoint       24     0.912467        0.0128        3.438e+00           1.112e-02          189      26.9969     247.050      48.358        yes
-52        forward       24     0.907640        0.0165        1.126e+00           5.154e-03          168      37.3532     308.841      71.865         no
+0         initial       24     0.994006        0.1079        5.654e+00           1.000e+00         2611       1.3950       0.000      10.284         no
+16         anchor       24     0.990369        0.0116        2.364e+01           1.101e-01         1779       9.1300     132.851      33.464         no
+40       midpoint       24     0.912467        0.0128        3.438e+00           1.112e-02          189      26.9969     275.433      39.955        yes
+52        forward       24     0.907640        0.0165        1.126e+00           5.154e-03          168      37.3532     337.390      66.450         no
 
 
 Adaptive PCG versus an offline step-two oracle
 ==============================================
 
-Version           : 3.6.0
+Version           : 3.7.0
 Oracle candidates : m=0 and m=12,14,...,48
 Solve tolerance   : 1e-6
 
@@ -48,13 +48,42 @@ Representative oracle gaps
 --------------------------
 1/h      1/H    Contrast              Topology  Selected m   Adaptive cycles   Oracle m   Oracle cycles     Gap %   Selection ms  P density %
 -----  -----  ----------  --------------------  ----------  ----------------  ---------  --------------  --------  -------------  -----------
-32         8       1e+02         cross-channel           0                38          0              38      0.00          0.603       5.0989
-32         8       1e+04     parallel-channels          12                54         20              45     20.00         12.568      44.2757
-32         8       1e+06          winding-ring          24                59         20              51     15.69         13.008      81.2695
-64         8       1e+02     diagonal-channels          12               228         12             228      0.00         49.078      24.6651
-64         8       1e+06     parallel-channels          12               160         22             144     11.11         45.957      24.6651
-64         8       1e+04    branching-channels          12               167         12             167      0.00         44.915      24.6651
-64        16       1e+04     diagonal-channels          24                55         30              50     10.00        130.738      31.5204
-64        16       1e+06    meandering-channel          34                58         40              51     13.73        132.156      48.2792
+32         8       1e+02         cross-channel           0                38          0              38      0.00          0.634       5.0989
+32         8       1e+04     parallel-channels          12                54         20              45     20.00         12.918      44.2757
+32         8       1e+06          winding-ring          24                59         20              51     15.69         13.606      81.2695
+64         8       1e+02     diagonal-channels          12               228         12             228      0.00         45.905      24.6651
+64         8       1e+06     parallel-channels          12               160         22             144     11.11         50.553      24.6651
+64         8       1e+04    branching-channels          12               167         12             167      0.00         50.861      24.6651
+64        16       1e+04     diagonal-channels          24                55         30              50     10.00        118.167      31.5204
+64        16       1e+06    meandering-channel          34                58         40              51     13.73        122.291      48.2792
+
+
+Initial pilot-length and selection-slack ablation
+=================================================
+
+Version           : 3.7.0
+Fine grid         : h=1/128
+Coarse grid       : H=1/16
+Contrast          : 1e+04
+Smoother          : one forward + one backward Gauss-Seidel
+Solve tolerance   : 1e-6
+Timing            : one end-to-end run per candidate
+Oracle candidates : m=0 and m=16,18,...,64
+
+Note: This v3.7 table is a deliberately small main-problem ablation. It varies only pilot length and final selection slack while keeping the candidate interval, tail window and energy-residual direction rule fixed. It is an initial sensitivity check, not a frozen training/validation study.
+
+Pilot and slack sensitivity
+---------------------------
+Pilot     Slack %  Selected m  Candidates    Forecast      Cycles   Oracle m  Oracle cycles     Gap %  Selection ms  P density %
+-------  --------  ----------  ----------  ----------  ----------  ---------  -------------  --------  ------------  -----------
+12              0          52           4         131         276         38            231     19.48       548.647      37.3532
+12             13          52           4         131         276         38            231     19.48       538.605      37.3532
+12             20          40           4         155         234         38            231      1.30       536.514      26.9969
+24              0          52           4         168         276         38            231     19.48       550.291      37.3532
+24             13          40           4         189         234         38            231      1.30       558.359      26.9969
+24             20          40           4         189         234         38            231      1.30       560.735      26.9969
+32              0          52           4         180         276         38            231     19.48       609.434      37.3532
+32             13          40           4         197         234         38            231      1.30       619.042      26.9969
+32             20          40           4         197         234         38            231      1.30       637.483      26.9969
 
 

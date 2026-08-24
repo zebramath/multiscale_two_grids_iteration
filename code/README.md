@@ -1,4 +1,4 @@
-# two_grids_iteration v3.6.0
+# two_grids_iteration v3.7.0
 
 ## 目录结构
 
@@ -10,6 +10,11 @@
 | `support_expansion.hpp` | 强连接支撑扩张和残差预算自适应支撑 |
 | `global_pcg.hpp` | 增量全局 PCG 路径和自适应检查点选择 |
 | `two_grid_solver.hpp` | Galerkin 粗算子、对称平滑、粗解和两网格循环 |
+
+v3.7 的 `CoarseSetupReport` 还直接记录
+$\operatorname{tr}(P^TAP)$、$C_P$、两层 operator complexity、对称化 Cholesky
+填充比。experiment2 使用这些量和 60 步两网格幂迭代谱代理解释有限 PCG 路径；
+这些诊断不计入公开 Setup/Total 计时。
 
 `experiments` 只包含六个可执行入口。原有测试角度位于 `src/experiment/studies`，由对应入口统一组织并写入一份 TXT，不再分别形成零散实验。
 
@@ -41,8 +46,8 @@ ctest --test-dir build --output-on-failure
 | 入口 | 内部测试角度 |
 |---|---|
 | `experiment1_localization` | 支撑半径、局部 PCG 容差、全局剪枝、支撑扩张 |
-| `experiment2_pcg_path` | 有限 PCG 预算、步长 2 密集扫描、pilot 排序 |
-| `experiment3_adaptive_oracle` | 主问题自适应轨迹、八问题 step-2 oracle |
+| `experiment2_pcg_path` | 有限 PCG 预算、步长 2 密集扫描、能量/复杂度/谱诊断、pilot 排序 |
+| `experiment3_adaptive_oracle` | 主问题自适应轨迹、八问题 step-2 oracle、pilot×松弛初步消融 |
 | `experiment4_robustness` | 18 问题网格、对比度、种子与六类通道拓扑矩阵 |
 | `experiment5_diagnostics` | 八问题附加诊断和八问题压力测试 |
 | `experiment6_workload` | 五右端项摊销与 break-even |
