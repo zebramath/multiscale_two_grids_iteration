@@ -30,7 +30,7 @@
 \newcommand{\E}{\bm E}
 \newcommand{\K}{\bm K}
 
-\title{有限 Krylov 能量插值与自适应两网格选择：深化统一理论分析 v9}
+\title{有限 Krylov 能量插值与自适应两网格选择：深化统一理论分析 v10}
 \author{崔正平}
 \date{}
 
@@ -38,30 +38,44 @@
 \maketitle
 
 \begin{abstract}
-本文在 v8 的统一框架上进一步强化理论结论，并尽量把“现象解释”提升为可检验的
-定量定理。对有限维对称正定系统，全局能量极小插值仍是唯一变分终点；有限 PCG
-则是一条具有严格能量账本和谱选择性的 Krylov 正则化路径。v9 首先把局部化中的
-经典 $2q^m$ 估计加强为谱集合上的最佳归一化多项式因子，并给出精确的 Chebyshev
-常数；同时新增一次支撑扩张的局部 Schur 补收益公式，使“扩哪些点最值得”可以由
-当前支撑外残差定量回答。
+本文在 v9 的统一框架上继续推进，目标不是扩张篇幅，而是把若干已经存在的“稳定性
+上界”和“局部充分条件”进一步强化为可优化的极值常数、二阶分类、全局 Pareto
+值函数以及可以反向指导候选构造的停止证书。对有限维 SPD 系统，能量极小插值
+$\bm W^\ast=-\bm B^{-1}\bm C$ 仍是唯一变分终点；有限 PCG 仍是一条带有严格
+$\bm B$--正交能量账本的 Krylov 正则化轨道。v10 保留 v9 的谱自适应局部化、
+局部 Schur 补支撑收益、Schur 图坐标、任意图空间主角闭式公式和
+$\sqrt{\rho_{\rm TG}}$ 的全局 Grassmann--Lipschitz 稳定性，并在这些结构上新增
+五组更强结论。
 
-核心强化发生在两网格几何部分。Schur 图参数不仅精确表示插值能量、Galerkin 粗矩阵
-和相对能量粗空间的主角，而且任意两个图粗空间之间的最大主角具有闭式公式。由此
-得到比 v8 更强的平方根谱稳定性：$\sqrt{\rho_{\rm TG}}$ 对粗空间投影间隙全局
-Lipschitz；对代码采用的前向/后向 Gauss--Seidel，其常数严格小于 $1$，并可由对称
-Gauss--Seidel 预条件矩阵的最小特征值显式给出。该界进一步产生三类新结论：PCG
-任意两个检查点间的能量下降直接控制可能遗漏的两网格谱变化；固定的两网格优势要求
-支付严格正的显式能量偏离下界，形成可量化的 Pareto 障碍；以及有限候选网格在
-$\sqrt{\rho}$ 目标上的离散化损失可以由相邻检查点的 PCG 块能量事后认证。
+第一，图参数的能量预算现在同时控制 Schur 归一化粗矩阵的条件数和体积膨胀：
+主角、粗矩阵谱畸变与能量偏离形成显式三联关系。第二，定义在固定能量预算内可达到的
+最佳两网格性能 $\Psi(E)$ 后，可得到全局双边 Pareto 包络；若固定磨光器的全局最优
+图粗空间有限可达，还得到一条由径向图路径给出的构造性上界。更重要的是，在能量终点
+顶端慢模态簇存在谱隙时，v10 给出\emph{最陡一阶两网格下降率的精确常数}：
+角度归一化常数恰为 $\sigma_{\min}(\bm Y\bm V_\ast)$，能量归一化常数则为
+$\{\tr[(\bm C_\ast^T\bm C_\ast)^{-1}]\}^{-1/2}$，
+$\bm C_\ast=\Sc^{-1/2}\bm Y\bm V_\ast$。因此最优局部 Pareto 前沿满足
+$\Psi(E)=\sqrt{\rho_\ast}-\beta_E\sqrt{2E}+O(E)$；这把“有限能量偏离为什么可能
+换来一阶谱收益”定量到最优常数。若一阶项消失，v10 对简单顶端奇异值进一步给出
+完整的二阶特征值扰动系数，从而严格区分小幅扰动的二阶改善、二阶恶化与真正需要更高阶
+或有限幅度机制的情形。
 
-v9 还给出一个全局存在性定理。所有单位注入粗空间在 Schur 正交坐标中恰构成
-Grassmann 流形上的图坐标开稠密集，因此在单位注入插值族内可达到的两网格谱半径
-下确界与所有同维粗空间的全局最优值相同。于是，存在某个单位注入插值严格优于
-能量终点，当且仅当能量终点本身不是固定磨光器下的全局最优同维粗空间；若最优粗空间
-与图坐标横截，还可显式写出固定磨光器意义下的最优插值。最后，本文补充给定右端项的
-精确模态收敛公式、随机多右端项的分布目标，以及 v4.2 候选选择、预测误差、离散覆盖
-和摊销成本的确定性 regret 框架。所有强结论均明确区分无条件恒等式、结构性充分条件
-和实现经验参数，不把当前二维高对比实验外推为任意 AMG 的无条件规律。
+第三，候选离散化证书被严格收紧：利用 PCG 块的正交勾股关系，同时使用区间两端后，
+遗漏的 $\sqrt{\rho}$ 最优值上界比 v9 再改善一个 $1/\sqrt2$ 因子。结合残差对剩余
+能量的事后上界，又得到一个可证明的 PCG 候选\emph{提前停止判据}：若所有后续点即使
+达到理论上允许的最大谱改善也不可能击败当前最佳候选，则无需继续向更大 $m$ 推进。
+第四，本文把固定 RHS 的 pilot 误差从抽象的
+$|\widehat N-N|\le\epsilon_N$ 条件向前推进一步：在明确的确定性对数尾包络假设下，
+给出真实剩余循环数和预测循环数之间的显式误差公式，从而把 tail-fit 误差可以直接
+代入已有 regret 定理。第五，理论推广到近似粗求解：若归一化粗逆误差为
+$\varepsilon_c$，则近似两网格算子相对精确 Galerkin 两网格的算子扰动至多为
+$\varepsilon_c\norm{\bm T}_2^2$；粗空间误差与粗求解误差还可以在同一个全局预算中
+相加控制。
+
+这些强化仍严格区分：无条件有限维恒等式、需要顶端谱隙或横截性的局部/全局定理、
+需要尾部模型的预测结论，以及当前 v4.2 代码尚未实现的推广。特别地，本文仍不声称
+任意 PCG 路径必然经过固定磨光器的全局最优粗空间，也不把近似粗求解、多层递归或
+统计 tail 模型包装成当前二维实验已经验证的事实。
 \end{abstract}
 
 \section{模型、实现对应关系与结论层级}
@@ -202,7 +216,7 @@ $\bm D^{-1}\bm B$ 的 Euclidean 二范数条件数直接代入 CG 界。
 其中 $m\ge1$、$\widehat\kappa>1$，$T_m$ 为第一类 Chebyshev 多项式；
 若 $\widehat\kappa=1$，一步即可精确求解，约定 $\chi_m^{\rm int}=0$（$m\ge1$）。
 式~\eqref{eq:spectral-minimax} 在谱有明显聚簇或间隙时可远小于仅由条件数得到的
-区间界，因此它也是 v9 中更适合讨论 Ritz 超线性效应的局部化常数。
+区间界，因此它也是 v10 中更适合讨论 Ritz 超线性效应的局部化常数。
 
 令 $\mathcal G(\bm B)$ 为 $\bm B$ 的非零图，
 $\mathcal N_m(G)$ 为集合 $G$ 的 $m$ 跳闭邻域。
@@ -446,7 +460,7 @@ $\alpha=(\bm r^T\bm D^{-1}\bm r)/(\bm p^T\bm B\bm p)$ 给出
 所以 $\eta_m$ 是能量终点距离的合理路径指标，但在条件数很大时并不是高精度代理，
 更不能单独替代实际两网格 pilot。
 
-CG/PCG 的多项式最优性与 Ritz 描述可参见~\cite{Greenbaum1997,Saad2003}。
+CG/PCG 的多项式最优性、Ritz 描述与超线性阶段可参见~\cite{Greenbaum1997,Saad2003,VanDerSluis1986,Beckermann2001}。
 用前节的谱多项式因子可以把经典条件数界加强为
 \begin{equation}
  \norm{\E_m}_{\bm B,F}
@@ -495,7 +509,7 @@ $a_{ij}=\bm q_i^T\widehat{\bm e}_{0,j}$，则 PCG 最小化的是非负二次谱
 
 \section{Schur 图坐标：能量、粗矩阵与任意粗空间角度的统一量化}
 
-这一节给出 v9 的核心坐标化。定义
+这一节保留并强化 v9 的核心坐标化。定义
 \begin{equation}
  \bm\Phi=
  \begin{bmatrix}\bm I&\bm W^\ast\\\bm0&\bm I\end{bmatrix}
@@ -535,7 +549,7 @@ $a_{ij}=\bm q_i^T\widehat{\bm e}_{0,j}$，则 PCG 最小化的是非负二次谱
 $\bm A_c=\bm P^T\bm A\bm P$。特别地，
 \begin{equation}
  \gap(\mathcal U(\K),\mathcal U_\ast)
- :=\norm{\Pi_{\K}-\Pi_0}_2
+ \coloneqq\norm{\Pi_{\K}-\Pi_0}_2
  =\sin\theta_{\max}
  =\frac{\norm{\K}_2}{\sqrt{1+\norm{\K}_2^2}},          \label{eq:principal-gap}
 \end{equation}
@@ -557,9 +571,101 @@ $1+\sigma_i^2=\sec^2\theta_i$。最后对 \eqref{eq:J-K} 使用 $\Sc$ 的
 Rayleigh 商界。
 \end{proof}
 
+
+\begin{corollary}[能量预算对粗矩阵谱畸变的全局控制]\label{cor:coarse-conditioning-energy}
+记
+\begin{equation}
+ \widehat{\bm A}_c=\Sc^{-1/2}\bm A_c\Sc^{-1/2}=\bm I+\K^T\K,
+ \qquad
+ E_J=J(\bm W)-J(\bm W^\ast).
+\end{equation}
+则
+\begin{align}
+ \lambda_{\max}(\widehat{\bm A}_c)
+ &=1+\norm{\K}_2^2=\sec^2\theta_{\max},                 \label{eq:Ac-max-angle}\\
+ \kappa_2(\widehat{\bm A}_c)
+ &=\frac{1+\sigma_{\max}(\K)^2}
+         {1+\sigma_{\min}(\K)^2}
+ \le1+\norm{\K}_2^2
+ \le1+\frac{2E_J}{\lambda_{\min}(\Sc)},                 \label{eq:Ac-kappa-energy}\\
+ \det\widehat{\bm A}_c
+ &=\prod_{i=1}^{n_C}(1+\sigma_i(\K)^2)
+ =\prod_{i=1}^{n_C}\sec^2\theta_i.                       \label{eq:Ac-volume-angle}
+\end{align}
+这里若 $\K$ 有零奇异值，则按通常约定
+$\sigma_{\min}(\K)=0$。因此固定的插值能量预算不仅限制粗空间离
+$\mathcal U_\ast$ 的最大角度，也禁止 Schur 归一化 Galerkin 粗矩阵的条件数无限恶化。
+\end{corollary}
+
+\begin{proof}
+前两项由定理~\ref{thm:K-geometry} 的
+$\widehat{\bm A}_c=\bm I+\K^T\K$ 直接得到。
+又
+$\norm{\K}_2^2\le\norm{\K}_F^2\le2E_J/\lambda_{\min}(\Sc)$，
+得到~\eqref{eq:Ac-kappa-energy}。行列式公式是
+$\bm I+\K^T\K$ 的特征值乘积。
+\end{proof}
+
 式~\eqref{eq:coarse-angle-spectrum} 给出一个此前未显式利用的解释：偏离能量极小
 粗空间时，Schur 归一化粗矩阵的每个谱膨胀因子恰是相应主角的 $\sec^2\theta_i$。
 因此“粗矩阵偏离 Schur 补多少”和“粗空间转了多大角度”不是两个独立现象。
+
+\begin{corollary}[能量与最大主角之间的最优常数]\label{cor:sharp-energy-angle}
+令
+\begin{equation}
+ \delta=\gap(\mathcal U(\K),\mathcal U_\ast)
+ =\sin\theta_{\max},\qquad 0\le\delta<1.
+\end{equation}
+则所有具有该最大主角间隙的有限图插值满足
+\begin{equation}
+ J(\bm W)-J(\bm W^\ast)
+ \ge
+ \frac{\lambda_{\min}(\Sc)}{2}
+ \frac{\delta^2}{1-\delta^2}
+ =
+ \frac{\lambda_{\min}(\Sc)}{2}\tan^2\theta_{\max}.       \label{eq:sharp-energy-angle}
+\end{equation}
+而且这个常数在只知道 $\lambda_{\min}(\Sc)$ 的意义下是\emph{精确可达}的：
+若 $\bm z_{\min}$ 是 $\Sc$ 的单位最小特征向量，任取单位
+$\bm u\in\R^{n_F}$ 并令
+\begin{equation}
+ \K=\tan\theta_{\max}\,\bm u\bm z_{\min}^T,              \label{eq:rankone-angle-achiever}
+\end{equation}
+则等号成立。
+
+若 Grassmann 测地距离记为
+\begin{equation}
+ d_{\rm geo}(\mathcal U(\K),\mathcal U_\ast)
+ =\left(\sum_i\theta_i^2\right)^{1/2},
+\end{equation}
+则进一步有
+\begin{equation}
+ d_{\rm geo}^2
+ \le\sum_i\tan^2\theta_i
+ =\norm{\K}_F^2
+ \le\frac{2[J(\bm W)-J(\bm W^\ast)]}{\lambda_{\min}(\Sc)}.
+                                                                    \label{eq:energy-geodesic}
+\end{equation}
+\end{corollary}
+
+\begin{proof}
+由~\eqref{eq:principal-gap}，
+$\norm{\K}_2=\delta/\sqrt{1-\delta^2}=\tan\theta_{\max}$。
+又
+\[
+ J-J^\ast=\frac12\tr(\K\Sc\K^T)
+ \ge\frac{\lambda_{\min}(\Sc)}{2}\norm{\K}_F^2
+ \ge\frac{\lambda_{\min}(\Sc)}{2}\norm{\K}_2^2.
+\]
+秩一构造~\eqref{eq:rankone-angle-achiever} 同时使
+$\norm{\K}_F=\norm{\K}_2=\tan\theta_{\max}$，且右奇异方向正好落在
+$\Sc$ 的最小特征向量上，故达到等号。最后使用
+$\theta_i\le\tan\theta_i=\sigma_i(\K)$。
+\end{proof}
+
+这说明 v9/v10 Pareto 障碍中的“从粗空间角度换算成最小能量代价”这一环本身已经是
+最佳常数；若最终下界与实际最优能量之间仍有明显空隙，松弛主要来自
+$\sqrt{\rhoTG}$ 的全局 Lipschitz 步，而不是来自能量--主角转换。
 
 更一般地，两个有限图参数之间的角度也有闭式表达。
 
@@ -627,8 +733,8 @@ $\bm G=\bm I-\bm M^{-1}\bm A$。
 \begin{equation}
  \bm M_{\rm SGS}=\bm M\bm D_A^{-1}\bm M^T\succ0,
  \qquad
- \gamma_{\rm GS}=\lambda_{\min}\!\left(
- \bm M_{\rm SGS}^{-1/2}\bm A\bm M_{\rm SGS}^{-1/2}\right)>0.
+ \gamma_{\rm GS}=\lambda_{\min}\!\bigl(
+ \bm M_{\rm SGS}^{-1/2}\bm A\bm M_{\rm SGS}^{-1/2}\bigr)>0.
                                                                     \label{eq:gamma-GS}
 \end{equation}
 则
@@ -801,7 +907,7 @@ $D_{m:n}/\sqrt{\lambda_{\min}(\Sc)}$；再用
 \eqref{eq:J-step} 求和得到。
 \end{proof}
 
-\begin{corollary}[候选网格的可认证谱离散化损失]\label{cor:spectral-grid-regret}
+\begin{corollary}[候选网格的双端点可认证谱离散化损失]\label{cor:spectral-grid-regret}
 设整数 PCG 路径被检查点
 $0\le m_0<m_1<\cdots<m_L$ 分段，并令
 $D_l=D_{m_l:m_{l+1}}$。若比较目标是同一路径上的 $\sqrt{\rho_m}$，则
@@ -810,22 +916,178 @@ $D_l=D_{m_l:m_{l+1}}$。若比较目标是同一路径上的 $\sqrt{\rho_m}$，�
  \min_l\sqrt{\rho_{m_l}}-
  \min_{m_0\le m\le m_L}\sqrt{\rho_m}
  \le
- \frac{\norm{\bm T}_2}{\sqrt{\lambda_{\min}(\Sc)}}
+ \frac{\norm{\bm T}_2}{\sqrt{2\lambda_{\min}(\Sc)}}
  \max_l D_l.                                              \label{eq:spectral-grid-regret}
 \end{equation}
+因此相对于 v9 只使用区间单端点的界，常数严格改善了 $1/\sqrt2$。
 \end{corollary}
 
 \begin{proof}
-若全路径最优点 $m^\star$ 位于 $[m_l,m_{l+1}]$，PCG 正交性给出
-$D_{m_l:m^\star}\le D_l$。由定理~\ref{thm:block-spectral-continuity}，
-$\sqrt{\rho_{m_l}}\le\sqrt{\rho_{m^\star}}+
-\norm{\bm T}_2D_l/\sqrt{\lambda_{\min}(\Sc)}$。
-再用采样点最小值不超过 $\sqrt{\rho_{m_l}}$ 即得。
+若全路径最优点 $m^\star$ 位于 $[m_l,m_{l+1}]$，记
+\[
+ x=D_{m_l:m^\star},\qquad y=D_{m^\star:m_{l+1}}.
+\]
+PCG 不同步修正的 $\bm B$--正交性给出
+$x^2+y^2=D_l^2$，故 $\min\{x,y\}\le D_l/\sqrt2$。
+取离 $m^\star$ 更近的那个区间端点 $e$，由
+定理~\ref{thm:block-spectral-continuity}，
+\[
+ \sqrt{\rho_e}\le \sqrt{\rho_{m^\star}}+
+ \frac{\norm{\bm T}_2D_l}{\sqrt{2\lambda_{\min}(\Sc)}}.
+\]
+采样点最小值不超过 $\sqrt{\rho_e}$，即得结论。
 \end{proof}
 
 也就是说，候选间距是否足够细，不必只能用“步数相差 2 还是 8”衡量；若某个未细化
 区间的 PCG 块能量已经很小，则该区间不可能隐藏一个在 $\sqrt\rho$ 上远优于已采样点
 的候选。这为未来用能量块大小驱动自适应候选细化提供了严格证书。
+
+
+
+\begin{theorem}[利用两端谱值的最优区间下包络]\label{thm:interval-lower-envelope}
+考虑任意 PCG 区间 $a<b$，令
+\begin{equation}
+ A=\sqrt{\rho_a},\qquad
+ B=\sqrt{\rho_b},\qquad
+ d=\frac{\norm{\bm T}_2}{\sqrt{\lambda_{\min}(\Sc)}}D_{a:b}.
+                                                                    \label{eq:interval-ABD}
+\end{equation}
+由定理~\ref{thm:block-spectral-continuity} 必有
+$|A-B|\le d$。则对每个整数 $m\in[a,b]$，
+\begin{equation}
+ \sqrt{\rho_m}\ge
+ \mathcal L(A,B,d):=
+ \max\left\{
+ 0,\,
+ \frac{A+B-\sqrt{\,2d^2-(A-B)^2\,}}{2}
+ \right\}.                                                \label{eq:interval-lower-envelope}
+\end{equation}
+而且在只使用
+\begin{enumerate}
+ \item 两端点数值 $A,B$；
+ \item PCG 块正交关系；
+ \item $\sqrt\rho$ 的 Lipschitz 常数
+ $\norm{\bm T}_2/\sqrt{\lambda_{\min}(\Sc)}$
+\end{enumerate}
+这三类信息时，式~\eqref{eq:interval-lower-envelope} 是最尖锐的统一下界。
+
+因此若当前全局最佳已检查值满足
+\begin{equation}
+ \sqrt{\rho_{\rm best}}\le\mathcal L(A,B,d),             \label{eq:interval-prune}
+\end{equation}
+则整个开区间 $(a,b)$ 都不可能包含严格更优候选，可以不做任何进一步细化。
+此外，若
+$\Delta=|A-B|$，则该区间相对较优端点最多还能隐藏的改进量满足
+\begin{equation}
+ 0\le
+ \min\{A,B\}-\min_{a\le m\le b}\sqrt{\rho_m}
+ \le
+ \frac{\sqrt{2d^2-\Delta^2}-\Delta}{2}
+ \le\frac{d}{\sqrt2}.                                    \label{eq:data-dependent-grid-gap}
+\end{equation}
+最后一个上界恢复推论~\ref{cor:spectral-grid-regret}，而前一个数据相关上界通常更紧。
+\end{theorem}
+
+\begin{proof}
+对固定内部点 $m$ 记
+\[
+ x=D_{a:m},\qquad y=D_{m:b}.
+\]
+PCG 块正交给出 $x^2+y^2=D_{a:b}^2$。令
+$c=\norm{\bm T}_2/\sqrt{\lambda_{\min}(\Sc)}$，
+$p=cx$、$q=cy$，则 $p^2+q^2=d^2$，而 Lipschitz 界同时给出
+\[
+ \sqrt{\rho_m}\ge A-p,\qquad
+ \sqrt{\rho_m}\ge B-q.
+\]
+所以只需计算
+\[
+ \min_{\substack{p,q\ge0\\p^2+q^2=d^2}}
+ \max\{A-p,B-q\}.
+\]
+因为 $|A-B|\le d$，最优点可以使两项相等。设
+$p-q=A-B$，与 $p^2+q^2=d^2$ 联立，得到
+\[
+ p+q=\sqrt{2d^2-(A-B)^2},
+\]
+共同值即
+$(A+B-\sqrt{2d^2-(A-B)^2})/2$；再与谱半径非负性取最大得到
+\eqref{eq:interval-lower-envelope}。该标量极值问题本身已达到，因此在上述三类信息下
+无法再统一改进。将 $A,B$ 中较小者减去该下界即可得到
+\eqref{eq:data-dependent-grid-gap}；其关于
+$\Delta\in[0,d]$ 单调下降，最大值在 $\Delta=0$ 处等于 $d/\sqrt2$。
+\end{proof}
+
+这个结果使“是否需要在 $m\pm2$ 再测一个点”从固定规则变成可证的区间 branch-and-bound：
+端点性能差得越明显，区间中还能隐藏一个深谷的可能性反而越小；只有两端性能接近且
+PCG 块能量仍大时，细化才最有理论价值。
+
+\begin{theorem}[PCG 候选尾部的可认证提前停止]\label{thm:certified-path-stop}
+设在第 $m$ 步已有一个可验证上界
+\begin{equation}
+ J(\bm W_m)-J(\bm W^\ast)\le \overline E_m.
+\end{equation}
+定义
+\begin{equation}
+ \overline k_m=
+ \sqrt{\frac{2\overline E_m}{\lambda_{\min}(\Sc)}},
+ \qquad
+ \overline s_m=
+ \frac{\overline k_m}{\sqrt{1+\overline k_m^2}},
+ \qquad
+ L_m=
+ \max\left\{
+ \sqrt{\rho_{\rm opt}},
+ \left(\sqrt{\rho_\ast}-\norm{\bm T}_2\overline s_m\right)_+
+ \right\}.
+                                                                    \label{eq:future-root-lower}
+\end{equation}
+则对所有后续 PCG 候选 $n\ge m$，
+\begin{equation}
+ \sqrt{\rho_n}\ge L_m.                                    \label{eq:future-all-lower}
+\end{equation}
+因此若此前已实际评估的最佳候选满足
+\begin{equation}
+ \sqrt{\rho_{\rm best}}<L_m,                              \label{eq:certified-stop-condition}
+\end{equation}
+则任何 $n\ge m$ 的后续候选都不可能击败该最佳值，候选 PCG 路径可以在理论上安全地
+停止继续推进。
+
+对当前 Jacobi--PCG，可完全由当前预条件残量构造
+\begin{equation}
+ \overline E_m^{\,\rm res}=
+ \frac{R_m^2}{2\widehat\lambda_{\min}},                  \label{eq:residual-tail-energy-upper}
+\end{equation}
+并代入上述判据。等价地，若希望后续候选至少获得给定的终点谱优势
+$\gamma\in(0,\rho_\ast)$，而
+\begin{equation}
+ \overline E_m<
+ \frac{\lambda_{\min}(\Sc)}{2}
+ \frac{h_\gamma^2}{1-h_\gamma^2},
+ \qquad
+ h_\gamma=
+ \frac{\sqrt{\rho_\ast}-\sqrt{\rho_\ast-\gamma}}
+      {\norm{\bm T}_2}<1,                                \label{eq:no-future-gamma}
+\end{equation}
+则所有 $n\ge m$ 都不可能达到
+$\rho_n\le\rho_\ast-\gamma$。
+\end{theorem}
+
+\begin{proof}
+PCG 能量单调给出
+$J(\bm W_n)-J(\bm W^\ast)\le\overline E_m$（$n\ge m$）。
+定理~\ref{thm:Pareto-barrier} 的逆向能量预算界于是对每个后续候选同时成立，
+得到~\eqref{eq:future-all-lower}。式~\eqref{eq:residual-tail-energy-upper}
+来自~\eqref{eq:global-residual-energy} 的左侧不等式。
+最后一式正是定理~\ref{thm:Pareto-barrier} 的必要能量代价反用。
+\end{proof}
+
+这个判据与“残量小就停 PCG 求解”有本质区别：这里停止的不是线性系统求解本身，而是
+\emph{候选插值的生成路径}。它利用的是“后续点越来越接近能量终点”这一单调结构，
+从而证明后续点即使发生最有利的粗空间旋转，也已经没有足够的剩余能量预算跨越当前
+最优谱裕量。实际实现若不显式计算 $\rho_\ast$ 或
+$\widehat\lambda_{\min},\lambda_{\min}(\Sc)$，可使用经过认证的上下界替代；未经认证的
+估计值只能形成启发式停止器，不能称为严格证书。
 
 \section{固定磨光器下的全局最优粗空间、单位注入可达性与 Pareto 障碍}
 
@@ -986,6 +1248,116 @@ $\norm{\K}/\sqrt{1+\norm{\K}^2}<1$，反解得到第一式，再用
 这一定理把“有限 Krylov 是正则化路径”的物理图像变成了定量约束：固定的两网格收益
 必须以非零的能量偏离为代价；继续把 PCG 推向能量极小终点时，这种固定收益必然消失。
 
+
+\subsection{全局能量--两网格 Pareto 值函数与双边包络}
+
+为了把“能量预算”从单个候选约束提升成一个真正的优化对象，定义
+\begin{equation}
+ \Psi(E)=
+ \inf_{\substack{\K\in\R^{n_F\times n_C}\\
+                  \frac12\tr(\K\Sc\K^T)\le E}}
+ \sqrt{\rhoTG(\K)},
+ \qquad E\ge0.                                           \label{eq:Pareto-value}
+\end{equation}
+有限维下每个固定 $E$ 的可行集是紧的，因此该下确界实际可达到。
+
+\begin{theorem}[全局 Pareto 值函数的双边包络]\label{thm:Pareto-value}
+函数 $\Psi(E)$ 单调不增，并满足
+\begin{align}
+ \Psi(0)&=\sqrt{\rho_\ast},                               \label{eq:Psi-zero}\\
+ \sqrt{\rho_{\rm opt}}
+ &\le \Psi(E)
+ \le \sqrt{\rho_\ast},                                    \label{eq:Psi-basic}\\
+ \lim_{E\to\infty}\Psi(E)&=\sqrt{\rho_{\rm opt}}.         \label{eq:Psi-limit}
+\end{align}
+此外令
+\begin{equation}
+ k_E=\sqrt{\frac{2E}{\lambda_{\min}(\Sc)}},
+ \qquad
+ s_E=\frac{k_E}{\sqrt{1+k_E^2}},
+\end{equation}
+则有全局下包络
+\begin{equation}
+ \Psi(E)\ge
+ \max\left\{
+   \sqrt{\rho_{\rm opt}},
+   \left(\sqrt{\rho_\ast}-\norm{\bm T}_2s_E\right)_+
+ \right\}.                                                \label{eq:Psi-lower-envelope}
+\end{equation}
+
+若存在有限图全局最优解 $\K_{\rm opt}$，记
+\begin{equation}
+ E_{\rm opt}=
+ \frac12\tr(\K_{\rm opt}\Sc\K_{\rm opt}^T),\qquad
+ s_{\rm opt}=
+ \frac{\norm{\K_{\rm opt}}_2}
+      {\sqrt{1+\norm{\K_{\rm opt}}_2^2}},
+\end{equation}
+则 $\Psi(E)=\sqrt{\rho_{\rm opt}}$ 对所有 $E\ge E_{\rm opt}$ 成立；而对
+$0\le E\le E_{\rm opt}$，取
+$t=\sqrt{E/E_{\rm opt}}$ 有构造性上界
+\begin{align}
+ \Psi(E)
+ &\le \sqrt{\rhoTG(t\K_{\rm opt})}                       \\
+ &\le \sqrt{\rho_{\rm opt}}
+ +\norm{\bm T}_2
+ \norm{(\bm I+t^2\K_{\rm opt}\K_{\rm opt}^T)^{-1/2}
+       (1-t)\K_{\rm opt}
+       (\bm I+\K_{\rm opt}^T\K_{\rm opt})^{-1/2}}_2      \label{eq:Psi-ray-exact}\\
+ &\le \sqrt{\rho_{\rm opt}}
+   +\norm{\bm T}_2(1-\sqrt{E/E_{\rm opt}})\,s_{\rm opt}. \label{eq:Psi-ray-simple}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+可行集随 $E$ 增大而嵌套，故 $\Psi$ 单调不增；
+$E=0$ 只允许 $\K=0$。全局最优粗空间定理给出
+$\Psi(E)\ge\sqrt{\rho_{\rm opt}}$。图子空间在 Grassmann 流形中稠密，
+故当能量球半径趋于无穷时，其并集覆盖全部有限图参数，
+\eqref{eq:unit-injection-infimum} 给出极限。
+下包络直接来自定理~\ref{thm:Pareto-barrier} 的能量预算形式。
+
+若 $\K_{\rm opt}$ 有限，$E(t\K_{\rm opt})=t^2E_{\rm opt}$ 精确成立。
+再用定理~\ref{thm:sqrt-rho-gap} 和
+定理~\ref{thm:graph-gap-exact} 比较
+$\mathcal U(t\K_{\rm opt})$ 与 $\mathcal U(\K_{\rm opt})$，
+得到~\eqref{eq:Psi-ray-exact}；去掉左侧归一化因子并计算右侧因子的二范数，
+得到~\eqref{eq:Psi-ray-simple}。
+\end{proof}
+
+因此 v10 不再只给“为了获得 $\gamma$ 优势至少需要多少能量”的单点障碍，而是把整个
+能量--谱折中写成一个单调值函数。下包络是任何算法都不能突破的几何限制；
+若最优图粗空间有限可达，上包络则给出一条明确可构造的径向路径。两者之间的距离正是
+仍可由更聪明的 Krylov 路径、非 Krylov 插值或任务特异优化继续压缩的理论空间。
+
+进一步，对任意阈值
+$r\in[\sqrt{\rho_{\rm opt}},\sqrt{\rho_\ast}]$ 定义达到该谱水平所需的最小能量
+\begin{equation}
+ \mathcal E_{\min}(r)=
+ \inf\left\{
+ \frac12\tr(\K\Sc\K^T):
+ \rhoTG(\K)\le r^2
+ \right\}.                                                \label{eq:Emin-r}
+\end{equation}
+由推论~\ref{cor:threshold-matrix}，
+这是带有精确二次矩阵不等式约束
+\begin{equation}
+ r^2(\bm I+\K\K^T)
+ -(\bm X-\K\bm Y)(\bm X-\K\bm Y)^T\succeq0              \label{eq:Emin-matrix}
+\end{equation}
+的有限维优化问题；它关于 $\K$ 一般不是凸问题。定理~\ref{thm:Pareto-barrier}
+给出可直接计算的全局下界
+\begin{equation}
+ \mathcal E_{\min}(r)\ge
+ \frac{\lambda_{\min}(\Sc)}{2}
+ \frac{h(r)^2}{1-h(r)^2},
+ \qquad
+ h(r)=\frac{\sqrt{\rho_\ast}-r}{\norm{\bm T}_2},
+                                                                    \label{eq:Emin-lower}
+\end{equation}
+只要 $h(r)<1$；若 $h(r)\ge1$，则该 Lipschitz 几何已经证明这个阈值不可能由任何
+有限图参数达到。
+
 \subsection{谱半径与给定右端项循环数的精确关系}
 
 由于对称两网格算子关于 $\bm A$ 自伴且半正定，存在 $\bm A$--正交归一特征向量
@@ -1107,6 +1479,70 @@ $\Gamma_m>0$ 恰使该试探商严格大于 $\rho_m$。能量下降由
 \eqref{eq:J-step} 得到。
 \end{proof}
 
+
+\subsection{任意粗空间处的 Grassmann 最陡下降率}
+
+v9 的局部分析主要在能量终点 $\mathcal U_\ast$ 展开。实际上，对任意当前粗空间，
+只要最坏奇异值是简单的，就可以把“还有没有一阶可改进方向”写成完全坐标无关的条件。
+Grassmann 流形上的切空间与测地线可参见~\cite{Edelman1998}。
+
+\begin{theorem}[任意粗空间处的精确一阶最陡下降率]\label{thm:grassmann-steepest}
+令 $\mathcal U$ 为任意 $n_C$ 维粗空间，
+$\Pi=\Pi_{\mathcal U}$、$\bm Q=\bm I-\Pi$，并设
+\begin{equation}
+ s=\sqrt{\rhoTG(\mathcal U)}=\norm{\bm Q\bm T}_2>0
+\end{equation}
+是简单奇异值。取对应单位右奇异向量 $\bm v$，并定义
+\begin{equation}
+ \bm r=\bm Q\bm T\bm v=s\bm u,\qquad
+ \bm c=\Pi\bm T\bm v,                                    \label{eq:active-residual-coarse}
+\end{equation}
+其中 $\bm u\in\mathcal U^\perp$ 为单位向量、$\bm c\in\mathcal U$。
+令 $\bm Z:\mathcal U\to\mathcal U^\perp$ 为 Grassmann 切向算子，并取一条满足
+$\dot\Pi(0)=\bm Z+\bm Z^T$ 的光滑子空间曲线。则
+\begin{align}
+ D\sqrt{\rhoTG}(\mathcal U;\bm Z)
+ &=-\bm u^T\bm Z\bm c,                                   \label{eq:grassmann-root-derivative}\\
+ D\rhoTG(\mathcal U;\bm Z)
+ &=-2s\,\bm u^T\bm Z\bm c.                               \label{eq:grassmann-rho-derivative}
+\end{align}
+因此在谱范数归一化 $\norm{\bm Z}_2\le1$ 下，
+\begin{align}
+ \inf_{\norm{\bm Z}_2\le1}
+ D\sqrt{\rhoTG}(\mathcal U;\bm Z)
+ &=-\norm{\bm c}_2,                                      \label{eq:grassmann-steepest-root}\\
+ \inf_{\norm{\bm Z}_2\le1}
+ D\rhoTG(\mathcal U;\bm Z)
+ &=-2s\norm{\bm c}_2.                                    \label{eq:grassmann-steepest-rho}
+\end{align}
+特别地，在该简单最坏模态假设下，$\mathcal U$ 对所有一阶粗空间旋转都是驻点，当且仅当
+\begin{equation}
+ \Pi_{\mathcal U}\bm T\bm v=0.                           \label{eq:grassmann-stationary}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+令
+$\bm H(\Pi)=\bm T^T(\bm I-\Pi)\bm T$，
+则 $\rhoTG=\lambda_{\max}(\bm H)$。最大特征值简单时，标准 Hermitian
+特征值扰动公式给出
+\[
+ D\rhoTG=-\bm v^T\bm T^T(\bm Z+\bm Z^T)\bm T\bm v.
+\]
+写 $\bm T\bm v=\bm r+\bm c$，利用
+$\bm r\in\mathcal U^\perp$、$\bm c\in\mathcal U$ 以及
+$\bm Z:\mathcal U\to\mathcal U^\perp$，仅交叉项保留，得到
+$D\rhoTG=-2\bm r^T\bm Z\bm c=-2s\bm u^T\bm Z\bm c$。
+除以 $2s$ 即得平方根导数。Cauchy--Schwarz 给出下界，而取秩一切向
+$\bm Z=\bm u\bm c^T/\norm{\bm c}$ 达到等号。
+\end{proof}
+
+该定理给出一个非常直接的几何解释：当前最坏的磨光后向量
+$\bm T\bm v$ 可分解成“粗空间已捕获部分” $\bm c$ 和“仍残留部分” $\bm r$。
+残留长度 $s$ 决定当前收敛率，而\emph{可被一阶旋转继续利用的改进速度}恰由
+$\norm{\bm c}$ 决定。若最坏向量已经完全落在粗空间正交补中，则一阶旋转看不到可利用的
+粗分量；此时必须由二阶或其他最坏模态切换产生进一步收益。
+
 \subsection{能量终点附近的一阶方向和严格二阶余项}
 
 设 $\bm X$ 的最大奇异值为 $\sigma>0$，重数为 $p<n_F$，并有谱隙
@@ -1177,12 +1613,218 @@ $2c_1^2k^2/\delta_\sigma$，得到双边界。方向导数由令
 $\K=t\bm Z$、$t\downarrow0$ 得到。
 \end{proof}
 
+
+\begin{corollary}[终点最陡一阶下降率的精确可见性常数]\label{cor:endpoint-steepest}
+令
+\begin{equation}
+ \bm A_\ast=\bm Y\bm V_\ast\in\R^{n_C\times p},
+ \qquad
+ \beta_{\rm ang}=\sigma_{\min}(\bm A_\ast),
+                                                                    \label{eq:beta-angle}
+\end{equation}
+其中秩亏时约定 $\beta_{\rm ang}=0$。则
+\begin{align}
+ \inf_{\norm{\bm Z}_2\le1}
+ D^+\sqrt{\rhoTG}(0;\bm Z)
+ &=-\beta_{\rm ang},                                     \label{eq:steepest-root-endpoint}\\
+ \inf_{\norm{\bm Z}_2\le1}
+ D^+\rhoTG(0;\bm Z)
+ &=-2\sigma\beta_{\rm ang}.                              \label{eq:steepest-rho-endpoint}
+\end{align}
+因此 v9 的秩条件不仅决定“一阶改善是否存在”，其最小奇异值还\emph{精确}决定每单位
+最大主角速度可以获得的最陡一阶谱收益。
+\end{corollary}
+
+\begin{proof}
+由定理~\ref{thm:local-expansion}，
+$D^+\sqrt{\rhoTG}(0;\bm Z)=-\lambda_{\min}
+(\sym(\bm U_\ast^T\bm Z\bm A_\ast))$。
+令 $\bm L=\bm U_\ast^T\bm Z$，则 $\norm{\bm L}_2\le1$。
+对任意使
+$\norm{\bm A_\ast\bm x}= \sigma_{\min}(\bm A_\ast)$ 的单位向量 $\bm x$，
+\[
+ \lambda_{\min}(\sym(\bm L\bm A_\ast))
+ \le \bm x^T\bm L\bm A_\ast\bm x
+ \le \sigma_{\min}(\bm A_\ast).
+\]
+反之，对紧 SVD
+$\bm A_\ast=\bm Q\bm D\bm R^T$，取
+$\bm Z=\bm U_\ast\bm R\bm Q^T$，则
+$\norm{\bm Z}_2=1$ 且
+$\sym(\bm U_\ast^T\bm Z\bm A_\ast)=
+\bm R\bm D\bm R^T$，其最小特征值恰为
+$\sigma_{\min}(\bm A_\ast)$。
+\end{proof}
+
+角度归一化不是本项目最自然的预算；插值真正支付的是
+$\frac12\tr(\K\Sc\K^T)$。因此再定义
+\begin{equation}
+ \bm C_\ast=\Sc^{-1/2}\bm Y\bm V_\ast.                   \label{eq:Cstar-energy}
+\end{equation}
+若 $\bm C_\ast$ 满列秩，定义能量归一化可见性
+\begin{equation}
+ \beta_E=
+ \left\{
+ \tr\!\left[(\bm C_\ast^T\bm C_\ast)^{-1}\right]
+ \right\}^{-1/2}
+ =\frac{1}{\norm{\bm C_\ast^\dagger}_F}.                 \label{eq:beta-energy}
+\end{equation}
+若秩亏则约定 $\beta_E=0$。它满足
+\begin{equation}
+ \frac{\sigma_{\min}(\bm C_\ast)}{\sqrt p}
+ \le \beta_E\le \sigma_{\min}(\bm C_\ast),               \label{eq:beta-energy-bounds}
+\end{equation}
+而简单顶端模态 $p=1$ 时
+\begin{equation}
+ \beta_E=\norm{\Sc^{-1/2}\bm Y\bm v}_2,                  \label{eq:beta-energy-simple}
+\end{equation}
+恰恢复后文有利尾部中出现的 $c_y$。
+
+\begin{theorem}[能量--谱 Pareto 前沿在终点的最优渐近斜率]\label{thm:local-Pareto-slope}
+设~\eqref{eq:top-gap} 成立，并令 $\Psi(E)$ 为
+\eqref{eq:Pareto-value} 定义的全局能量预算值函数。若
+$\bm Y\bm V_\ast$ 满列秩，则当 $E\downarrow0$，
+\begin{equation}
+ \Psi(E)=
+ \sqrt{\rho_\ast}-\beta_E\sqrt{2E}+O(E).                 \label{eq:Psi-small-energy}
+\end{equation}
+等价地，
+\begin{equation}
+ \lim_{E\downarrow0}
+ \frac{\sqrt{\rho_\ast}-\Psi(E)}{\sqrt{2E}}
+ =\beta_E.                                                \label{eq:Psi-slope-limit}
+\end{equation}
+若 $\bm Y\bm V_\ast$ 秩亏，则 $\sqrt E$ 阶改善项严格消失，
+\begin{equation}
+ \sqrt{\rho_\ast}-\Psi(E)=O(E).                          \label{eq:Psi-no-sqrt}
+\end{equation}
+\end{theorem}
+
+\begin{proof}[证明要点]
+写 $\K=t\bm Z$。能量恒等式给出
+\[
+ E_J(t\bm Z)=\frac{t^2}{2}\norm{\bm Z\Sc^{1/2}}_F^2
+\]
+且没有高阶余项；另一方面，定理~\ref{thm:local-expansion} 在谱隙下给出对有界方向
+一致的
+\[
+ \sqrt{\rhoTG(t\bm Z)}
+ =\sigma-t\lambda_{\min}
+   \!\left(\sym(\bm U_\ast^T\bm Z\bm Y\bm V_\ast)\right)
+ +O(t^2).
+\]
+令 $\bm H=\bm Z\Sc^{1/2}$，则一阶系数变成
+$\lambda_{\min}(\sym(\bm U_\ast^T\bm H\bm C_\ast))$。
+在 $\norm{\bm H}_F\le1$ 下，正交于 $\Ran(\bm U_\ast)$ 的行分量只消耗能量而不改善
+一阶项，因此可令 $\bm H=\bm U_\ast\bm L$。于是所需极值为
+\[
+ \sup_{\norm{\bm L}_F\le1}
+ \lambda_{\min}(\sym(\bm L\bm C_\ast)).
+\]
+对 $\bm C_\ast=\bm Q\bm D\bm R^T$ 作紧 SVD，并同时旋转顶端奇异基，可归约为
+$\bm C_\ast=\bm Q\bm D$。若要求
+$\sym(\bm L\bm C_\ast)\succeq \bm I$，其对角条件强制
+$\norm{\bm L}_F^2\ge\sum_i d_i^{-2}$；取
+$\bm L=\bm D^{-1}\bm Q^T$ 达到等号。因此上述极值恰为
+$(\sum_i d_i^{-2})^{-1/2}=1/\norm{\bm C_\ast^\dagger}_F=\beta_E$。
+再以 $t=\sqrt{2E}$ 做归一化即得。秩亏时所有一阶方向的
+$\lambda_{\min}$ 最大值为零，统一二阶余项给出~\eqref{eq:Psi-no-sqrt}。
+\end{proof}
+
 这一定理说明：对重数为 $p$ 的顶端慢模态簇，“在能量终点附近是否存在一阶严格下降
 方向”恰由 $\operatorname{rank}(\bm Y\bm V_\ast)=p$ 决定；PCG 是否真正经过这些方向，
 则由 Ritz 滤波与实际修正方向决定。需要注意，它与全局充要条件
 \eqref{eq:existence-iff} 不是同一件事：即使这里秩亏、所有一阶方向都不能严格下降，
 仍可能有 $H_{\rm TG}>0$，从而在有限距离处存在更优图粗空间。此时优势必然是高阶或
 有限幅度机制，而不能由终点的一阶微扰解释。
+
+
+\subsection{一阶退化时的完整二阶分类}
+
+当顶端奇异值简单但一阶可见性为零时，v9 只能说“可能需要高阶或有限幅度机制”。
+v10 进一步把第二阶系数显式写出。以下公式是简单 Hermitian 特征值扰动理论在
+\eqref{eq:rho-formula} 上的直接应用，可参见~\cite{StewartSun1990}。
+
+设
+\begin{equation}
+ \sigma=\sigma_1(\bm X)>\sigma_2(\bm X),
+ \qquad
+ \bm X\bm v=\sigma\bm u,
+ \qquad
+ \bm y=\bm Y\bm v.
+\end{equation}
+对固定方向 $\bm Z$ 定义
+\begin{align}
+ \bm H_0&=\bm X^T\bm X,\\
+ \bm H_1(\bm Z)&=
+ -\bm X^T\bm Z\bm Y-\bm Y^T\bm Z^T\bm X,                \label{eq:H1-second}\\
+ \bm H_2(\bm Z)&=
+ \bm Y^T\bm Z^T\bm Z\bm Y
+ -\bm X^T\bm Z\bm Z^T\bm X,                              \label{eq:H2-second}\\
+ \bm R_\ast&=
+ (\sigma^2\bm I-\bm H_0)^\dagger,                        \label{eq:reduced-resolvent}
+\end{align}
+其中 $\bm R_\ast\bm v=0$，而在 $\bm v^\perp$ 上
+$\bm R_\ast=(\sigma^2\bm I-\bm H_0)^{-1}\succ0$。
+
+\begin{theorem}[简单最坏模态的精确二阶方向系数]\label{thm:second-order-endpoint}
+当 $t\to0$ 时，
+\begin{equation}
+ \rhoTG(t\bm Z)
+ =\sigma^2+t\,a_1(\bm Z)+t^2a_2(\bm Z)+O(t^3),           \label{eq:rho-second-expansion}
+\end{equation}
+其中
+\begin{align}
+ a_1(\bm Z)
+ &=-2\sigma\,\bm u^T\bm Z\bm y,                          \label{eq:a1-second}\\
+ a_2(\bm Z)
+ &=\bm v^T\bm H_2(\bm Z)\bm v
+   +\bm v^T\bm H_1(\bm Z)\bm R_\ast
+          \bm H_1(\bm Z)\bm v                            \label{eq:a2-second}\\
+ &=\norm{\bm Z\bm y}_2^2
+   -\sigma^2\norm{\bm Z^T\bm u}_2^2
+   +\bm v^T\bm H_1(\bm Z)\bm R_\ast
+          \bm H_1(\bm Z)\bm v.                           \label{eq:a2-expanded}
+\end{align}
+因此若 $a_1(\bm Z)=0$，则：
+\begin{enumerate}
+ \item $a_2(\bm Z)<0$ 时，所有充分小的 $t\ne0$ 都产生严格二阶改善；
+ \item $a_2(\bm Z)>0$ 时，该方向在终点附近严格二阶恶化；
+ \item $a_2(\bm Z)=0$ 时，二阶理论仍无法判定，必须继续看更高阶或有限幅度效应。
+\end{enumerate}
+特别地，当 $\bm y=0$ 时所有方向的一阶项都消失，而二阶项仍可因
+$-\sigma^2\norm{\bm Z^T\bm u}^2$ 与正的模态耦合项之间的竞争而取不同符号。
+\end{theorem}
+
+\begin{proof}
+由精确图公式，
+\[
+ \rhoTG(t\bm Z)
+ =\lambda_{\max}\!\left[
+  (\bm X-t\bm Z\bm Y)^T
+  (\bm I+t^2\bm Z\bm Z^T)^{-1}
+  (\bm X-t\bm Z\bm Y)
+ \right].
+\]
+使用
+$(\bm I+t^2\bm Z\bm Z^T)^{-1}
+ =\bm I-t^2\bm Z\bm Z^T+O(t^4)$，
+括号内矩阵展开为
+$\bm H_0+t\bm H_1+t^2\bm H_2+O(t^3)$。
+由于 $\sigma^2$ 是 $\bm H_0$ 的简单最大特征值，标准简单 Hermitian
+特征值二阶扰动公式给出
+\[
+ a_2=\bm v^T\bm H_2\bm v+
+ \bm v^T\bm H_1(\sigma^2\bm I-\bm H_0)^\dagger
+ \bm H_1\bm v.
+\]
+再用 $\bm X\bm v=\sigma\bm u$ 化简第一项即得。
+\end{proof}
+
+这个结果把两类此前容易混淆的现象分开：秩亏只说明最优的
+$\sqrt E$ 阶收益消失，并不意味着终点一定是局部最优；若存在 $a_2<0$ 的方向，
+仍可用 $E$ 阶谱收益离开终点。只有在所有一阶退化方向上二阶系数也非负时，才有理由
+继续研究更高阶局部极小性或真正的有限幅度跳跃。
 
 \subsection{有利 PCG 尾部：严格量化“能量越好、两网格反而回升”}
 
@@ -1274,10 +1916,10 @@ $\bm A_\perp$。
 并且
 \begin{equation}
  \rhoTG(\K_c)=
- \lambda_{\max}\!\left(
+ \lambda_{\max}\!\bigl(
    \bm A_\perp+
    \frac{\sigma^2}{\sigma^2+\tau_y^2}\bm l\bm l^T
- \right).                                                 \label{eq:cancel-exact}
+ \bigr).                                                 \label{eq:cancel-exact}
 \end{equation}
 因此
 \begin{equation}
@@ -1518,6 +2160,98 @@ $10L(R)$：$R=1$ 时至多 $640$ 次候选两网格循环；$R\ge128$ 时至多 
 作用正是补上这部分 RHS 特异信息。下文的 regret 定理因此继续直接以
 $|\widehat N_m-N_m|$ 为条件，而把谱几何证书视为候选覆盖的独立可证明部分。
 
+
+\subsection{从尾部对数包络到循环数预测误差的显式传递}
+
+v9 的选择 regret 以
+$|\widehat N_m-N_m|\le\epsilon_N$ 为条件，但没有继续追问
+$\epsilon_N$ 可以怎样由 pilot 尾部本身产生。下面给出一个不依赖概率模型的确定性
+版本。它不声称 v4.2 的残差轨迹必然满足该条件，而是说明：\emph{一旦尾部近似几何性
+可以被某种独立手段认证，循环数误差就有闭式上界。}
+
+固定候选，设 pilot 在第 $L$ 步后尚未达到容差 $\tau$，记
+\begin{equation}
+ a=\log\frac{s_L}{\tau}>0.
+\end{equation}
+假设存在 $b>0$ 和 $\beta\ge0$，使从 pilot 终点到真实首次达标之前的所有整数
+$k\ge0$ 满足
+\begin{equation}
+ \left|
+ \log\frac{s_{L+k}}{s_L}+bk
+ \right|\le\beta.                                        \label{eq:log-tail-envelope}
+\end{equation}
+$b$ 是理想几何尾的对数衰减率，$\beta$ 则允许有确定性的累计非几何偏差。
+
+\begin{theorem}[确定性尾包络下的 hitting-time 与 forecast 误差]\label{thm:tail-forecast}
+令 $K$ 为从第 $L$ 步以后首次满足 $s_{L+K}\le\tau$ 的额外循环数，则
+\begin{equation}
+ \left\lceil\frac{(a-\beta)_+}{b}\right\rceil
+ \le K\le
+ \left\lceil\frac{a+\beta}{b}\right\rceil.               \label{eq:hitting-bracket}
+\end{equation}
+若 tail-fit 给出的预测对数衰减率为 $\widehat b>0$，
+\begin{equation}
+ |\widehat b-b|\le\epsilon_b<b,                           \label{eq:b-error}
+\end{equation}
+且使用
+$\widehat K=\lceil a/\widehat b\rceil$，则
+\begin{equation}
+ |\widehat K-K|
+ \le
+ \frac{a\epsilon_b}{b(b-\epsilon_b)}
+ +\frac{\beta}{b}+2.                                      \label{eq:forecast-error-explicit}
+\end{equation}
+因此若所有候选都共享可验证的参数上界
+$a\le a_{\max}$、$b\ge b_{\min}>0$、
+$\epsilon_b\le\bar\epsilon_b<b_{\min}$、$\beta\le\bar\beta$，
+则选择定理中的统一加性误差可以取
+\begin{equation}
+ \epsilon_N=
+ \frac{a_{\max}\bar\epsilon_b}
+      {b_{\min}(b_{\min}-\bar\epsilon_b)}
+ +\frac{\bar\beta}{b_{\min}}+2.                           \label{eq:epsilonN-from-tail}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+由~\eqref{eq:log-tail-envelope}，
+\[
+ -bk-\beta
+ \le \log(s_{L+k}/s_L)
+ \le -bk+\beta.
+\]
+若 $k<(a-\beta)_+/b$，左侧仍严格大于 $-a$，因此不可能已经达标；
+取 $k=\lceil(a+\beta)/b\rceil$ 时右侧不超过 $-a$，因此必已达标，
+得到~\eqref{eq:hitting-bracket}。
+又
+\[
+ \left|\frac{a}{\widehat b}-\frac{a}{b}\right|
+ =\frac{a|\widehat b-b|}{b\widehat b}
+ \le\frac{a\epsilon_b}{b(b-\epsilon_b)}.
+\]
+真实 $K$ 与 $a/b$ 的偏离至多 $\beta/b+1$，两个 ceiling 再贡献至多一个单位，
+得到~\eqref{eq:forecast-error-explicit}。
+\end{proof}
+
+该定理给出一个清楚的误差来源分解：
+\[
+ \text{forecast error}
+ \lesssim
+ \underbrace{\text{rate-fit error}}_{\epsilon_b}
+ +\underbrace{\text{non-geometric tail}}_{\beta}
+ +\underbrace{\text{integer rounding}}_{\le2}.
+\]
+它也说明为什么“$\widehat\rho$ 很接近 $1$”时预测尤其敏感：
+$b=-\log\rho$ 很小，误差被 $1/b$ 和 $1/b^2$ 放大。因而高复用场景增加 pilot
+长度在理论上并不只是“多测一点更稳”，而是在最难预测的慢收敛候选上降低
+$\epsilon_b$、$\beta$ 后，其价值会被上述分母显著放大。
+
+代码使用 median/MAD 是为了削弱少量异常 log-ratio 的影响；median 与 MAD 的
+breakdown 鲁棒性是经典事实，但在没有独立尾模型时仍不能把
+\eqref{eq:log-tail-envelope} 当作自动成立的置信带。因此 v10 仍把
+\eqref{eq:forecast-error-explicit} 明确标记为\emph{条件性确定性定理}，而不是对当前
+MAD 公式的无条件统计背书。
+
 \subsection{预测误差、近优松弛与候选离散化的精确分解}
 
 固定右端项、初值和停止准则。令 $N_m$ 为候选 $m$ 的真实循环数，
@@ -1692,10 +2426,110 @@ $R_M+k(R_M+1)$ 跳，取 $k=m-1$ 得结论。
 概率误差条带。若要对“达到容差所需整数循环数”建立同等级概率保证，则还必须控制
 停止时间的尾分布，不能直接把固定 $k$ 的 Hoeffding 界偷换成 cycle-count 置信区间。
 
+
+\subsection{从精确 Cholesky 粗解到近似粗求解：统一扰动预算}
+
+当前 v4.2 对 Galerkin 粗矩阵使用直接 Cholesky，因此本节不是当前实现假设，而是为
+更大规模、多层或迭代粗解提供可直接复用的推广。非精确两网格的系统理论可参见
+Notay~\cite{Notay2007} 以及 Xu--Zhang~\cite{XuZhang2022}；下面给出一个与本文
+Grassmann 表述完全兼容、且足以连接粗空间误差与粗求解误差的基本扰动界。
+
+固定满列秩 $\bm P$，令
+\begin{equation}
+ \bm A_c=\bm P^T\bm A\bm P,\qquad
+ \bm U=\bm A^{1/2}\bm P\bm A_c^{-1/2},
+ \qquad \bm U^T\bm U=\bm I.                              \label{eq:U-coarse-orth}
+\end{equation}
+设对称矩阵 $\bm H_c=\bm H_c^T$ 近似 $\bm A_c^{-1}$，定义归一化粗逆
+\begin{equation}
+ \bm R_c=\bm A_c^{1/2}\bm H_c\bm A_c^{1/2},
+ \qquad
+ \varepsilon_c=\norm{\bm R_c-\bm I}_2.                  \label{eq:coarse-inverse-error}
+\end{equation}
+使用 $\bm H_c$ 的近似粗校正后，对称前后磨光两网格在 $\bm A$--正交坐标中的误差算子为
+\begin{equation}
+ \widetilde{\bm E}_{\rm TG}
+ =\bm T^T(\bm I-\bm U\bm R_c\bm U^T)\bm T.              \label{eq:inexact-TG-Acoord}
+\end{equation}
+
+\begin{theorem}[近似粗解的全局算子扰动界]\label{thm:inexact-coarse}
+令精确 Galerkin 两网格算子为
+\begin{equation}
+ \bm E_{\rm TG}
+ =\bm T^T(\bm I-\bm U\bm U^T)\bm T.
+\end{equation}
+则无条件有
+\begin{align}
+ \norm{\widetilde{\bm E}_{\rm TG}-\bm E_{\rm TG}}_2
+ &\le \varepsilon_c\norm{\bm T}_2^2,                    \label{eq:inexact-operator-diff}\\
+ \norm{\widetilde{\bm E}_{\rm TG}}_2
+ &\le \rhoTG(\mathcal U)+\varepsilon_c\norm{\bm T}_2^2. \label{eq:inexact-contraction-upper}
+\end{align}
+因此
+\begin{equation}
+ \rhoTG(\mathcal U)+\varepsilon_c\norm{\bm T}_2^2<1      \label{eq:inexact-safe-contraction}
+\end{equation}
+是近似粗解仍保持 $\bm A$--范数严格收缩的充分条件。
+
+若进一步
+\begin{equation}
+ \bm0\preceq\bm R_c\preceq\bm I,
+\end{equation}
+即近似粗逆在能量意义下不发生过校正，则
+\begin{equation}
+ \bm0\preceq\bm E_{\rm TG}
+ \preceq\widetilde{\bm E}_{\rm TG}
+ \preceq\bm E_{\rm TG}+\varepsilon_c\bm T^T\bm U\bm U^T\bm T,
+                                                                    \label{eq:under-correction-order}
+\end{equation}
+从而
+\begin{equation}
+ \rhoTG(\mathcal U)
+ \le\lambda_{\max}(\widetilde{\bm E}_{\rm TG})
+ \le\rhoTG(\mathcal U)+\varepsilon_c\norm{\bm T}_2^2.    \label{eq:under-correction-rho}
+\end{equation}
+
+更一般地，若近似粗解作用在粗空间 $\mathcal U$，而想与另一个精确粗空间
+$\mathcal V$ 比较，则
+\begin{equation}
+ \norm{\widetilde{\bm E}_{\rm TG}(\mathcal U)
+       -\bm E_{\rm TG}(\mathcal V)}_2
+ \le\norm{\bm T}_2^2
+ \left[
+  \varepsilon_c+\gap(\mathcal U,\mathcal V)
+ \right].                                                \label{eq:space-solve-budget}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+由~\eqref{eq:inexact-TG-Acoord}，
+\[
+ \widetilde{\bm E}_{\rm TG}-\bm E_{\rm TG}
+ =\bm T^T\bm U(\bm I-\bm R_c)\bm U^T\bm T,
+\]
+而 $\norm{\bm U}_2=1$，立即得到~\eqref{eq:inexact-operator-diff} 和三角不等式
+\eqref{eq:inexact-contraction-upper}。若
+$0\preceq\bm R_c\preceq I$，差矩阵半正定，并由
+$0\preceq I-\bm R_c\preceq\varepsilon_c I$ 得到 Loewner 次序。
+最后，
+\[
+ \bm E_{\rm TG}(\mathcal U)-\bm E_{\rm TG}(\mathcal V)
+ =\bm T^T(\Pi_{\mathcal V}-\Pi_{\mathcal U})\bm T,
+\]
+其范数不超过
+$\norm{\bm T}_2^2\gap(\mathcal U,\mathcal V)$，再加粗逆扰动即可。
+\end{proof}
+
+式~\eqref{eq:space-solve-budget} 是一个适合多层推广的“误差预算接口”：
+\emph{粗空间没有选准}和\emph{粗方程没有解准}可以先在算子层分别估计，再线性叠加。
+它也说明不同层级的优化目标可能发生转移：当
+$\varepsilon_c\norm{\bm T}^2$ 已经大于相邻候选粗空间造成的谱差时，继续精细搜索插值
+可能没有实际意义，应优先改善粗求解；反之则应把预算用于粗空间选择。
+
 \subsection{多层推广应如何表述}
 
 早期版本曾把首层机制递归到多层 V-cycle。v4.2 当前代码已经主动收束回两网格，因此
-v9 不把未在当前实现验证的多层结果写成主结论。可以安全保留的原则是：每一层若仍采用
+v10 不把未在当前实现验证的多层结果写成主结论。可以安全保留的原则是：每一层若仍采用
 SPD Galerkin 粗化和对称前后磨光，则该层局部块仍具有本文的投影/主角几何；递归粗解
 误差会额外进入层间传播，必须单独控制，不能简单把首层的 $\rhoTG$ 相乘。未来若恢复
 多层实现，最自然的路线是把各层粗空间投影扰动写成 telescoping，并在每层使用
@@ -1706,7 +2540,7 @@ SPD Galerkin 粗化和对称前后磨光，则该层局部块仍具有本文的�
 以下说法均不由本文理论推出：
 \begin{enumerate}
  \item 任意 SPD 系统的\emph{PCG 路径}都必然经过严格优于能量终点的有限步；
-       v9 证明的是若 $H_{\rm TG}>0$，单位注入插值族中必然存在更优点，而非 PCG
+       v10 证明的是若 $H_{\rm TG}>0$，单位注入插值族中必然存在更优点，而非 PCG
        可达性的无条件保证；
  \item 能量越低，两网格循环数就越少，或反过来必然越多；
  \item 当前二维通道问题中的最优 $m$ 区间可直接迁移到三维、非结构网格或不同磨光器；
@@ -1718,46 +2552,100 @@ SPD Galerkin 粗化和对称前后磨光，则该层局部块仍具有本文的�
 
 \section{统一结论}
 
-v9 将项目的理论主线压缩为以下闭环：
+v10 将项目的理论主线进一步压缩为一个从变分、Krylov、Grassmann 几何到在线选择的闭环：
 \begin{enumerate}
- \item 能量极小插值 $\bm W^\ast=-\bm B^{-1}\bm C$ 是唯一变分终点；所有插值能量
- 超额都是精确的 $\bm B$--Frobenius 距离平方，而 Schur 归一化粗矩阵偏离量为
- $\bm I+\K^T\K$。
- \item 局部能量列是全局列的 $\bm B$--正交投影。v9 用实际谱上的最佳归一化多项式
- 因子 $\chi_m(\Lambda)$ 取代单纯 $2q^m$，并给出一次支撑扩张的局部 Schur 补
- 精确收益公式；空间截断与局部代数误差仍严格正交。
- \item 有限 PCG 具有正交尾和逐步能量账本。Ritz 多项式优化非负二次能量，而两网格
- 最坏方向依赖带符号的一次谱组合，因此二者没有一般保序关系。
- \item Schur 图参数 $\K$ 同时给出插值能量、粗矩阵谱膨胀和粗空间主角；任意两个图
- 空间的最大主角还有闭式公式。这把“插值矩阵距离”升级成了精确的 Grassmann 几何。
- \item 对称两网格满足
- $\sqrt{\rhoTG}=\norm{(I-\Pi_{\mathcal U})T}$。因此 $\sqrt{\rhoTG}$ 对粗空间最大
- 主角全局 Lipschitz；当前 Gauss--Seidel 下常数为
- $\sqrt{1-\gamma_{\rm GS}}<1$，且任意满秩候选在精确算术下都严格收敛。
- \item PCG 两检查点之间的能量下降直接上界可能发生的 $\sqrt\rho$ 变化，从而给出
- 候选网格的可认证谱离散化误差；这为用“块能量”而不是固定步距驱动候选细化提供了
- 严格理论基础。
- \item 单位注入图粗空间是 Grassmann 流形中的开稠密坐标图，因此其两网格最优下确界
- 等于所有同维粗空间的全局最优值。存在某个有限单位注入插值严格优于能量终点，
- 当且仅当 $H_{\rm TG}=\rho_\ast-\sigma_{n_C+1}(\bm T)^2>0$；若最优空间横截，还可显式
- 写出固定磨光器意义下的最优插值。
- \item 固定两网格优势必须支付严格正的最小能量偏离，形成定理~\ref{thm:Pareto-barrier}
- 的 Pareto 障碍。因此有限 Krylov 的“正则化”不是修辞：沿 PCG 继续逼近能量终点时，
- 任何固定谱优势都必然消失。
- \item 相邻精确矩阵判据、局部方向导数、显式二阶余项、有利尾部条件和有限幅度主模态
- 抵消分别解释 PCG 路径何时会进入优势区；这些是可达性条件，而不与全局存在性定理混淆。
- \item 给定 RHS 的收敛具有精确模态公式，多 RHS 分布具有二阶矩加权谱公式；v4.2
- 在线选择的总损失则继续分解为候选覆盖、pilot 预测和近优松弛，并由 $R$ 控制测量与
- 摊销倾向。
+ \item 能量极小插值
+ $\bm W^\ast=-\bm B^{-1}\bm C$ 是固定单位注入规范下唯一的变分终点；
+ 插值能量超额精确等于 $\frac12\norm{\bm W-\bm W^\ast}_{\bm B,F}^2$，
+ Galerkin 粗矩阵则精确等于 Schur 补加一个半正定二次修正。
+
+ \item 局部能量列是全局列的 $\bm B$--正交投影。实际谱上的最佳归一化多项式因子
+ $\chi_m(\Lambda)$ 给出比条件数 Chebyshev 界更细的局部化常数；嵌套支撑扩张的收益
+ 还能精确写成新增块残差经过局部 Schur 逆后的二次型，因此“扩哪里”和“继续迭代”
+ 可以在同一个能量账本中比较。
+
+ \item 有限 PCG 的不同时步修正严格 $\bm B$--正交，形成有限正交尾和逐步能量账本。
+ Ritz 多项式优化的是非负二次能量谱和，而两网格最坏方向依赖带符号的一次组合，
+ 因此不存在“能量越低则两网格越好”的一般保序定理。
+
+ \item Schur 图参数
+ $\K=\bm B^{1/2}(\bm W-\bm W^\ast)\Sc^{-1/2}$ 同时编码插值能量、
+ Schur 归一化粗矩阵和粗空间主角：
+ $\tan\theta_i=\sigma_i(\K)$。
+ v10 进一步证明，给定最大主角所需的最小能量常数
+ $\lambda_{\min}(\Sc)\tan^2\theta_{\max}/2$ 是精确可达的；
+ 能量预算同时控制 Grassmann 测地距离和 Schur 归一化粗矩阵条件数。
+
+ \item 对称前后磨光下
+ \[
+   \sqrt{\rhoTG(\mathcal U)}
+   =\norm{(\bm I-\Pi_{\mathcal U})\bm T}_2
+ \]
+ 对粗空间最大主角全局 Lipschitz。当前前向/后向 Gauss--Seidel 的常数为
+ $\norm{\bm T}_2=\sqrt{1-\gamma_{\rm GS}}<1$，因此任意满秩 Galerkin 候选在精确算术下
+ 都严格收缩；\texttt{failed@6000} 只是有限循环预算内未达容差。
+
+ \item PCG 区间的块能量不仅控制谱变化，而且由于区间两侧修正满足勾股关系，
+ 候选遗漏的统一 $\sqrt\rho$ 上界相较单端点估计严格改善 $1/\sqrt2$。
+ 更强地，v10 用两个端点的实际谱值和总块能量给出
+ \eqref{eq:interval-lower-envelope} 的最优数据相关区间下包络，从而得到可证的
+ branch-and-bound 候选细化规则。
+
+ \item PCG 越接近能量终点，后续候选可用于旋转粗空间的剩余能量越少。
+ 定理~\ref{thm:certified-path-stop} 把这一事实转成严格的候选生成提前停止证书：
+ 一旦所有后续点的理论下界都不可能击败当前最佳候选，就无需继续向更大 $m$ 推进。
+ 该证书还能用当前预条件残量给出的能量上界实现事后版本。
+
+ \item 所有同维粗空间中的固定磨光器最优值是
+ $\rho_{\rm opt}=\sigma_{n_C+1}(\bm T)^2$。
+ 单位注入图空间是 Grassmann 流形中的开稠密坐标图，因此存在某个有限单位注入插值
+ 严格优于能量终点，当且仅当
+ $\rho_\ast>\rho_{\rm opt}$。若最优空间横截，还能显式写出对应最优插值。
+
+ \item v10 把单个 Pareto 障碍提升为值函数
+ $\Psi(E)$：它给出能量预算 $E$ 下可达到的最佳
+ $\sqrt{\rhoTG}$，满足显式全局下包络并在存在有限最优图时具有径向构造上包络，
+ 且 $\Psi(E)\to\sqrt{\rho_{\rm opt}}$。因此有限 Krylov 的“正则化”可以被严格理解为
+ 在能量预算与两网格谱目标之间移动的 Pareto 路径，而不是经验性的早停修辞。
+
+ \item 在能量终点的顶端慢模态簇有谱隙时，
+ $\sigma_{\min}(\bm Y\bm V_\ast)$ 精确给出单位主角速度下最陡一阶
+ $\sqrt\rho$ 下降率；用真实插值能量归一化后，最优常数变成
+ \[
+   \beta_E=
+   \left\{\tr[(\bm C_\ast^T\bm C_\ast)^{-1}]\right\}^{-1/2}.
+ \]
+ 因而局部 Pareto 前沿具有精确渐近式
+ $\Psi(E)=\sqrt{\rho_\ast}-\beta_E\sqrt{2E}+O(E)$。
+ 若一阶可见性秩亏，则 $\sqrt E$ 阶收益消失；简单最坏模态下的完整二阶系数
+ \eqref{eq:a2-second} 继续判定二阶改善或恶化。
+
+ \item 给定 RHS 的循环收敛仍由两网格特征模态权重精确控制；多 RHS 分布则由二阶矩
+ 加权谱公式控制。对于 v4.2 的 pilot，v10 在明确的确定性对数尾包络下进一步把
+ rate-fit 误差、非几何尾误差和整数 rounding 显式传递成
+ $|\widehat N-N|$ 上界，使其可以直接代入加性或乘法 regret 定理。
+ 这仍是条件性结论，不把 MAD 诊断量误称为无模型置信区间。
+
+ \item 当前代码用精确 Cholesky 粗解，但理论还能推广到近似粗逆。
+ 若归一化粗逆误差为 $\varepsilon_c$，则近似两网格算子相对精确 Galerkin 算子的
+ 扰动至多为 $\varepsilon_c\norm{\bm T}_2^2$；
+ 粗空间主角误差与粗求解误差还可在
+ \eqref{eq:space-solve-budget} 中线性合并。这为未来多层或迭代粗解提供了明确接口，
+ 但不被当作当前 v4.2 已经验证的实验结论。
 \end{enumerate}
 
-因此，有限 Krylov 能量插值最准确的理论定位是：
-\emph{以能量极小粗空间为变分锚点，在 Grassmann 粗空间流形的一张图坐标中，利用
-Krylov 谱滤波生成一条有严格能量参数化的正则化轨道；固定磨光器定义了另一套独立的
-最优几何，而有限停止的任务就是在能量偏离、粗空间角度、两网格谱半径、插值复杂度和
-工作负载之间选择 Pareto 合适的点。} v9 的新增定理使这条链条从局部解释扩展到全局
-存在性、稳定性、最小能量代价和候选覆盖误差，同时保留 PCG 可达性与统计预测的明确
-条件边界。
+因此，有限 Krylov 能量插值更精确的理论定位是：
+\emph{以能量极小粗空间为变分锚点，在 Grassmann 粗空间流形的一张 Schur 图坐标中，
+利用 Krylov 谱滤波生成一条具有严格能量参数化的轨道；固定磨光器则定义另一套独立的
+谱最优几何。有限停止的任务不是“尽量逼近能量终点”，而是在可支付的能量偏离、
+粗空间角度、两网格谱性能、插值/粗矩阵复杂度、候选测量成本和工作负载之间寻找
+Pareto 合适的可达点。}
+
+v10 相比 v9 的主要理论增量并不是增加更多经验解释，而是把若干关键环节提升为
+\emph{最佳常数、精确二阶系数、全局值函数、数据相关区间证书和可认证停止条件}。
+仍然保留的本质困难是 PCG 可达性：全局更优粗空间的存在并不保证特定初值、特定预条件器
+和逐列 PCG 路径一定穿过它。这个边界不能靠加强不等式消除，而应被视为下一阶段若要继续
+推进理论时最核心的结构问题。
 
 \begin{thebibliography}{99}
 
@@ -1796,6 +2684,32 @@ Academic Press, 1990.
 R. S. Varga,
 \emph{Matrix Iterative Analysis}, 2nd ed.,
 Springer, 2000.
+
+
+\bibitem{VanDerSluis1986}
+A. van der Sluis and H. A. van der Vorst,
+The rate of convergence of conjugate gradients,
+\emph{Numerische Mathematik}, 48:543--560, 1986.
+
+\bibitem{Beckermann2001}
+B. Beckermann and A. B. J. Kuijlaars,
+Superlinear convergence of conjugate gradients,
+\emph{SIAM Journal on Numerical Analysis}, 39(1):300--329, 2001.
+
+\bibitem{Edelman1998}
+A. Edelman, T. A. Arias, and S. T. Smith,
+The geometry of algorithms with orthogonality constraints,
+\emph{SIAM Journal on Matrix Analysis and Applications}, 20(2):303--353, 1998.
+
+\bibitem{Notay2007}
+Y. Notay,
+Convergence analysis of perturbed two-grid and multigrid methods,
+\emph{SIAM Journal on Numerical Analysis}, 45(3):1035--1044, 2007.
+
+\bibitem{XuZhang2022}
+X. Xu and C.-S. Zhang,
+Convergence analysis of inexact two-grid methods: A theoretical framework,
+\emph{SIAM Journal on Numerical Analysis}, 60(1):133--156, 2022.
 
 \bibitem{Hoeffding1963}
 W. Hoeffding,
