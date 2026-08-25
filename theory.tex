@@ -19,6 +19,7 @@
 \DeclareMathOperator{\sym}{sym}
 \DeclareMathOperator{\vol}{vol}
 \DeclareMathOperator{\cut}{cut}
+\DeclareMathOperator{\gap}{gap}
 
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\norm}[1]{\left\lVert #1\right\rVert}
@@ -29,7 +30,7 @@
 \newcommand{\E}{\bm E}
 \newcommand{\K}{\bm K}
 
-\title{有限 Krylov 能量插值与自适应两网格选择：统一理论分析 v8}
+\title{有限 Krylov 能量插值与自适应两网格选择：深化统一理论分析 v9}
 \author{崔正平}
 \date{}
 
@@ -37,21 +38,30 @@
 \maketitle
 
 \begin{abstract}
-本文统一并加强本项目历次理论分析中最有解释力的部分。对对称正定扩散离散系统，
-全局能量极小插值给出唯一的变分终点，而从几何插值出发的有限 PCG 构造给出一条
-能量严格受控、但两网格性能不必单调的 Krylov 路径。本文首先给出局部能量基的
-最佳逼近、指数局部化、支撑外残差与空间/代数误差的精确分解；随后建立 PCG 修正的
-正交尾恒等式和可计算残差界。核心部分在 Schur 正交坐标中把任意单位注入插值写成
-相对能量极小粗空间的图子空间，得到两网格谱半径的精确公式、任意候选比较的矩阵
-判据、最优同维粗空间刻画以及精确能量终点附近的一阶/二阶非单调机制。
+本文在 v8 的统一框架上进一步强化理论结论，并尽量把“现象解释”提升为可检验的
+定量定理。对有限维对称正定系统，全局能量极小插值仍是唯一变分终点；有限 PCG
+则是一条具有严格能量账本和谱选择性的 Krylov 正则化路径。v9 首先把局部化中的
+经典 $2q^m$ 估计加强为谱集合上的最佳归一化多项式因子，并给出精确的 Chebyshev
+常数；同时新增一次支撑扩张的局部 Schur 补收益公式，使“扩哪些点最值得”可以由
+当前支撑外残差定量回答。
 
-在此基础上，本文新增一条全局定量链：插值能量误差控制图参数，图参数精确控制
-粗空间最大主角，而粗空间主角又以显式常数控制两网格谱半径变化。因而有限 PCG
-虽然可能在中途优于能量终点，但其两网格谱半径仍以可量化速率收敛到终点值。
-最后，本文把 v4.2 的统一候选、稳健尾部预测、复用参数 $R$ 和局部 step--2 细化
-写成确定性选择误差框架，分离预测误差、候选离散化误差和多右端项摊销成本。
-所有“有限步优于精确终点”的结论均明确保持条件性，不把二维结构网格上的数值现象
-外推为任意 AMG 或任意 SPD 系统的无条件规律。
+核心强化发生在两网格几何部分。Schur 图参数不仅精确表示插值能量、Galerkin 粗矩阵
+和相对能量粗空间的主角，而且任意两个图粗空间之间的最大主角具有闭式公式。由此
+得到比 v8 更强的平方根谱稳定性：$\sqrt{\rho_{\rm TG}}$ 对粗空间投影间隙全局
+Lipschitz；对代码采用的前向/后向 Gauss--Seidel，其常数严格小于 $1$，并可由对称
+Gauss--Seidel 预条件矩阵的最小特征值显式给出。该界进一步产生三类新结论：PCG
+任意两个检查点间的能量下降直接控制可能遗漏的两网格谱变化；固定的两网格优势要求
+支付严格正的显式能量偏离下界，形成可量化的 Pareto 障碍；以及有限候选网格在
+$\sqrt{\rho}$ 目标上的离散化损失可以由相邻检查点的 PCG 块能量事后认证。
+
+v9 还给出一个全局存在性定理。所有单位注入粗空间在 Schur 正交坐标中恰构成
+Grassmann 流形上的图坐标开稠密集，因此在单位注入插值族内可达到的两网格谱半径
+下确界与所有同维粗空间的全局最优值相同。于是，存在某个单位注入插值严格优于
+能量终点，当且仅当能量终点本身不是固定磨光器下的全局最优同维粗空间；若最优粗空间
+与图坐标横截，还可显式写出固定磨光器意义下的最优插值。最后，本文补充给定右端项的
+精确模态收敛公式、随机多右端项的分布目标，以及 v4.2 候选选择、预测误差、离散覆盖
+和摊销成本的确定性 regret 框架。所有强结论均明确区分无条件恒等式、结构性充分条件
+和实现经验参数，不把当前二维高对比实验外推为任意 AMG 的无条件规律。
 \end{abstract}
 
 \section{模型、实现对应关系与结论层级}
@@ -147,7 +157,7 @@ $\bm W=\bm W^\ast+\bm\Delta$ 代入，线性项消失即得
 PCG、剪枝或其他插值扰动，首先都可以被还原为 $\bm B$--Frobenius 距离。
 但后文将严格说明，这个距离并不对两网格性能建立保序关系。
 
-\subsection{局部 Galerkin 投影与指数局部化}
+\subsection{局部 Galerkin 投影、谱自适应指数局部化}
 
 第 $j$ 个全局列满足
 \begin{equation}
@@ -175,15 +185,35 @@ $V_{j,\ell}=\{\bm v:\supp(\bm v)\subseteq S_{j,\ell}\}$。
 这里使用对称缩放后的 $\widehat{\bm B}$，而不是把非对称的
 $\bm D^{-1}\bm B$ 的 Euclidean 二范数条件数直接代入 CG 界。
 
+为了不把完整谱结构压缩成单一条件数，令 $\Lambda=\sigma(\widehat{\bm B})$，定义
+次数 $m$ 的最佳归一化谱多项式因子
+\begin{equation}
+ \chi_m(\Lambda)=
+ \min_{\substack{p\in\mathbb P_m\\p(0)=1}}
+ \max_{\lambda\in\Lambda}|p(\lambda)|.                  \label{eq:spectral-minimax}
+\end{equation}
+只使用极端特征值时，Chebyshev 极小性质给出
+\begin{equation}
+ \chi_m(\Lambda)\le \chi_m^{\rm int}:=
+ \frac{1}{T_m\!\left(\frac{\widehat\kappa+1}
+                              {\widehat\kappa-1}\right)}
+ =\frac{2q^m}{1+q^{2m}}<2q^m,                            \label{eq:exact-Chebyshev}
+\end{equation}
+其中 $m\ge1$、$\widehat\kappa>1$，$T_m$ 为第一类 Chebyshev 多项式；
+若 $\widehat\kappa=1$，一步即可精确求解，约定 $\chi_m^{\rm int}=0$（$m\ge1$）。
+式~\eqref{eq:spectral-minimax} 在谱有明显聚簇或间隙时可远小于仅由条件数得到的
+区间界，因此它也是 v9 中更适合讨论 Ritz 超线性效应的局部化常数。
+
 令 $\mathcal G(\bm B)$ 为 $\bm B$ 的非零图，
 $\mathcal N_m(G)$ 为集合 $G$ 的 $m$ 跳闭邻域。
 
-\begin{theorem}[局部能量列的最佳逼近与指数局部化]\label{thm:localization}
+\begin{theorem}[谱自适应的局部最佳逼近与指数局部化]\label{thm:localization}
 令 $G_j=\supp(\bm b_j)$。若
 $\mathcal N_{m-1}(G_j)\subseteq S_{j,\ell}$，则
 \begin{equation}
  \norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}
- \le 2q^m\norm{\bm w_j^\ast}_{\bm B}.                    \label{eq:localization}
+ \le \chi_m(\Lambda)\norm{\bm w_j^\ast}_{\bm B}
+ \le \chi_m^{\rm int}\norm{\bm w_j^\ast}_{\bm B}.     \label{eq:localization}
 \end{equation}
 而且对任意 $\bm v\in V_{j,\ell}$，
 \begin{equation}
@@ -197,27 +227,32 @@ $\mathcal N_{m-1}(G_j)\subseteq S_{j,\ell}$，则
 局部 Galerkin 条件意味着
 $\bm w_j^\ast-\bm w_{j,\ell}\perp_{\bm B}V_{j,\ell}$，故
 \eqref{eq:local-Pythagoras} 成立并给出最佳逼近。对全局方程从零初值运行 $m$ 步
-Jacobi--PCG，其 Krylov 向量每乘一次 $\bm B$ 至多沿非零图传播一跳，而对角缩放不
-扩大支撑，因此第 $m$ 步迭代量支撑于 $\mathcal N_{m-1}(G_j)$。它是局部空间中的
-合法竞争函数，再用 CG 的 Chebyshev 估计即得~\eqref{eq:localization}。
+Jacobi--PCG，任意次数不超过 $m-1$ 的预条件 Krylov 竞争向量支撑于
+$\mathcal N_{m-1}(G_j)$。对任意 $p\in\mathbb P_m$、$p(0)=1$，
+$(1-p(t))/t$ 的次数不超过 $m-1$，因此相应近似是该局部空间中的合法竞争函数；
+在 $\widehat{\bm B}$ 的特征基中其相对能量误差不超过
+$\max_{\lambda\in\Lambda}|p(\lambda)|$。对 $p$ 取极小得到第一界，再用
+Chebyshev 区间极小式~\eqref{eq:exact-Chebyshev} 得第二界。
 \end{proof}
 
-该证明实际上揭示了一个可推广原则：只要预条件作用具有有限图传播半径，就可用
-“每个 Krylov 步的最大传播距离”替换上面的单跳计数；因此局部化论证并不本质依赖
-Jacobi，但显式半径会随预条件器的非局部性改变。
+该证明揭示了两个可推广原则。第一，局部化率真正由“允许次数的多项式在实际谱上的
+逼近能力”控制，条件数只是最粗的谱压缩；第二，只要预条件作用具有有限图传播半径，
+就可把单跳计数替换为相应传播距离，见第~\ref{sec:generalization} 节。
 
 对当前五点格式令 $r=H/h$。若 layers=$\ell$ 的 patch 包含
 $\mathcal N_{\ell r-1}(G_j)$，则
 \begin{equation}
  \norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}
- \le2q^{\ell r}\norm{\bm w_j^\ast}_{\bm B}.              \label{eq:code-localization}
+ \le\chi_{\ell r}^{\rm int}\norm{\bm w_j^\ast}_{\bm B}
+ \le2q^{\ell r}\norm{\bm w_j^\ast}_{\bm B}.             \label{eq:code-localization}
 \end{equation}
 若 $\bm W_\ell$ 由所有局部列组成，则
 \begin{align}
  \norm{\bm P(\bm W^\ast)-\bm P(\bm W_\ell)}_{\bm A,F}
  &=\norm{\bm W^\ast-\bm W_\ell}_{\bm B,F},              \label{eq:P-local-error}\\
  0\le J(\bm W_\ell)-J(\bm W^\ast)
- &\le2q^{2\ell r}\norm{\bm W^\ast}_{\bm B,F}^2.         \label{eq:J-local-error}
+ &\le\frac12(\chi_{\ell r}^{\rm int})^2
+       \norm{\bm W^\ast}_{\bm B,F}^2.                   \label{eq:J-local-error}
 \end{align}
 
 为避免把某个粗糙路径计数误当成最优常数，定义该 $F$--图相对粗点和物理边界零锚点的
@@ -235,8 +270,8 @@ $\kappa_a=a_{\max}/a_{\min}$，则五点扩散格式给出
  \qquad
  \widehat\kappa\le8\kappa_a C_{\rm anc}.                \label{eq:kappa-Canc}
 \end{equation}
-旧版本使用的简单路径计数 $C_{\rm anc}\le2r^3$ 因而仍给出
-$\widehat\kappa\le16\kappa_a r^3$ 和
+旧版本的简单路径计数 $C_{\rm anc}\le2r^3$ 因而仍给出
+$\widehat\kappa\le16\kappa_a r^3$ 和较保守的
 \begin{equation}
  \norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}
  \le2\exp\!\left(-\frac{\ell}{2\sqrt{\kappa_a r}}\right)
@@ -249,53 +284,90 @@ contrast-independent localization。
 \subsection{嵌套支撑、支撑外残差与空间/代数正交分解}
 
 \begin{proposition}[嵌套支撑的精确能量收益]\label{prop:nested-support}
-若 $S_{j,\ell}\subseteq S_{j,\ell+1}$，则
+若 $S\subseteq S'$，对应精确局部 Galerkin 解分别为 $\bm w_S,\bm w_{S'}$，则
 \begin{equation}
- \norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}^2
- =\norm{\bm w_j^\ast-\bm w_{j,\ell+1}}_{\bm B}^2
- +\norm{\bm w_{j,\ell+1}-\bm w_{j,\ell}}_{\bm B}^2.     \label{eq:nested-drop}
+ \norm{\bm w^\ast-\bm w_S}_{\bm B}^2
+ =\norm{\bm w^\ast-\bm w_{S'}}_{\bm B}^2
+ +\norm{\bm w_{S'}-\bm w_S}_{\bm B}^2.                  \label{eq:nested-drop}
 \end{equation}
+因此一次支撑扩张获得的能量收益恰等于新旧局部解之差的能量平方。
 \end{proposition}
-
-\begin{proof}
-$\bm w_j^\ast-\bm w_{j,\ell+1}$ 与整个 $V_{j,\ell+1}$ 关于 $\bm B$
-正交，而新旧局部解之差属于 $V_{j,\ell+1}$。
-\end{proof}
 
 把局部列零延拓到全部 $F$ 点并定义
 \begin{equation}
- \bm g_{j,\ell}=\bm b_j-\bm B\bm w_{j,\ell}.              \label{eq:outside-residual}
+ \bm g_S=\bm b-\bm B\bm w_S.                              \label{eq:outside-residual}
 \end{equation}
-局部 Galerkin 条件使该残差在 patch 内为零。
+局部 Galerkin 条件使 $(\bm g_S)_S=0$。
+
+\begin{theorem}[一次支撑扩张的局部 Schur 补精确收益]\label{thm:support-Schur-gain}
+设 $S'=S\mathbin{\dot\cup}T$，并定义新增自由度相对旧支撑的局部 Schur 补
+\begin{equation}
+ \bm H_T=\bm B_{TT}-\bm B_{TS}\bm B_{SS}^{-1}\bm B_{ST}\succ0.
+                                                                    \label{eq:local-Schur-T}
+\end{equation}
+则新增修正 $\bm d=\bm w_{S'}-\bm w_S$ 的 $T$ 分量满足
+\begin{equation}
+ (\bm d)_T=\bm H_T^{-1}(\bm g_S)_T,                       \label{eq:support-update-T}
+\end{equation}
+且扩大支撑带来的精确能量误差下降为
+\begin{equation}
+ \norm{\bm w^\ast-\bm w_S}_{\bm B}^2-
+ \norm{\bm w^\ast-\bm w_{S'}}_{\bm B}^2
+ =\norm{\bm d}_{\bm B}^2
+ =(\bm g_S)_T^T\bm H_T^{-1}(\bm g_S)_T.                 \label{eq:exact-support-gain}
+\end{equation}
+特别地，若只新增一个点 $i$，则收益就是
+$g_i^2/h_i$，其中 $h_i$ 是消去旧支撑 $S$ 后该点的 Schur 枢轴。
+\end{theorem}
+
+\begin{proof}
+在 $S'$ 上，$\bm d$ 满足
+$\bm B_{S'S'}\bm d=(\bm g_S)_{S'}$。由于旧支撑内残差为零，分块消去
+$\bm d_S$ 得到~\eqref{eq:support-update-T}。再用
+$\norm{\bm d}_{\bm B}^2=\bm d^T(\bm g_S)_{S'}$ 以及
+命题~\ref{prop:nested-support} 即得~\eqref{eq:exact-support-gain}。
+\end{proof}
+
+这个定理比“看哪里残差大就扩哪里”更强：真正收益是残差经过候选新增块 Schur 逆后的
+二次型。它同时考虑新增点之间以及新增点与旧 patch 的耦合，因此给出了一个严格的
+收益/自由度指标；若未来恢复自适应局部支撑，可用
+$(\bm g_S)_T^T\bm H_T^{-1}(\bm g_S)_T/|T|$ 或除以估计构造成本来排序候选扩张。
 
 \begin{theorem}[支撑外残差的精确误差表示]\label{thm:residual-identity}
 记 $\widehat\lambda_{\min}$、$\widehat\lambda_{\max}$ 为
 $\widehat{\bm B}$ 的极端特征值，则
 \begin{align}
- \bm w_j^\ast-\bm w_{j,\ell}&=\bm B^{-1}\bm g_{j,\ell},\label{eq:error-residual}\\
- \norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}^2
- &=\bm g_{j,\ell}^T\bm B^{-1}\bm g_{j,\ell},             \label{eq:dual-residual}\\
+ \bm w^\ast-\bm w_S&=\bm B^{-1}\bm g_S,\label{eq:error-residual}\\
+ \norm{\bm w^\ast-\bm w_S}_{\bm B}^2
+ &=\bm g_S^T\bm B^{-1}\bm g_S,                           \label{eq:dual-residual}\\
  \frac{1}{\widehat\lambda_{\max}}
- \norm{\bm g_{j,\ell}}_{\bm D^{-1}}^2
- &\le \norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}^2
+ \norm{\bm g_S}_{\bm D^{-1}}^2
+ &\le \norm{\bm w^\ast-\bm w_S}_{\bm B}^2
  \le\frac{1}{\widehat\lambda_{\min}}
- \norm{\bm g_{j,\ell}}_{\bm D^{-1}}^2.                  \label{eq:residual-equivalence}
+ \norm{\bm g_S}_{\bm D^{-1}}^2.                         \label{eq:residual-equivalence}
 \end{align}
 \end{theorem}
 
-若局部主子系统只做有限步 PCG，结果记为 $\bm w_{j,\ell,m}$，则
+\begin{proof}
+由 $\bm B\bm w^\ast=\bm b$ 与 $\bm g_S=\bm b-\bm B\bm w_S$ 直接得到
+第一式；左乘误差转置得到第二式。又
+$\bm B^{-1}=\bm D^{-1/2}\widehat{\bm B}^{-1}\bm D^{-1/2}$，
+对 $\widehat{\bm B}^{-1}$ 使用 Rayleigh 商上下界即得第三式。
+\end{proof}
+
+若局部主子系统只做有限步 PCG，结果记为 $\bm w_{S,m}$，则
 \begin{equation}
- \norm{\bm w_j^\ast-\bm w_{j,\ell,m}}_{\bm B}^2
- =\norm{\bm w_j^\ast-\bm w_{j,\ell}}_{\bm B}^2
- +\norm{\bm w_{j,\ell}-\bm w_{j,\ell,m}}_{\bm B}^2.      \label{eq:space-algebra-split}
+ \norm{\bm w^\ast-\bm w_{S,m}}_{\bm B}^2
+ =\norm{\bm w^\ast-\bm w_S}_{\bm B}^2
+ +\norm{\bm w_S-\bm w_{S,m}}_{\bm B}^2.                 \label{eq:space-algebra-split}
 \end{equation}
-若局部代数残差为 $\bm r_{j,\ell,m}$，则第二项还精确等于
+若局部代数残差为 $\bm r_{S,m}$，则第二项还精确等于
 \begin{equation}
- \bm r_{j,\ell,m}^T
- \bm B_{S_{j,\ell}S_{j,\ell}}^{-1}\bm r_{j,\ell,m}.     \label{eq:local-algebra-residual}
+ \bm r_{S,m}^T\bm B_{SS}^{-1}\bm r_{S,m}.               \label{eq:local-algebra-residual}
 \end{equation}
-因此“扩 patch”与“继续局部迭代”对应两个正交误差分量；这是比把两种误差用三角
-不等式相加更强的预算分配依据。
+因此“扩 patch”与“继续局部迭代”对应两个正交误差分量；再结合
+定理~\ref{thm:support-Schur-gain}，空间预算还可以进一步分解为不同候选扩张块的
+可计算潜在收益。
 
 \section{有限 PCG 路径：正交尾、残差指标与谱滤波}
 
@@ -375,23 +447,25 @@ $\alpha=(\bm r^T\bm D^{-1}\bm r)/(\bm p^T\bm B\bm p)$ 给出
 更不能单独替代实际两网格 pilot。
 
 CG/PCG 的多项式最优性与 Ritz 描述可参见~\cite{Greenbaum1997,Saad2003}。
-CG 的标准多项式最优性还给出
+用前节的谱多项式因子可以把经典条件数界加强为
 \begin{equation}
  \norm{\E_m}_{\bm B,F}
+ \le \chi_m(\Lambda)\norm{\E_0}_{\bm B,F}
  \le \vartheta_m\norm{\E_0}_{\bm B,F},
- \qquad
- \vartheta_m=\min\{1,2q^m\}.                              \label{eq:pcg-Chebyshev}
+ \qquad \vartheta_m:=\chi_m^{\rm int}.                  \label{eq:pcg-Chebyshev}
 \end{equation}
 对任意 $s$，从第 $m$ 步重新看余下误差同样有
 \begin{equation}
  \norm{\E_{m+s}}_{\bm B,F}
  \le \vartheta_s\norm{\E_m}_{\bm B,F}.                  \label{eq:block-contraction}
 \end{equation}
-若 $\vartheta_s<1$，PCG 正交尾进一步推出
+若 $s\ge1$ 且尚未精确终止，则 $\vartheta_s<1$；PCG 正交尾进一步推出
 \begin{equation}
  \norm{\bm W_{m+s}-\bm W_m}_{\bm B,F}
  \ge\sqrt{1-\vartheta_s^2}\,\norm{\E_m}_{\bm B,F}.      \label{eq:block-lower}
 \end{equation}
+相较旧版的 $2q^s$，$2q^s/(1+q^{2s})$ 在所有有限 $s$ 上都更尖锐；若实际谱聚簇，
+$\chi_s(\Lambda)$ 还可进一步收紧这些块估计。
 
 \subsection{Ritz 滤波为何可以改变两网格敏感方向}
 
@@ -419,9 +493,9 @@ $a_{ij}=\bm q_i^T\widehat{\bm e}_{0,j}$，则 PCG 最小化的是非负二次谱
 消去对固定磨光器“不利”的某些谱分量，同时暂时保留“有利”分量；这正是能量继续
 下降而两网格性能不按同一顺序变化的谱滤波来源。
 
-\section{Schur 图坐标：能量、粗空间角度与粗矩阵的统一量化}
+\section{Schur 图坐标：能量、粗矩阵与任意粗空间角度的统一量化}
 
-这一节给出 v8 的核心坐标化。定义
+这一节给出 v9 的核心坐标化。定义
 \begin{equation}
  \bm\Phi=
  \begin{bmatrix}\bm I&\bm W^\ast\\\bm0&\bm I\end{bmatrix}
@@ -444,23 +518,28 @@ $a_{ij}=\bm q_i^T\widehat{\bm e}_{0,j}$，则 PCG 最小化的是非负二次谱
  \qquad
  \mathcal U_\ast=\mathcal U(0).                           \label{eq:graph-space}
 \end{equation}
+主角和图子空间的标准背景可参见~\cite{BjorckGolub1973,StewartSun1990}。
 
-\begin{theorem}[图参数的三重精确含义]\label{thm:K-geometry}
+\begin{theorem}[图参数的四重精确含义]\label{thm:K-geometry}
 对任意单位注入插值：
 \begin{align}
  \Sc^{-1/2}\bm P(\bm W)^T\bm A\bm P(\bm W)\Sc^{-1/2}
  &=\bm I+\K^T\K,                                         \label{eq:normalized-coarse}\\
  J(\bm W)-J(\bm W^\ast)
  &=\frac12\tr(\K\Sc\K^T),                              \label{eq:J-K}\\
- \tan\theta_i&=\sigma_i(\K),                            \label{eq:principal-tan}
+ \tan\theta_i&=\sigma_i(\K),                            \label{eq:principal-tan}\\
+ \lambda_i\!\left(\Sc^{-1/2}\bm A_c\Sc^{-1/2}\right)
+ &=1+\sigma_i(\K)^2=\sec^2\theta_i,                    \label{eq:coarse-angle-spectrum}
 \end{align}
-其中 $\theta_i$ 是 $\mathcal U(\K)$ 与 $\mathcal U_\ast$ 的主角。
-特别地，最大主角满足
+其中 $\theta_i$ 是 $\mathcal U(\K)$ 与 $\mathcal U_\ast$ 的主角，
+$\bm A_c=\bm P^T\bm A\bm P$。特别地，
 \begin{equation}
- \sin\theta_{\max}
- =\frac{\norm{\K}_2}{\sqrt{1+\norm{\K}_2^2}}.           \label{eq:principal-gap}
+ \gap(\mathcal U(\K),\mathcal U_\ast)
+ :=\norm{\Pi_{\K}-\Pi_0}_2
+ =\sin\theta_{\max}
+ =\frac{\norm{\K}_2}{\sqrt{1+\norm{\K}_2^2}},          \label{eq:principal-gap}
 \end{equation}
-而能量与图参数满足
+以及
 \begin{equation}
  \frac{\lambda_{\min}(\Sc)}{2}\norm{\K}_F^2
  \le J(\bm W)-J(\bm W^\ast)
@@ -471,18 +550,46 @@ $a_{ij}=\bm q_i^T\widehat{\bm e}_{0,j}$，则 PCG 最小化的是非负二次谱
 \begin{proof}
 由 $\bm\Delta=\bm B^{-1/2}\K\Sc^{1/2}$ 代入
 \eqref{eq:coarse-completion} 和 \eqref{eq:energy-completion} 即得前两式。
-图子空间的标准正交基可写为
-$[\K^T,\bm I]^T(\bm I+\K^T\K)^{-1/2}$，与竖直子空间
-$[\bm0,\bm I]^T$ 的夹角奇异值关系给出
-$\tan\theta_i=\sigma_i(\K)$。最后对 \eqref{eq:J-K} 使用
-$\Sc$ 的 Rayleigh 商界。
+图子空间的标准正交基为
+$[\K^T,\bm I]^T(\bm I+\K^T\K)^{-1/2}$；与竖直子空间的主角关系给出
+$\tan\theta_i=\sigma_i(\K)$，从而
+$1+\sigma_i^2=\sec^2\theta_i$。最后对 \eqref{eq:J-K} 使用 $\Sc$ 的
+Rayleigh 商界。
 \end{proof}
 
-该定理比单纯的“$\bm W_m\to\bm W^\ast$”更精确：
-能量误差在已知 $\lambda_{\min}(\Sc)$ 时定量控制粗空间角度；同时
-$\bm I+\K^T\K$ 说明偏离能量终点也精确改变 Schur 归一化后的 Galerkin 粗矩阵。
+式~\eqref{eq:coarse-angle-spectrum} 给出一个此前未显式利用的解释：偏离能量极小
+粗空间时，Schur 归一化粗矩阵的每个谱膨胀因子恰是相应主角的 $\sec^2\theta_i$。
+因此“粗矩阵偏离 Schur 补多少”和“粗空间转了多大角度”不是两个独立现象。
 
-\section{两网格谱半径的精确公式与全局连续性}
+更一般地，两个有限图参数之间的角度也有闭式表达。
+
+\begin{theorem}[任意两个图粗空间的精确最大主角公式]\label{thm:graph-gap-exact}
+对任意 $\K,\bm L\in\R^{n_F\times n_C}$，
+\begin{align}
+ \gap(\mathcal U(\K),\mathcal U(\bm L))
+ &=\norm{\Pi_{\K}-\Pi_{\bm L}}_2                                      \\
+ &=\norm{(\bm I+\K\K^T)^{-1/2}
+          (\K-\bm L)(\bm I+\bm L^T\bm L)^{-1/2}}_2                  \label{eq:graph-gap-exact}\\
+ &\le \norm{\K-\bm L}_2.                                             \label{eq:graph-gap-simple}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+取 $\mathcal U(\K)$ 的正交补基
+\begin{equation}
+ \bm Q_{\K}^{\perp}=
+ \begin{bmatrix}\bm I\\-\K^T\end{bmatrix}
+ (\bm I+\K\K^T)^{-1/2}
+\end{equation}
+以及 $\mathcal U(\bm L)$ 的正交基
+$\bm Q_{\bm L}=[\bm L^T,\bm I]^T(\bm I+\bm L^T\bm L)^{-1/2}$。
+则 $(\bm Q_{\K}^{\perp})^T\bm Q_{\bm L}$ 恰等于
+\eqref{eq:graph-gap-exact} 中的矩阵，而其最大奇异值就是两等维子空间最大主角的正弦，
+也等于两个正交投影之差的二范数。左右归一化因子二范数均不超过 $1$，得到
+\eqref{eq:graph-gap-simple}。
+\end{proof}
+
+\section{两网格谱半径、Gauss--Seidel 收缩与平方根全局稳定性}
 
 \subsection{对称两网格与图子空间公式}
 
@@ -491,19 +598,70 @@ $\bm A$--伴随
 \begin{equation}
  \bm G^{\dagger_A}=\bm A^{-1}\bm G^T\bm A.
 \end{equation}
-对前向/后向 Gauss--Seidel，这正对应代码使用的对称组合。
 Galerkin 粗校正为
 \begin{equation}
  \bm Q(\bm P)=
- \bm I-\bm P(\bm P^T\bm A\bm P)^{-1}\bm P^T\bm A.
-                                                                    \label{eq:coarse-correction}
+ \bm I-\bm P(\bm P^T\bm A\bm P)^{-1}\bm P^T\bm A.       \label{eq:coarse-correction}
 \end{equation}
 两网格误差传播算子为
 \begin{equation}
  \bm E_{\rm TG}(\bm P)=\bm G^{\dagger_A}\bm Q(\bm P)\bm G.
                                                                     \label{eq:TG}
 \end{equation}
-它关于 $\bm A$ 自伴且半正定。
+它关于 $\bm A$ 自伴且半正定。令
+\begin{equation}
+ \bm T=\bm A^{1/2}\bm G\bm A^{-1/2}.                    \label{eq:T-smoother}
+\end{equation}
+在 $\bm A$--正交坐标中，若 $\Pi_{\mathcal U}$ 是粗空间投影，则
+\begin{equation}
+ \rhoTG(\mathcal U)=
+ \norm{(\bm I-\Pi_{\mathcal U})\bm T}_2^2.              \label{eq:rho-projector}
+\end{equation}
+
+当前代码使用前向 Gauss--Seidel 和后向 Gauss--Seidel；相关定常迭代与对称 Gauss--Seidel 理论可参见~\cite{Varga2000}。把
+$\bm A=\bm D_A+\bm L_A+\bm L_A^T$，$\bm M=\bm D_A+\bm L_A$，则
+$\bm G=\bm I-\bm M^{-1}\bm A$。
+
+\begin{proposition}[Gauss--Seidel 的严格 $\bm A$--收缩常数]\label{prop:GS-contraction}
+定义对称 Gauss--Seidel 矩阵
+\begin{equation}
+ \bm M_{\rm SGS}=\bm M\bm D_A^{-1}\bm M^T\succ0,
+ \qquad
+ \gamma_{\rm GS}=\lambda_{\min}\!\left(
+ \bm M_{\rm SGS}^{-1/2}\bm A\bm M_{\rm SGS}^{-1/2}\right)>0.
+                                                                    \label{eq:gamma-GS}
+\end{equation}
+则
+\begin{equation}
+ \norm{\bm T}_2^2=\norm{\bm G}_{\bm A}^2
+ =1-\gamma_{\rm GS}<1.                                   \label{eq:GS-exact-contraction}
+\end{equation}
+因此对任意满列秩插值 $\bm P$，精确算术下
+\begin{equation}
+ 0\le\rhoTG(\bm P)\le1-\gamma_{\rm GS}<1.               \label{eq:any-P-converges}
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+一般定常分裂 $\bm G=\bm I-\bm M^{-1}\bm A$ 满足恒等式
+\begin{equation}
+ \bm A-\bm G^T\bm A\bm G
+ =\bm A\bm M^{-T}(\bm M+\bm M^T-\bm A)\bm M^{-1}\bm A.
+                                                                    \label{eq:splitting-identity}
+\end{equation}
+Gauss--Seidel 中括号恰为 $\bm D_A\succ0$，故
+\begin{equation}
+ \bm T^T\bm T
+ =\bm I-\bm A^{1/2}\bm M_{\rm SGS}^{-1}\bm A^{1/2}.
+\end{equation}
+后一个 SPD 矩阵与 $\bm M_{\rm SGS}^{-1}\bm A$ 有相同特征值，得到
+\eqref{eq:GS-exact-contraction}。再由正交投影不增范数和
+\eqref{eq:rho-projector} 得 \eqref{eq:any-P-converges}。
+\end{proof}
+
+该结论澄清代码中的 \texttt{failed@6000}：它表示在给定循环上限内未达到容差，
+并非理论上的发散；当前对称 Gauss--Seidel 两网格对任意满秩候选都是严格收缩的，
+只是某些候选的收缩因子可以极接近 $1$。
 
 把前向磨光器在 $\bm\Phi$ 坐标中按行分块：
 \begin{equation}
@@ -511,15 +669,15 @@ Galerkin 粗校正为
  =\begin{bmatrix}\bm X\\\bm Y\end{bmatrix},
  \qquad
  \bm X\in\R^{n_F\times n},\quad
- \bm Y\in\R^{n_C\times n}.                               \label{eq:XY}
+ \bm Y\in\R^{n_C\times n}.                              \label{eq:XY}
 \end{equation}
 
 \begin{theorem}[两网格谱半径的精确图公式]\label{thm:rho-formula}
-对图参数 $\K$，在 $\bm\Phi$ 坐标中
+对图参数 $\K$，
 \begin{equation}
  \bm E_{\rm TG}(\K)
  =(\bm X-\K\bm Y)^T(\bm I+\K\K^T)^{-1}
-  (\bm X-\K\bm Y).                                       \label{eq:TG-graph}
+  (\bm X-\K\bm Y),                                       \label{eq:TG-graph}
 \end{equation}
 因此
 \begin{equation}
@@ -532,116 +690,146 @@ Galerkin 粗校正为
 \end{equation}
 \end{theorem}
 
-\begin{proof}
-在 $\bm\Phi$ 坐标中，Galerkin 粗校正变成对图子空间
-$\Ran[\K^T,\bm I]^T$ 的普通正交补投影：
-\begin{equation}
- \begin{bmatrix}\bm I\\-\K^T\end{bmatrix}
- (\bm I+\K\K^T)^{-1}
- \begin{bmatrix}\bm I&-\K\end{bmatrix}.
-\end{equation}
-左右乘变换后的前、后磨光传播即得 \eqref{eq:TG-graph}。
-\end{proof}
-
 \begin{corollary}[任意阈值的精确矩阵判据]\label{cor:threshold-matrix}
 对固定 $\K$ 和 $\mu\ge0$，
 \begin{equation}
  \rhoTG(\K)<\mu
  \quad\Longleftrightarrow\quad
  \mu(\bm I+\K\K^T)
- -(\bm X-\K\bm Y)(\bm X-\K\bm Y)^T\succ0.               \label{eq:threshold-matrix}
+ -(\bm X-\K\bm Y)(\bm X-\K\bm Y)^T\succ0.              \label{eq:threshold-matrix}
 \end{equation}
-将 $\mu=\rho_\ast$ 可精确判断某个有限插值是否严格优于能量终点；
-将 $\mu$ 取另一候选的谱半径即可比较任意两个候选。
 \end{corollary}
 
-\begin{remark}[对旧版 ``LMI'' 表述的修正]
-式~\eqref{eq:threshold-matrix} 对\emph{固定} $\K$ 时关于阈值 $\mu$ 是线性矩阵
-不等式；若把 $\K$ 当作决策变量，其中含 $\K\K^T$ 及二次项，因而不是关于
-$\K$ 的 LMI。v8 统一称其为“精确矩阵不等式判据”，避免把二次矩阵不等式误写成
-线性矩阵不等式。
+\begin{remark}[关于 ``LMI'' 的严格措辞]
+式~\eqref{eq:threshold-matrix} 对固定 $\K$ 时关于 $\mu$ 是线性矩阵不等式；若把
+$\K$ 当作决策变量，其中含二次项，因此不是关于 $\K$ 的 LMI。本文统一称其为
+“精确矩阵不等式判据”。
 \end{remark}
 
-\subsection{新增：能量误差到两网格谱半径的全局定量桥梁}
+\subsection{平方根谱半径的全局稳定性桥梁}
 
-令
-\begin{equation}
- \bm T=\bm A^{1/2}\bm G\bm A^{-1/2}.
-\end{equation}
-在任意 $\bm A$--正交坐标中，它只差一个正交相似变换。若
-$\Pi_{\mathcal U}$ 是粗空间在该坐标下的正交投影，则
-\begin{equation}
- \rhoTG(\mathcal U)=
- \norm{(\bm I-\Pi_{\mathcal U})\bm T}_2^2.                \label{eq:rho-projector}
-\end{equation}
+v8 使用 $|\rho(\mathcal U)-\rho(\mathcal V)|$ 的 Lipschitz 界。对本问题可以直接
+在平方根层面得到更强、常数更小的结果。
 
-\begin{theorem}[粗空间间隙的全局谱稳定性]\label{thm:global-gap}
+\begin{theorem}[$\sqrt{\rho}$ 对粗空间主角的全局 Lipschitz 界]\label{thm:sqrt-rho-gap}
 对任意两个同维粗空间 $\mathcal U,\mathcal V$，
 \begin{equation}
- \abs{\rhoTG(\mathcal U)-\rhoTG(\mathcal V)}
- \le2\norm{\bm T}_2^2\,
- \norm{\Pi_{\mathcal U}-\Pi_{\mathcal V}}_2.             \label{eq:global-projector-Lipschitz}
+ \abs{\sqrt{\rhoTG(\mathcal U)}-\sqrt{\rhoTG(\mathcal V)}}
+ \le\norm{\bm T}_2\,
+ \gap(\mathcal U,\mathcal V).                             \label{eq:sqrt-rho-gap}
 \end{equation}
-特别地，对图参数 $\K$ 与能量终点，
+对当前 Gauss--Seidel，右端常数可写成
+$\sqrt{1-\gamma_{\rm GS}}<1$。特别地，任意图参数 $\K,\bm L$ 满足
+\begin{align}
+ \abs{\sqrt{\rhoTG(\K)}-\sqrt{\rhoTG(\bm L)}}
+ &\le\norm{\bm T}_2
+ \norm{(\bm I+\K\K^T)^{-1/2}(\K-\bm L)
+       (\bm I+\bm L^T\bm L)^{-1/2}}_2                    \label{eq:sqrt-rho-graph}\\
+ &\le\norm{\bm T}_2\norm{\K-\bm L}_2.                  \label{eq:sqrt-rho-Ksimple}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+由~\eqref{eq:rho-projector}，
+$\sqrt{\rhoTG(\mathcal U)}=\norm{(\bm I-\Pi_{\mathcal U})\bm T}_2$。
+两个算子范数之差不超过算子差的范数，而
 \begin{equation}
- \abs{\rhoTG(\K)-\rho_\ast}
- \le2\norm{\bm T}_2^2
- \frac{\norm{\K}_2}{\sqrt{1+\norm{\K}_2^2}}.           \label{eq:rho-K-global}
+ \norm{(\Pi_{\mathcal U}-\Pi_{\mathcal V})\bm T}_2
+ \le\gap(\mathcal U,\mathcal V)\norm{\bm T}_2.
+\end{equation}
+再代入定理~\ref{thm:graph-gap-exact}。
+\end{proof}
+
+因此 v8 的平方谱界只是其推论：
+\begin{equation}
+ \abs{\rhoTG(\mathcal U)-\rhoTG(\mathcal V)}
+ \le(\sqrt{\rhoTG(\mathcal U)}+\sqrt{\rhoTG(\mathcal V)})
+    \norm{\bm T}_2\gap(\mathcal U,\mathcal V)
+ \le2\norm{\bm T}_2^2\gap(\mathcal U,\mathcal V).        \label{eq:rho-gap-corollary}
+\end{equation}
+
+\begin{corollary}[PCG 到能量终点的双边两网格收敛管道]\label{cor:rho-pcg-rate}
+令
+\begin{equation}
+ a_m=\frac{\vartheta_m\norm{\E_0}_{\bm B,F}}
+          {\sqrt{\lambda_{\min}(\Sc)}},
+ \qquad
+ s_m=\frac{a_m}{\sqrt{1+a_m^2}}.
+\end{equation}
+则
+\begin{equation}
+ \left(\sqrt{\rho_\ast}-\norm{\bm T}_2s_m\right)_+^2
+ \le\rhoTG(\K_m)\le
+ \left(\sqrt{\rho_\ast}+\norm{\bm T}_2s_m\right)^2.    \label{eq:rho-pcg-tube}
+\end{equation}
+其中 $(x)_+=\max\{x,0\}$。若只使用当前可计算预条件残量，可将 $a_m$ 替换为
+\begin{equation}
+ a_m^{\rm res}=
+ \frac{R_m}{\sqrt{\widehat\lambda_{\min}\lambda_{\min}(\Sc)}}.
+                                                                    \label{eq:residual-angle-bound}
+\end{equation}
+\end{corollary}
+
+这说明两网格性能沿 PCG 路径可以强烈非单调，但不可能在能量误差趋零时维持一个固定
+非零的谱优势：最终必然进入以 $\rho_\ast$ 为中心、半径显式收缩的管道。
+
+记 $\rho_j=\rhoTG(\K_j)$。
+
+\begin{theorem}[PCG 检查点间的谱变化由块能量直接控制]\label{thm:block-spectral-continuity}
+对任意 $m<n$，记
+\begin{equation}
+ D_{m:n}=\norm{\bm W_n-\bm W_m}_{\bm B,F}.
+\end{equation}
+PCG 正交性给出
+\begin{equation}
+ D_{m:n}^2=2\bigl[J(\bm W_m)-J(\bm W_n)\bigr].            \label{eq:block-energy-drop}
+\end{equation}
+并且
+\begin{equation}
+ \abs{\sqrt{\rho_n}-\sqrt{\rho_m}}
+ \le\frac{\norm{\bm T}_2}{\sqrt{\lambda_{\min}(\Sc)}}D_{m:n}
+ =\norm{\bm T}_2
+  \sqrt{\frac{2[J(\bm W_m)-J(\bm W_n)]}{\lambda_{\min}(\Sc)}}.
+                                                                    \label{eq:block-rho-energy}
 \end{equation}
 \end{theorem}
 
 \begin{proof}
-令 $\bm A_U=(\bm I-\Pi_{\mathcal U})\bm T$、
-$\bm A_V=(\bm I-\Pi_{\mathcal V})\bm T$。利用
-$|\norm{\bm A_U}_2^2-\norm{\bm A_V}_2^2|
-\le(\norm{\bm A_U}_2+\norm{\bm A_V}_2)
-\norm{\bm A_U-\bm A_V}_2$，并用每个范数不超过 $\norm{\bm T}_2$，
-得到 \eqref{eq:global-projector-Lipschitz}。再代入定理~\ref{thm:K-geometry}
-的精确主角公式 \eqref{eq:principal-gap}。
+$\K_m-\K_n=\bm B^{1/2}(\bm W_m-\bm W_n)\Sc^{-1/2}$，故其二范数不超过
+$D_{m:n}/\sqrt{\lambda_{\min}(\Sc)}$；再用
+\eqref{eq:sqrt-rho-Ksimple}。第一式由 PCG 块正交和
+\eqref{eq:J-step} 求和得到。
 \end{proof}
 
-这条界不需要“$\K$ 很小”的局部假设，也不需要粗矩阵最小特征值在某邻域内另行
-假设；所有粗矩阵的正定性已经由 \eqref{eq:normalized-coarse} 自动给出。
-
-\begin{corollary}[PCG 到能量终点的两网格性能收敛率]\label{cor:rho-pcg-rate}
-令
+\begin{corollary}[候选网格的可认证谱离散化损失]\label{cor:spectral-grid-regret}
+设整数 PCG 路径被检查点
+$0\le m_0<m_1<\cdots<m_L$ 分段，并令
+$D_l=D_{m_l:m_{l+1}}$。若比较目标是同一路径上的 $\sqrt{\rho_m}$，则
 \begin{equation}
- a_m=\frac{\vartheta_m\norm{\E_0}_{\bm B,F}}
-          {\sqrt{\lambda_{\min}(\Sc)}}.
+ 0\le
+ \min_l\sqrt{\rho_{m_l}}-
+ \min_{m_0\le m\le m_L}\sqrt{\rho_m}
+ \le
+ \frac{\norm{\bm T}_2}{\sqrt{\lambda_{\min}(\Sc)}}
+ \max_l D_l.                                              \label{eq:spectral-grid-regret}
 \end{equation}
-则有限 PCG 路径满足
-\begin{equation}
- \abs{\rhoTG(\K_m)-\rho_\ast}
- \le2\norm{\bm T}_2^2\frac{a_m}{\sqrt{1+a_m^2}}
- \le2\norm{\bm T}_2^2 a_m.                               \label{eq:rho-pcg-rate}
-\end{equation}
-若只使用当前可计算的预条件残量，则由
-\eqref{eq:global-residual-energy} 可取后验量
-\begin{equation}
- a_m^{\rm res}=
- \frac{R_m}{\sqrt{\widehat\lambda_{\min}
-                         \lambda_{\min}(\Sc)}}            \label{eq:residual-angle-bound}
-\end{equation}
-替换 $a_m$。
 \end{corollary}
 
 \begin{proof}
-由 \eqref{eq:J-K-equivalence} 或直接由
-$\K_m=\bm B^{1/2}\E_m\Sc^{-1/2}$，
-$\norm{\K_m}_2\le\norm{\E_m}_{\bm B,F}/
-\sqrt{\lambda_{\min}(\Sc)}$。再用 \eqref{eq:pcg-Chebyshev}、
-定理~\ref{thm:global-gap} 即得。残差版本由
-\eqref{eq:global-residual-energy} 得到。
+若全路径最优点 $m^\star$ 位于 $[m_l,m_{l+1}]$，PCG 正交性给出
+$D_{m_l:m^\star}\le D_l$。由定理~\ref{thm:block-spectral-continuity}，
+$\sqrt{\rho_{m_l}}\le\sqrt{\rho_{m^\star}}+
+\norm{\bm T}_2D_l/\sqrt{\lambda_{\min}(\Sc)}$。
+再用采样点最小值不超过 $\sqrt{\rho_{m_l}}$ 即得。
 \end{proof}
 
-这给出一个重要而不矛盾的结论：
-\emph{两网格性能沿 PCG 路径不必单调，但它必然在终点附近收敛到
-$\rho_\ast$；其偏差可以由能量误差或预条件残量显式控制。}
-因此“有限点可能显著更好”和“无限推进最终回到能量终点性能”可以同时严格成立。
+也就是说，候选间距是否足够细，不必只能用“步数相差 2 还是 8”衡量；若某个未细化
+区间的 PCG 块能量已经很小，则该区间不可能隐藏一个在 $\sqrt\rho$ 上远优于已采样点
+的候选。这为未来用能量块大小驱动自适应候选细化提供了严格证书。
 
-\section{能量最优与两网格最优为何根本不同}
+\section{固定磨光器下的全局最优粗空间、单位注入可达性与 Pareto 障碍}
 
-\begin{theorem}[固定磨光器下的最优同维粗空间]\label{thm:optimal-coarse-space}
+\begin{theorem}[所有同维粗空间中的全局最优值]\label{thm:optimal-coarse-space}
 在所有 $n_C$ 维粗空间 $\mathcal U$ 中，
 \begin{equation}
  \min_{\dim\mathcal U=n_C}\rhoTG(\mathcal U)
@@ -654,38 +842,198 @@ $\sigma_{n_C}(\bm T)>\sigma_{n_C+1}(\bm T)$，该最优空间唯一。
 \begin{proof}
 $\Pi_{\mathcal U}\bm T$ 的秩至多为 $n_C$，而
 $\rhoTG(\mathcal U)^{1/2}=\norm{\bm T-\Pi_{\mathcal U}\bm T}_2$。
-最佳低秩逼近定理给出下界并由前 $n_C$ 个左奇异向量达到。
+Eckart--Young 最佳低秩逼近原理给出下界并由前 $n_C$ 个左奇异向量达到。
 \end{proof}
 
-命题~\ref{prop:energy-minimum} 优化的是插值列的总 $\bm B$--能量，而
-定理~\ref{thm:optimal-coarse-space} 优化的是固定磨光器留下的最坏方向。
-这两个目标没有一般的保序关系。若能量终点粗空间恰好已经是上述全空间最优粗空间，
-则任何单位注入有限 PCG 点都不可能严格更优；反之，即使全空间最优值严格低于
-$\rho_\ast$，也不能自动推出 PCG 路径一定经过最优空间，因为可达性仍受图子空间
-约束和 Krylov 方向约束。
-
-\subsection{谱半径与实际循环数}
-
-由于对称两网格算子关于 $\bm A$ 自伴且半正定，
+记全局最优值
 \begin{equation}
- \norm{\bm E_{\rm TG}}_{\bm A}=\rhoTG.
+ \rho_{\rm opt}=\sigma_{n_C+1}(\bm T)^2,
+ \qquad
+ H_{\rm TG}=\rho_\ast-\rho_{\rm opt}\ge0                \label{eq:TG-headroom}
 \end{equation}
-若 $0\le\rhoTG<1$，则
+为能量终点相对固定磨光器全局最优粗空间的“两网格 headroom”。
+
+在 $\bm\Phi$ 坐标中，单位注入插值对应所有图子空间
+$\mathcal U(\K)=\Ran[\K^T,\bm I]^T$。设
+$\mathcal F=\R^{n_F}\times\{0\}$。一个 $n_C$ 维子空间可写成有限图 $\mathcal U(\K)$
+当且仅当它与 $\mathcal F$ 横截，即 $\mathcal U\cap\mathcal F=\{0\}$。
+
+\begin{theorem}[单位注入图族的稠密性与严格优势存在性的充要条件]\label{thm:graph-density-existence}
+有限图子空间集合
+\begin{equation}
+ \mathfrak G=
+ \{\mathcal U\in\operatorname{Gr}(n_C,n_F+n_C):
+   \mathcal U\cap\mathcal F=\{0\}\}
+\end{equation}
+是 Grassmann 流形中的开稠密集。因此
+\begin{equation}
+ \inf_{\bm W\in\R^{n_F\times n_C}}\rhoTG(\bm W)
+ =\inf_{\K}\rhoTG(\K)=\rho_{\rm opt}.                  \label{eq:unit-injection-infimum}
+\end{equation}
+特别地，存在某个有限单位注入插值严格优于能量终点，
+\begin{equation}
+ \exists\K:\ \rhoTG(\K)<\rho_\ast,                     \label{eq:exists-better}
+\end{equation}
+当且仅当
+\begin{equation}
+ H_{\rm TG}>0
+ \quad\Longleftrightarrow\quad
+ \rho_\ast>\sigma_{n_C+1}(\bm T)^2.                     \label{eq:existence-iff}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+横截性等价于子空间到 $C$ 坐标的投影可逆，这是一个开条件；其补集由相应行列式退化
+给出，任意子空间都可通过任意小旋转避开该退化集，故 $\mathfrak G$ 稠密。
+$\rhoTG(\mathcal U)$ 对正交投影连续，而 Grassmann 流形紧，因此所有同维粗空间上的
+最小值为定理~\ref{thm:optimal-coarse-space} 的 $\rho_{\rm opt}$；在开稠密图族上取
+下确界不改变该值。若 $H_{\rm TG}=0$，全空间都不可能优于能量终点；若
+$H_{\rm TG}>0$，取一个全局最优空间并用图空间充分逼近，由连续性可得到严格低于
+$\rho_\ast$ 的有限图空间。
+\end{proof}
+
+这个充要条件比“终点附近存在下降方向”更强：只要能量粗空间不是固定磨光器的全局
+最优同维粗空间，\emph{某个}单位注入插值严格更好就是必然事实；真正困难的部分不再是
+优势是否存在，而是当前 PCG 路径能否以有限成本穿过优势区域。
+
+\begin{corollary}[横截时固定磨光器最优插值的显式表达]\label{cor:explicit-TG-optimal-W}
+若某个全局最优粗空间 $\mathcal U_{\rm opt}$ 在 $\bm\Phi$ 坐标中的正交基分块为
+\begin{equation}
+ \bm U_{\rm opt}=\begin{bmatrix}\bm U_F\\\bm U_C\end{bmatrix},
+ \qquad \bm U_C\in\R^{n_C\times n_C},
+\end{equation}
+且 $\bm U_C$ 可逆，则该最优空间本身是有限图，
+\begin{equation}
+ \K_{\rm opt}=\bm U_F\bm U_C^{-1},\qquad
+ \bm W_{\rm TG}^{\rm opt}
+ =\bm W^\ast+\bm B^{-1/2}\K_{\rm opt}\Sc^{1/2},         \label{eq:explicit-TG-W}
+\end{equation}
+并达到 $\rhoTG=\rho_{\rm opt}$。其相对能量代价精确为
+\begin{equation}
+ J(\bm W_{\rm TG}^{\rm opt})-J(\bm W^\ast)
+ =\frac12\tr(\K_{\rm opt}\Sc\K_{\rm opt}^T).          \label{eq:TG-opt-energy-price}
+\end{equation}
+\end{corollary}
+
+若所有最优粗空间都不与 $\mathcal F$ 横截，则全局最优值仍可由有限单位注入空间任意
+逼近，但不必被某个有限 $\K$ 达到。特别地，若最优粗空间唯一且不横截，则任何满足
+$\rhoTG(\K_j)\to\rho_{\rm opt}$ 的序列必有
+$\norm{\K_j}_2\to\infty$；由~\eqref{eq:J-K-equivalence}，其插值能量超额也趋于无穷。
+这给出一个极端但严格的例子：固定磨光器的最优两网格极限可能位于能量正则化图坐标的
+“无穷远边界”。
+
+\begin{corollary}[全局最优粗空间周围的显式优势管道]\label{cor:optimal-tube}
+若 $H_{\rm TG}>0$，令
+\begin{equation}
+ g_\ast=
+ \frac{\sqrt{\rho_\ast}-\sqrt{\rho_{\rm opt}}}{\norm{\bm T}_2}>0.
+                                                                    \label{eq:optimal-gap-radius}
+\end{equation}
+则任意满足
+$\gap(\mathcal U,\mathcal U_{\rm opt})<g_\ast$ 的同维粗空间都严格优于能量终点。
+若 $\mathcal U_{\rm opt}=\mathcal U(\K_{\rm opt})$ 是有限图，只需检查
+\begin{equation}
+ \norm{(\bm I+\K\K^T)^{-1/2}(\K-\K_{\rm opt})
+       (\bm I+\K_{\rm opt}^T\K_{\rm opt})^{-1/2}}_2<g_\ast.
+                                                                    \label{eq:optimal-K-tube}
+\end{equation}
+\end{corollary}
+
+\subsection{固定两网格优势要求显式正能量代价：Pareto 障碍}
+
+平方根稳定性还能反向使用，得到“想获得多少两网格优势，至少要离能量终点多远”。
+
+\begin{theorem}[两网格优势与能量偏离之间的全局 Pareto 障碍]\label{thm:Pareto-barrier}
+给定 $0<\gamma<\rho_\ast$。若某有限单位注入插值满足
+\begin{equation}
+ \rhoTG(\K)\le\rho_\ast-\gamma,                           \label{eq:gamma-advantage}
+\end{equation}
+令
+\begin{equation}
+ h_\gamma=
+ \frac{\sqrt{\rho_\ast}-\sqrt{\rho_\ast-\gamma}}
+      {\norm{\bm T}_2}.                                   \label{eq:h-gamma}
+\end{equation}
+则必须有 $h_\gamma<1$，并且
+\begin{align}
+ \norm{\K}_2&\ge\frac{h_\gamma}{\sqrt{1-h_\gamma^2}},  \label{eq:K-min-for-gain}\\
+ J(\bm W)-J(\bm W^\ast)
+ &\ge\frac{\lambda_{\min}(\Sc)}{2}
+       \frac{h_\gamma^2}{1-h_\gamma^2}.                  \label{eq:energy-min-for-gain}
+\end{align}
+反过来，若只允许能量预算
+$J(\bm W)-J(\bm W^\ast)\le E$，令
+\begin{equation}
+ k_E=\sqrt{\frac{2E}{\lambda_{\min}(\Sc)}},\qquad
+ s_E=\frac{k_E}{\sqrt{1+k_E^2}},
+\end{equation}
+则必有
+\begin{equation}
+ \abs{\sqrt{\rhoTG(\K)}-\sqrt{\rho_\ast}}
+ \le\norm{\bm T}_2s_E.                                  \label{eq:energy-to-rho-Pareto}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+由~\eqref{eq:gamma-advantage} 和定理~\ref{thm:sqrt-rho-gap}，
+$\gap(\mathcal U(\K),\mathcal U_\ast)\ge h_\gamma$。
+有限图空间相对 $\mathcal U_\ast$ 的间隙由~\eqref{eq:principal-gap} 精确等于
+$\norm{\K}/\sqrt{1+\norm{\K}^2}<1$，反解得到第一式，再用
+\eqref{eq:J-K-equivalence} 得第二式。逆向结论同理由能量预算先控制 $\norm{\K}$，
+再控制主角并应用平方根稳定性。
+\end{proof}
+
+这一定理把“有限 Krylov 是正则化路径”的物理图像变成了定量约束：固定的两网格收益
+必须以非零的能量偏离为代价；继续把 PCG 推向能量极小终点时，这种固定收益必然消失。
+
+\subsection{谱半径与给定右端项循环数的精确关系}
+
+由于对称两网格算子关于 $\bm A$ 自伴且半正定，存在 $\bm A$--正交归一特征向量
+$\{\bm\phi_i\}$ 与 $0\le\lambda_i\le\rhoTG$。若
+$\bm e_0=\sum_i\alpha_i\bm\phi_i$，则有比最坏情形上界更精确的恒等式
+\begin{equation}
+ \frac{\norm{\bm e_k}_{\bm A}^2}{\norm{\bm e_0}_{\bm A}^2}
+ =\frac{\sum_i\alpha_i^2\lambda_i^{2k}}
+        {\sum_i\alpha_i^2}.                               \label{eq:rhs-exact-modal}
+\end{equation}
+因此该右端项的渐近能量收敛因子为
+\begin{equation}
+ \rho(\bm e_0)=\max\{\lambda_i:\alpha_i\ne0\},          \label{eq:rhs-asymptotic-rate}
+\end{equation}
+它可以严格小于全局谱半径。最坏情形仍满足
 \begin{align}
  \norm{\bm e_k}_{\bm A}&\le\rhoTG^k\norm{\bm e_0}_{\bm A},\label{eq:energy-cycle}\\
  \frac{\norm{\bm r_k}_2}{\norm{\bm r_0}_2}
  &\le\sqrt{\kappa_2(\bm A)}\,\rhoTG^k.                  \label{eq:residual-cycle}
 \end{align}
-因此保证最坏情形二范数相对残差不超过 $\varepsilon$ 的一个充分循环数为
+因此若 $0<\rhoTG<1$，保证所有初始误差的二范数相对残差不超过 $\varepsilon$ 的一个
+充分循环数仍为
 \begin{equation}
- k\ge
- \left\lceil
+ k\ge\left\lceil
  \frac{\log(\varepsilon/\sqrt{\kappa_2(\bm A)})}
-      {\log\rhoTG}
- \right\rceil,                                           \label{eq:cycle-upper}
+      {\log\rhoTG}\right\rceil.                          \label{eq:cycle-upper}
 \end{equation}
-其中 $0<\rhoTG<1$。实际右端项若对最慢模态投影很小，循环数可以远低于这个上界；
-这也是 v4.2 在线选择必须直接运行代表性右端项 pilot 的原因。
+式~\eqref{eq:rhs-exact-modal} 同时说明该上界何时会极度保守：只要当前 RHS 对最慢
+两网格特征子空间的投影很小，真实循环数就由更小的有效谱半径
+\eqref{eq:rhs-asymptotic-rate} 控制。
+
+若初始误差来自一个分布，令其在 $\bm A$--正交特征坐标中的二阶矩矩阵为 $\bm\Gamma=\mathbb E[\bm\alpha\bm\alpha^T]\succeq0$，
+令 $\bm\Lambda=\diag(\lambda_i)$，则
+\begin{equation}
+ \frac{\mathbb E\norm{\bm e_k}_{\bm A}^2}
+      {\mathbb E\norm{\bm e_0}_{\bm A}^2}
+ =\frac{\tr(\bm\Lambda^{2k}\bm\Gamma)}{\tr(\bm\Gamma)}.
+                                                                    \label{eq:distributional-contraction}
+\end{equation}
+这给出了多 RHS 情形中介于“单个代表 RHS”和“最坏谱半径”之间的严格分布目标。
+若进一步独立抽取 $r$ 个 $\bm A$--单位初始误差，并对固定 $k$ 记录
+$Z_i=\norm{\bm e_k^{(i)}}_{\bm A}^2\in[0,1]$，则 Hoeffding 不等式~\cite{Hoeffding1963} 给出
+\begin{equation}
+ \Pr\!\left(\left|\frac1r\sum_{i=1}^rZ_i-\mathbb EZ_i\right|\ge\epsilon\right)
+ \le2e^{-2r\epsilon^2}.                                   \label{eq:RHS-Hoeffding}
+\end{equation}
+这是一条在明确 i.i.d. 假设下真正具有概率意义的多 RHS 训练集保证；与之相反，
+v4.2 的 MAD 尾部量在没有概率模型时仍只能作为诊断量。
 
 \section{有限步严格优于能量终点：精确、局部与有限幅度判据}
 
@@ -778,12 +1126,20 @@ $\Gamma_m>0$ 恰使该试探商严格大于 $\rho_m$。能量下降由
  D^+\rhoTG(0;\bm Z)
  =-2\sigma\lambda_{\min}(\bm M(\bm Z)).                  \label{eq:directional-derivative}
 \end{equation}
-因此 $\bm M(\bm Z)\succ0$ 给出严格改善方向。若
-$\bm Y\bm V_\ast$ 满列秩，可取
+而且存在一阶严格改善方向的条件可以完整刻画为
+\begin{equation}
+ \exists\bm Z:\ D^+\rhoTG(0;\bm Z)<0
+ \quad\Longleftrightarrow\quad
+ \operatorname{rank}(\bm Y\bm V_\ast)=p.                 \label{eq:first-order-iff}
+\end{equation}
+充分性方面，满列秩时可取
 \begin{equation}
  \bm Z_0=\bm U_\ast(\bm Y\bm V_\ast)^\dagger,
 \end{equation}
-于是 $D^+\rhoTG(0;\bm Z_0)=-2\sigma<0$。
+此时 $\bm M(\bm Z_0)=\bm I_p$，故
+$D^+\rhoTG(0;\bm Z_0)=-2\sigma<0$；必要性方面，若导数严格为负，则
+$\bm M(\bm Z)\succ0$，其秩为 $p$，而
+$\operatorname{rank}\bm M(\bm Z)\le\operatorname{rank}(\bm Y\bm V_\ast)$。
 
 进一步令
 \begin{align}
@@ -821,8 +1177,12 @@ $2c_1^2k^2/\delta_\sigma$，得到双边界。方向导数由令
 $\K=t\bm Z$、$t\downarrow0$ 得到。
 \end{proof}
 
-这一定理说明：只要固定磨光器的最慢剩余模态在粗坐标中可见，能量终点附近就存在
-两网格下降方向；PCG 是否真正经过这些方向，则由 Ritz 滤波与实际修正方向决定。
+这一定理说明：对重数为 $p$ 的顶端慢模态簇，“在能量终点附近是否存在一阶严格下降
+方向”恰由 $\operatorname{rank}(\bm Y\bm V_\ast)=p$ 决定；PCG 是否真正经过这些方向，
+则由 Ritz 滤波与实际修正方向决定。需要注意，它与全局充要条件
+\eqref{eq:existence-iff} 不是同一件事：即使这里秩亏、所有一阶方向都不能严格下降，
+仍可能有 $H_{\rm TG}>0$，从而在有限距离处存在更优图粗空间。此时优势必然是高阶或
+有限幅度机制，而不能由终点的一阶微扰解释。
 
 \subsection{有利 PCG 尾部：严格量化“能量越好、两网格反而回升”}
 
@@ -891,9 +1251,9 @@ $D_j\ge\sqrt{1-\vartheta_s^2}\mathcal E_j$；比较相邻点的一次项和二�
 这一定理不是说所有问题都会“先好后坏”，而是给出一组可以量化检查的充分条件，
 在这些条件下非单调不仅存在，而且能形成严格的反向单调尾部。
 
-\subsection{有限幅度的主模态抵消：非渐近存在性}
+\subsection{有限幅度的主模态抵消：非渐近精确公式}
 
-局部导数只描述 $\K=0$ 附近。下面给出一个有限幅度的构造。
+局部导数只描述 $\K=0$ 附近。下面给出一个有限幅度的精确构造。
 仍取简单顶端奇异对 $(\sigma,\bm u,\bm v)$，令
 \begin{equation}
  \bm y=\bm Y\bm v,\quad
@@ -901,22 +1261,65 @@ $D_j\ge\sqrt{1-\vartheta_s^2}\mathcal E_j$；比较相邻点的一次项和二�
  \bm z=\bm y/\tau_y,\quad
  \K_c=\frac{\sigma}{\tau_y}\bm u\bm z^T.                \label{eq:K-cancel}
 \end{equation}
-则
-$(\bm X-\K_c\bm Y)\bm v=0$，即最坏主模态被有限幅度图扰动精确抵消。
 令 $\bm P_\perp=\bm I-\bm v\bm v^T$，
-$\bm l=\bm P_\perp\bm Y^T\bm z$。若
+$\bm l=\bm P_\perp\bm Y^T\bm z$，并把
+$\bm P_\perp\bm X^T\bm X\bm P_\perp$ 在 $\bm v^\perp$ 上的限制记为
+$\bm A_\perp$。
+
+\begin{theorem}[有限幅度主模态抵消的精确谱公式]\label{thm:finite-cancel}
+图参数 $\K_c$ 满足
 \begin{equation}
- \sigma_2(\bm X)^2+
+ (\bm X-\K_c\bm Y)\bm v=0,                               \label{eq:cancel-mode}
+\end{equation}
+并且
+\begin{equation}
+ \rhoTG(\K_c)=
+ \lambda_{\max}\!\left(
+   \bm A_\perp+
+   \frac{\sigma^2}{\sigma^2+\tau_y^2}\bm l\bm l^T
+ \right).                                                 \label{eq:cancel-exact}
+\end{equation}
+因此
+\begin{equation}
+ \rhoTG(\K_c)
+ \le\sigma_2(\bm X)^2+
+ \frac{\sigma^2}{\sigma^2+\tau_y^2}\norm{\bm l}_2^2.    \label{eq:cancel-bound}
+\end{equation}
+若
+\begin{equation}
  \frac{\sigma^2}{\sigma^2+\tau_y^2}\norm{\bm l}_2^2
- <\sigma^2,                                               \label{eq:finite-cancel-condition}
+ <\sigma^2-\sigma_2(\bm X)^2,                            \label{eq:finite-cancel-condition}
 \end{equation}
-则
+则 $\rhoTG(\K_c)<\rho_\ast$。特别地，若 $\bm l=0$，则
 \begin{equation}
- \rhoTG(\K_c)<\rho_\ast.                                 \label{eq:finite-cancel-better}
+ \rhoTG(\K_c)=\sigma_2(\bm X)^2.                         \label{eq:perfect-cancel}
 \end{equation}
-证明只需把 $\bm v$ 与 $\bm v^\perp$ 分块：主模态块被完全消去，而正交补上的
-最大特征值不超过 \eqref{eq:finite-cancel-condition} 左侧。这个结果说明有限步优势
-并非必然只是无穷小邻域中的微扰现象。
+\end{theorem}
+
+\begin{proof}
+对 $\K(t)=t\bm u\bm z^T$，矩阵
+$(\bm I+\K(t)\K(t)^T)^{-1/2}$ 在 $\bm u$ 方向乘以
+$(1+t^2)^{-1/2}$，在 $\bm u^\perp$ 上保持不变。又
+\begin{equation}
+ (\bm X-\K(t)\bm Y)\bm v=(\sigma-\tau_yt)\bm u,
+\end{equation}
+故 $t=\sigma/\tau_y$ 时顶端模态被完全消去。若 $\bm w\perp\bm v$，则由奇异向量
+关系 $\bm X\bm w\perp\bm u$，而
+$\bm z^T\bm Y\bm w=\bm l^T\bm w$。因此在
+$\operatorname{span}\{\bm v\}\oplus\bm v^\perp$ 分块后，主模态与交叉块均为零，
+正交补上的二次型恰为
+\begin{equation}
+ \norm{\bm X\bm w}_2^2+
+ \frac{\sigma^2}{\sigma^2+\tau_y^2}(\bm l^T\bm w)^2,
+\end{equation}
+得到~\eqref{eq:cancel-exact}。再用
+$\lambda_{\max}(\bm A_\perp)=\sigma_2(\bm X)^2$ 和秩一扰动上界即得其余结论。
+\end{proof}
+
+这一定理说明有限步优势并非只能由无穷小微扰产生：只要粗坐标对顶端慢模态的可见性
+足够强、向其他右奇异方向的泄漏 $\bm l$ 足够小，就存在一个有限图参数把该最坏模态
+直接抵消。结合推论~\ref{cor:optimal-tube}，实际 PCG 不必精确命中 $\K_c$；只要进入
+其附近仍保留足够谱裕量的开邻域，有限步优势就对扰动稳定。
 
 \section{通道、低谱模态与 Ritz 方向的定量解释}
 
@@ -983,7 +1386,7 @@ $\bm c=\Sc^{-1/2}\bm y$，$c_j$ 为其分量，且
 前者带符号且控制局部两网格一阶变化，后者非负且是 PCG 的优化目标；因此二者不可能
 在一般情形下共享单调次序。
 
-\section{一般插值扰动、剪枝与稳定裕量}
+\section{一般插值扰动、剪枝与全局安全裕量}
 
 对任意插值扰动 $\widetilde{\bm W}=\bm W+\bm Z$，能量变化有精确公式
 \begin{equation}
@@ -1010,32 +1413,37 @@ $\bm c=\Sc^{-1/2}\bm y$，$c_j$ 为其分量，且
 \end{equation}
 对当前五点扩散矩阵成立。
 
-能量扰动小仍不自动等于两网格扰动小。若
-$\widetilde\K=\K+\bm B^{1/2}\bm Z\Sc^{-1/2}$，则
+令
+$\widetilde\K=\K+\bm B^{1/2}\bm Z\Sc^{-1/2}$。由
+定理~\ref{thm:graph-gap-exact} 和定理~\ref{thm:sqrt-rho-gap}，无需任何“小扰动球”假设，
+就有全局界
+\begin{align}
+ \gap(\mathcal U(\widetilde\K),\mathcal U(\K))
+ &\le\norm{\widetilde\K-\K}_2
+ \le\sqrt{\frac{\widehat\lambda_{\max}}
+                  {\lambda_{\min}(\Sc)}}\,\eta_{\rm drop},       \label{eq:drop-global-gap}\\
+ \abs{\sqrt{\rhoTG(\widetilde\K)}-\sqrt{\rhoTG(\K)}}
+ &\le\norm{\bm T}_2
+ \sqrt{\frac{\widehat\lambda_{\max}}
+              {\lambda_{\min}(\Sc)}}\,\eta_{\rm drop}.           \label{eq:drop-global-rho}
+\end{align}
+
+\begin{corollary}[全局安全剪枝证书]\label{cor:safe-drop}
+若当前候选满足 $\rhoTG(\K)<\mu$，并且
 \begin{equation}
- \norm{\widetilde\K-\K}_2
- \le\frac{\norm{\bm Z}_{\bm B,F}}
-          {\sqrt{\lambda_{\min}(\Sc)}}.                   \label{eq:drop-K}
+ \sqrt\mu-\sqrt{\rhoTG(\K)}
+ >\norm{\bm T}_2
+ \sqrt{\frac{\widehat\lambda_{\max}}
+              {\lambda_{\min}(\Sc)}}\,\eta_{\rm drop},             \label{eq:safe-drop}
 \end{equation}
-旧版本的局部图参数 Lipschitz 界仍有价值：若
-$\norm{\K}_2,\norm{\widetilde\K}_2\le\kappa$，记
-$a=\norm{\bm X}_2$、$b=\norm{\bm Y}_2$，则
-\begin{equation}
- \abs{\rhoTG(\K)-\rhoTG(\widetilde\K)}
- \le L_\kappa\norm{\K-\widetilde\K}_2,
- \qquad
- L_\kappa=2b(a+\kappa b)+2\kappa(a+\kappa b)^2.          \label{eq:K-Lipschitz}
-\end{equation}
-所以若已有候选相对容许阈值 $\mu$ 的谱裕量满足
-\begin{equation}
- \mu-\rhoTG(\K)>
- L_\kappa\sqrt{\frac{\widehat\lambda_{\max}}
-                       {\lambda_{\min}(\Sc)}}\,
- \eta_{\rm drop},                                       \label{eq:safe-drop}
-\end{equation}
-则剪枝后仍保证 $\rhoTG(\widetilde\K)<\mu$。
-这一区分很重要：\emph{条目小、能量扰动小、粗空间角度小、两网格谱扰动小} 是四个
-不同层次的陈述，需要相应常数才能严格连接。
+则剪枝后仍严格有 $\rhoTG(\widetilde\K)<\mu$。对当前 Gauss--Seidel，
+$\norm{\bm T}_2=\sqrt{1-\gamma_{\rm GS}}<1$。
+\end{corollary}
+
+这比 v8 的局部 $L_\kappa$ 界更强也更简洁：不需要事先限制
+$\norm{\K},\norm{\widetilde\K}$，安全半径直接由删除能量、Schur 最小特征值和磨光器
+收缩常数决定。它再次区分了四个层次：条目小、能量扰动小、粗空间主角小、两网格谱
+扰动小；只有通过上述显式常数连接后，才能得到严格的“安全剪枝”。
 
 \section{v4.2 自适应选择器的严格误差与预算框架}
 
@@ -1091,6 +1499,24 @@ $m\pm2$ 两个合法候选。因此候选总数至多为 $10$。
 再做至多 $60$ 步，而不是为两个邻点分别从头做两次完整 PCG。pilot 循环预算则最多为
 $10L(R)$：$R=1$ 时至多 $640$ 次候选两网格循环；$R\ge128$ 时至多 $1600$ 次。
 这只是选择阶段的工作上界，不等同于最终正式求解循环数。
+
+\subsection{候选覆盖的两种误差：谱几何可证，循环数仍需 pilot}
+
+推论~\ref{cor:spectral-grid-regret} 已经对同一 PCG 路径上的候选覆盖给出一个完全
+确定性的 $\sqrt\rho$ 离散化证书：若相邻候选之间的块能量 $D_{m:n}$ 很小，就不可能
+在该区间漏掉谱半径大幅更优的点。因此，一种比固定 step--2 更理论化的未来细化策略是
+持续二分那些
+\begin{equation}
+ \frac{\norm{\bm T}_2D_{m:n}}{\sqrt{\lambda_{\min}(\Sc)}}
+\end{equation}
+仍较大的区间，直到达到给定谱分辨率预算。
+
+但 v4.2 实际优化的是给定 RHS 的整数循环数 $N_m$。由
+\eqref{eq:rhs-exact-modal}，$N_m$ 还取决于该 RHS 在候选两网格特征向量上的模态权重，
+且整数停止时间会产生非光滑跳变。因此不能把
+\eqref{eq:spectral-grid-regret} 直接改写成无条件的 $N_m$ Lipschitz 界。在线 pilot 的
+作用正是补上这部分 RHS 特异信息。下文的 regret 定理因此继续直接以
+$|\widehat N_m-N_m|$ 为条件，而把谱几何证书视为候选覆盖的独立可证明部分。
 
 \subsection{预测误差、近优松弛与候选离散化的精确分解}
 
@@ -1212,80 +1638,128 @@ $T_0(R)=S_{m_0}+RQ_{m_0}$。
 $s_k$ 改成平均、分位数或最坏残差轨迹；前述选择 regret 定理不变，只需把 $N_m$
 重新定义为相应聚合目标。
 
-\section{推广边界与可直接延伸的理论方向}
+\section{推广边界与可直接延伸的理论方向}\label{sec:generalization}
 
-\subsection{从 Jacobi 到一般 SPD 预条件器}
+\subsection{从 Jacobi 到一般局部 SPD 预条件器：传播半径定理}
 
-PCG 正交尾、能量恒等式和有限终止并不依赖 Jacobi。若用任意 SPD 预条件器
-$\bm M$，只需将
-$\widehat{\bm B}$ 替换为
-$\bm M^{-1/2}\bm B\bm M^{-1/2}$，Chebyshev 和残差--能量谱等价继续成立。
-只有局部化的“每一步传播一跳”需要修改：若 $\bm M^{-1}$ 本身非局部，Krylov 竞争
-函数的支撑传播半径会相应扩大，甚至失去严格有限传播。换言之，\emph{能量/Krylov
-理论可直接推广，空间局部化率则取决于预条件器的局部性。}
+PCG 正交尾、能量恒等式和有限终止并不依赖 Jacobi。令 $\bm M\succ0$ 为一般
+预条件器，并以
+$\widehat{\bm B}_{\bm M}=\bm M^{-1/2}\bm B\bm M^{-1/2}$ 替代
+$\widehat{\bm B}$，则谱多项式、Chebyshev 和残差--能量等价全部原样成立。
+空间局部化唯一额外需要的是 $\bm M^{-1}$ 的传播局部性。
+
+\begin{theorem}[一般局部预条件器下的 Krylov 支撑传播]\label{thm:general-local-preconditioner}
+假设相对于 $\mathcal G(\bm B)$，存在整数 $R_M\ge0$ 使任意向量 $\bm v$ 满足
+\begin{equation}
+ \supp(\bm M^{-1}\bm v)
+ \subseteq\mathcal N_{R_M}(\supp\bm v).                   \label{eq:M-locality}
+\end{equation}
+则从零初值出发的 $m$ 步预条件 Krylov 近似支撑于
+\begin{equation}
+ \mathcal N_{m(R_M+1)-1}(G_j).                             \label{eq:M-propagation-radius}
+\end{equation}
+因此，只要局部 patch 包含该邻域，定理~\ref{thm:localization} 继续成立，只需把
+谱集合替换成 $\sigma(\widehat{\bm B}_{\bm M})$。Jacobi 对应 $R_M=0$，恢复
+$m-1$ 跳传播。
+\end{theorem}
+
+\begin{proof}
+PCG Krylov 空间由
+$(\bm M^{-1}\bm B)^k\bm M^{-1}\bm b_j$（$0\le k\le m-1$）张成。
+第一次 $\bm M^{-1}$ 至多扩张 $R_M$ 跳；随后每乘一次 $\bm B$ 扩张一跳，再乘
+$\bm M^{-1}$ 扩张 $R_M$ 跳。因此第 $k$ 项最多扩张
+$R_M+k(R_M+1)$ 跳，取 $k=m-1$ 得结论。
+\end{proof}
+
+若 $\bm M^{-1}$ 非局部，能量/Krylov 理论仍成立，但严格有限传播可能消失；此时应改用
+衰减型局部性而不是支撑型局部性。
 
 \subsection{从二维结构网格到一般 SPD 图问题}
 
 命题~\ref{prop:energy-minimum}、定理~\ref{thm:pcg-tail}、
-定理~\ref{thm:K-geometry}、定理~\ref{thm:rho-formula}、
-定理~\ref{thm:global-gap} 与定理~\ref{thm:optimal-coarse-space}
-只依赖块 SPD 结构。因此非结构网格、图 Laplacian 型 SPD 系统甚至某些块变量问题，
-只要保留合适的 $F/C$ 分裂和单位注入表示，都可使用同一骨架。
-规则二维网格只在 \eqref{eq:explicit-localization} 的显式 $r$--常数和具体通道构造中
-出现。
+定理~\ref{thm:K-geometry}、定理~\ref{thm:graph-gap-exact}、
+定理~\ref{thm:rho-formula}、定理~\ref{thm:sqrt-rho-gap}、
+定理~\ref{thm:graph-density-existence} 与定理~\ref{thm:Pareto-barrier}
+只依赖块 SPD 结构。因此非结构网格、图 Laplacian 型 SPD 系统以及某些块变量离散，
+只要存在合适的 $F/C$ 分裂和单位注入表示，都可使用同一骨架。规则二维网格只在
+\eqref{eq:explicit-localization} 的具体 $r$--常数和通道几何解释中出现。
+
+\subsection{从单 RHS 到训练分布与稳健工作负载}
+
+式~\eqref{eq:distributional-contraction} 给出严格的分布目标，因此多 RHS 推广不必只靠
+“挑一个代表 RHS”。可根据任务选择平均能量收缩、分位数、最坏样本或混合风险；若
+使用独立训练 RHS，式~\eqref{eq:RHS-Hoeffding} 为固定循环深度的经验平均提供真正的
+概率误差条带。若要对“达到容差所需整数循环数”建立同等级概率保证，则还必须控制
+停止时间的尾分布，不能直接把固定 $k$ 的 Hoeffding 界偷换成 cycle-count 置信区间。
 
 \subsection{多层推广应如何表述}
 
 早期版本曾把首层机制递归到多层 V-cycle。v4.2 当前代码已经主动收束回两网格，因此
-v8 不把未在当前实现验证的多层结果写成主结论。可以安全保留的推广原则是：
-每一层若仍采用 SPD Galerkin 粗化和对称前后磨光，则该层的局部两网格块仍满足本文
-Schur 图公式；递归粗解的误差会额外进入层间传播，必须单独控制，不能简单把首层的
-$\rhoTG$ 乘起来就得到多层收敛率。若未来恢复多层实现，最自然的理论路线是对各层
-粗空间投影扰动做 telescoping，并用定理~\ref{thm:global-gap} 的投影间隙作为层间
-稳定性基本量。
+v9 不把未在当前实现验证的多层结果写成主结论。可以安全保留的原则是：每一层若仍采用
+SPD Galerkin 粗化和对称前后磨光，则该层局部块仍具有本文的投影/主角几何；递归粗解
+误差会额外进入层间传播，必须单独控制，不能简单把首层的 $\rhoTG$ 相乘。未来若恢复
+多层实现，最自然的路线是把各层粗空间投影扰动写成 telescoping，并在每层使用
+定理~\ref{thm:sqrt-rho-gap} 的平方根稳定性，而不是使用更松的平方谱界。
 
 \subsection{不能推广的无条件陈述}
 
 以下说法均不由本文理论推出：
 \begin{enumerate}
- \item 任意 SPD 系统都存在严格优于能量终点的有限 PCG 步；
+ \item 任意 SPD 系统的\emph{PCG 路径}都必然经过严格优于能量终点的有限步；
+       v9 证明的是若 $H_{\rm TG}>0$，单位注入插值族中必然存在更优点，而非 PCG
+       可达性的无条件保证；
  \item 能量越低，两网格循环数就越少，或反过来必然越多；
  \item 当前二维通道问题中的最优 $m$ 区间可直接迁移到三维、非结构网格或不同磨光器；
  \item MAD 尾部预测对任意残差轨迹都有统计覆盖保证；
  \item 单个代表性 RHS 的最佳候选对任意 RHS 分布都近优；
- \item 很小的插值条目或很小的能量扰动自动意味着安全剪枝。
+ \item 很小的插值条目自动意味着安全剪枝；严格安全性需要
+       \eqref{eq:safe-drop} 一类裕量条件。
 \end{enumerate}
-这些边界不是理论缺陷，而是区分“已证明结构”与“当前实验现象”所必需的条件。
 
 \section{统一结论}
 
-本项目的理论主线可以压缩为以下闭环：
+v9 将项目的理论主线压缩为以下闭环：
 \begin{enumerate}
- \item 能量极小插值 $\bm W^\ast=-\bm B^{-1}\bm C$ 是唯一变分终点，
- 且所有插值能量超额都是精确的 $\bm B$--Frobenius 距离平方。
- \item 局部能量列是全局列的 $\bm B$--正交投影；支撑扩大和局部代数迭代分别产生
- 正交误差分量，支撑外残差给出精确对偶能量表示。
- \item 有限 PCG 路径具有正交尾：每一步能量下降量都可由 PCG 修正/预条件残差精确
- 记账；Ritz 多项式优化的是非负二次能量，而两网格最坏方向依赖带符号的一次组合。
- \item Schur 图参数 $\K$ 同时刻画 Galerkin 粗矩阵、插值能量和粗空间主角；
- 两网格谱半径则有精确图公式。因此能量最优与固定磨光器下的两网格最优是两个不同的
- 优化问题。
- \item v8 新增的全局桥梁证明：能量误差通过粗空间主角显式控制
- $|\rhoTG(\K_m)-\rho_\ast|$。所以有限 PCG 可以中途显著更优，但随着继续推进最终必然
- 回到能量终点的两网格性能。
- \item 相邻矩阵判据、局部方向导数、严格二阶余项、有利尾部条件和有限幅度主模态抵消
- 分别从非渐近、局部和有限幅度三个层次解释“能量继续改善、两网格反而恶化”的机制，
- 同时明确该现象不是任意 SPD 问题上的必然规律。
- \item v4.2 在线选择器的性能损失可以严格分解为候选离散化误差、pilot 预测误差和
- 近优松弛；$R$ 进一步控制测量预算和多 RHS 摊销倾向，而不是提供案例标签路由。
+ \item 能量极小插值 $\bm W^\ast=-\bm B^{-1}\bm C$ 是唯一变分终点；所有插值能量
+ 超额都是精确的 $\bm B$--Frobenius 距离平方，而 Schur 归一化粗矩阵偏离量为
+ $\bm I+\K^T\K$。
+ \item 局部能量列是全局列的 $\bm B$--正交投影。v9 用实际谱上的最佳归一化多项式
+ 因子 $\chi_m(\Lambda)$ 取代单纯 $2q^m$，并给出一次支撑扩张的局部 Schur 补
+ 精确收益公式；空间截断与局部代数误差仍严格正交。
+ \item 有限 PCG 具有正交尾和逐步能量账本。Ritz 多项式优化非负二次能量，而两网格
+ 最坏方向依赖带符号的一次谱组合，因此二者没有一般保序关系。
+ \item Schur 图参数 $\K$ 同时给出插值能量、粗矩阵谱膨胀和粗空间主角；任意两个图
+ 空间的最大主角还有闭式公式。这把“插值矩阵距离”升级成了精确的 Grassmann 几何。
+ \item 对称两网格满足
+ $\sqrt{\rhoTG}=\norm{(I-\Pi_{\mathcal U})T}$。因此 $\sqrt{\rhoTG}$ 对粗空间最大
+ 主角全局 Lipschitz；当前 Gauss--Seidel 下常数为
+ $\sqrt{1-\gamma_{\rm GS}}<1$，且任意满秩候选在精确算术下都严格收敛。
+ \item PCG 两检查点之间的能量下降直接上界可能发生的 $\sqrt\rho$ 变化，从而给出
+ 候选网格的可认证谱离散化误差；这为用“块能量”而不是固定步距驱动候选细化提供了
+ 严格理论基础。
+ \item 单位注入图粗空间是 Grassmann 流形中的开稠密坐标图，因此其两网格最优下确界
+ 等于所有同维粗空间的全局最优值。存在某个有限单位注入插值严格优于能量终点，
+ 当且仅当 $H_{\rm TG}=\rho_\ast-\sigma_{n_C+1}(\bm T)^2>0$；若最优空间横截，还可显式
+ 写出固定磨光器意义下的最优插值。
+ \item 固定两网格优势必须支付严格正的最小能量偏离，形成定理~\ref{thm:Pareto-barrier}
+ 的 Pareto 障碍。因此有限 Krylov 的“正则化”不是修辞：沿 PCG 继续逼近能量终点时，
+ 任何固定谱优势都必然消失。
+ \item 相邻精确矩阵判据、局部方向导数、显式二阶余项、有利尾部条件和有限幅度主模态
+ 抵消分别解释 PCG 路径何时会进入优势区；这些是可达性条件，而不与全局存在性定理混淆。
+ \item 给定 RHS 的收敛具有精确模态公式，多 RHS 分布具有二阶矩加权谱公式；v4.2
+ 在线选择的总损失则继续分解为候选覆盖、pilot 预测和近优松弛，并由 $R$ 控制测量与
+ 摊销倾向。
 \end{enumerate}
 
-因此，有限 Krylov 能量插值最合适的理论定位不是“对全局能量极小插值的粗糙近似”，
-而是\emph{一条以能量终点为可分析锚点、以 Krylov 谱滤波生成候选粗空间、再由固定
-磨光器和实际工作负载选择有限停止点的正则化路径}。这一表述同时解释了能量单调性、
-有限步两网格优势、候选选择和复用成本，并保留了清晰的可证边界。
+因此，有限 Krylov 能量插值最准确的理论定位是：
+\emph{以能量极小粗空间为变分锚点，在 Grassmann 粗空间流形的一张图坐标中，利用
+Krylov 谱滤波生成一条有严格能量参数化的正则化轨道；固定磨光器定义了另一套独立的
+最优几何，而有限停止的任务就是在能量偏离、粗空间角度、两网格谱半径、插值复杂度和
+工作负载之间选择 Pareto 合适的点。} v9 的新增定理使这条链条从局部解释扩展到全局
+存在性、稳定性、最小能量代价和候选覆盖误差，同时保留 PCG 可达性与统计预测的明确
+条件边界。
 
-\begin{thebibliography}{9}
+\begin{thebibliography}{99}
 
 \bibitem{Wan2000}
 W. L. Wan, T. F. Chan, and B. Smith,
@@ -1306,6 +1780,27 @@ SIAM, 1997.
 Y. Saad,
 \emph{Iterative Methods for Sparse Linear Systems}, 2nd ed.,
 SIAM, 2003.
+
+
+\bibitem{BjorckGolub1973}
+{\AA}ke Bj\"orck and Gene H. Golub,
+Numerical methods for computing angles between linear subspaces,
+\emph{Mathematics of Computation}, 27(123):579--594, 1973.
+
+\bibitem{StewartSun1990}
+G. W. Stewart and J.-G. Sun,
+\emph{Matrix Perturbation Theory},
+Academic Press, 1990.
+
+\bibitem{Varga2000}
+R. S. Varga,
+\emph{Matrix Iterative Analysis}, 2nd ed.,
+Springer, 2000.
+
+\bibitem{Hoeffding1963}
+W. Hoeffding,
+Probability inequalities for sums of bounded random variables,
+\emph{Journal of the American Statistical Association}, 58(301):13--30, 1963.
 
 \end{thebibliography}
 
