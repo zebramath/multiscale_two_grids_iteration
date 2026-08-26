@@ -1,15 +1,16 @@
-# two_grids_iteration v4.4.0
+# two_grids_iteration v4.5.0
 
 ## 核心模块
 
 | 模块 | 内容 |
 |---|---|
-| `energy_interpolation.hpp` | 几何、局部和全局能量插值 |
-| `global_pcg.hpp` | 增量全局 PCG 路径和 v4.4 单参数预算选择器 |
+| `energy_interpolation.hpp` | 几何插值与全局能量数值参考 |
+| `global_pcg.hpp` | 增量全局 PCG 路径和 v4.5 单参数预算选择器 |
 | `two_grid_solver.hpp` | Galerkin 粗算子、对称平滑和两网格循环 |
 
-代码不包含递归多层层次、V-cycle 或多层预条件 CG。未进入研究主线的支撑扩张模块
-和旧版多阶段候选路由已删除。
+代码不包含递归多层层次、V-cycle 或多层预条件 CG。未进入研究主线的局部支撑插值、
+strength-distance 插值、相对剪枝、非通道系数生成器和旧版多阶段候选路由均已删除。
+每个实验入口直接包含对应研究逻辑，不再经过空转发层。
 
 ## 自适应策略
 

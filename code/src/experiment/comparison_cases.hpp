@@ -36,13 +36,12 @@ inline std::vector<ComparisonCase> comparison_cases(bool quick) {
 }
 
 inline BasicConfig comparison_config(
-    const ComparisonCase& item, int threads, int maximum_cycles) {
+    const ComparisonCase& item, int threads) {
     BasicConfig config;
     config.fine_intervals = item.fine;
     config.coarse_intervals = item.coarse;
     config.contrast = item.contrast;
     config.threads = threads;
-    config.max_cycles = maximum_cycles;
     return config;
 }
 

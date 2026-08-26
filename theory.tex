@@ -19,7 +19,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与自适应两网格选择：理论分析 v4.4}
+\title{有限 Krylov 能量插值与自适应两网格选择：理论分析 v4.5}
 \author{崔正平}
 \date{}
 
@@ -38,7 +38,7 @@
 精确投影表达式，以及其对粗空间扰动的全局 Lipschitz 界。再次，在能量终点附近，
 两网格目标的一阶变化分解为“磨光后最坏模态的可见性”和“Krylov 路径的方向对齐”；
 这给出有限步优于精确能量插值的充分条件，并在显式余项控制下导出严格的反单调 PCG
-尾部。最后，本文把实际 v4.4 选择器写成一个由预期右端项数控制的单参数预算族，给出
+尾部。最后，本文把实际 v4.5 选择器写成一个由预期右端项数控制的单参数预算族，给出
 pilot 预测误差到候选选择后悔值的确定性传递界和多右端项盈亏平衡式。
 
 这些结论解释的是“为何应在有限 Krylov 路径上选点”，而不是宣称能量插值在任意 AMG
@@ -210,16 +210,22 @@ $\bm P(\bm W)\Sc^{-1/2}=\bm Q_\ast+\bm Q_F\bm Z$。
  \bm T=\bm A^{1/2}\bm G\bm A^{-1/2}.
 \end{equation}
 对粗空间 $\mathcal U=\Ran(\bm A^{1/2}\bm P)$，令 $\bm\Pi_{\mathcal U}$ 为
-欧氏正交投影。对称两网格算子与
+欧氏正交投影，$\bm Q_{\mathcal U}^{\bm A}$ 为对应的 $\bm A$--正交粗校正投影，并记
+$\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^T\bm A$ 及
+$\bm E_{TG}=\bm G^{\dagger_{\bm A}}
+(\bm I-\bm Q_{\mathcal U}^{\bm A})\bm G$。该对称两网格算子与
 $\bm T^T(\bm I-\bm\Pi_{\mathcal U})\bm T$ 相似，故
 \begin{equation}
  \rhoTG(\mathcal U)=
  \norm{(\bm I-\bm\Pi_{\mathcal U})\bm T}_2^2.         \label{eq:rho}
 \end{equation}
+这一表达是后续分析的固定框架；两网格扰动与非精确变体的更一般背景可参见
+\cite{Notay2007,XuZhang2022}。
 
 \begin{proposition}[最坏谱因子与给定 RHS 循环数的层级]\label{prop:rhs}
 令
-$\bm K_{\mathcal U}=\bm T^T(\bm I-\bm\Pi_{\mathcal U})\bm T$。
+$\bm K_{\mathcal U}=\bm T^T(\bm I-\bm\Pi_{\mathcal U})\bm T$，并令
+$\bm e_{k+1}=\bm E_{TG}\bm e_k$、$\bm r_k=\bm A\bm e_k$。
 若 $\rhoTG(\mathcal U)<1$，则对任意非零初始误差
 \begin{equation}
  \norm{\bm e_k}_{\bm A}
@@ -236,6 +242,7 @@ $\bm K_{\mathcal U}$ 各特征方向上的分量，因此不由 $\rhoTG$ 单独�
 \end{proposition}
 
 \begin{proof}
+$\bm A^{1/2}\bm E_{TG}\bm A^{-1/2}=\bm K_{\mathcal U}$，而
 $\bm K_{\mathcal U}$ 对称半正定且
 $\norm{\bm K_{\mathcal U}}_2=\rhoTG(\mathcal U)$，故第一式成立。
 再用
@@ -435,7 +442,7 @@ $\bm x=\bm D^{1/2}\bm 1_S$。则
 该命题只解释高对比拓扑为何容易提高式~\eqref{eq:visibility} 中的“问题可见性”；它不推出
 某一拓扑必有固定最佳 PCG 步数，后者还取决于粗点覆盖和路径对齐。
 
-\section{与 v4.4 实现一致的自适应选择}
+\section{与 v4.5 实现一致的自适应选择}
 
 选择器只暴露预期右端项数 $R\ge1$。令
 \begin{equation}
@@ -520,7 +527,7 @@ step--2 oracle 同样的循环数，而是接受适度后悔值来显著压缩 s
 \end{equation}
 这也是 $R$ 作为唯一策略参数的含义：它不是 PDE 标签，而是可解释的复用预算。
 当代表右端项与后续右端项分布不一致时，式~\eqref{eq:breakeven} 仍是成本恒等式，
-但 pilot 循环数的代表性必须由多右端项实验另行检验。v4.4 因此只增加一个紧凑的
+但 pilot 循环数的代表性必须由多右端项实验另行检验。v4.5 因此保留一个紧凑的
 RHS 迁移实验：候选仍由常数 RHS 选择，再在六种平滑、局部与振荡 RHS 上独立求解；
 这验证代表性，而不把有限样本结果提升为分布无关定理。
 
@@ -561,7 +568,7 @@ PCG 路径；由式~\eqref{eq:derivative} 得到可见性--对齐机制；并由
 能量极小插值仍是重要的变分基准，但固定磨光器关心的是磨光后误差相对粗空间的方向。
 因此有限 PCG 候选可以在保留非零能量误差的同时更好地捕获最坏可见模态。
 全局稳定界限制了这种优势的幅度，一阶公式解释其方向来源，严格尾部定理给出可验证的
-充分条件，而 v4.4 选择器以少右端项和多右端项之间的 setup--solve 权衡将该机制落地。
+充分条件，而 v4.5 选择器以少右端项和多右端项之间的 setup--solve 权衡将该机制落地。
 
 \begin{thebibliography}{99}
 

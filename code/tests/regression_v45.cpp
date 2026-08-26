@@ -51,11 +51,7 @@ int main() {
     const tgi::SparseMatrix a =
         tgi::assemble_diffusion(grid, coefficient.values);
 
-    tgi::InterpolationOptions geometric_options;
-    geometric_options.strategy =
-        tgi::InterpolationStrategy::GeometricBilinear;
-    const auto geometric =
-        tgi::build_interpolation(grid, a, geometric_options);
+    const auto geometric = tgi::build_geometric_interpolation(grid);
 
     tgi::GlobalEnergyPcgPath path(
         grid, a, geometric.prolongation, 2);
@@ -63,11 +59,9 @@ int main() {
     const tgi::SparseMatrix checkpoint_two = path.prolongation(0.0);
     path.advance_to(5);
     const tgi::SparseMatrix continued = path.prolongation(0.0);
-    tgi::InterpolationOptions fixed_options;
-    fixed_options.strategy =
-        tgi::InterpolationStrategy::GlobalEnergyMinimum;
-    fixed_options.local_tolerance = 0.0;
-    fixed_options.local_max_iterations = 5;
+    tgi::GlobalEnergyOptions fixed_options;
+    fixed_options.tolerance = 0.0;
+    fixed_options.maximum_iterations = 5;
     fixed_options.thread_count = 2;
     fixed_options.drop_tolerance = 0.0;
     fixed_options.require_convergence = false;
@@ -76,7 +70,7 @@ int main() {
     require(relative_action_difference(
                 continued, restarted.prolongation) < 1.0e-12,
             "continued PCG path differs from the fixed-budget reference");
-    require(path.report().steps == 5,
+    require(path.steps() == 5,
             "continued PCG path reported the wrong checkpoint");
     const tgi::TwoGridCycle cycle_two(a, checkpoint_two, 1, 2);
     const tgi::TwoGridCycle cycle_five(a, continued, 1, 2);
@@ -97,13 +91,13 @@ int main() {
     const tgi::Vector adaptive_rhs(
         static_cast<std::size_t>(grid.fine_size()), 1.0);
     const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
-        grid, a, geometric.prolongation, adaptive_options, &adaptive_rhs);
+        grid, a, geometric.prolongation, adaptive_options, adaptive_rhs);
     require(adaptive.report.selected_steps >= 0 &&
                 adaptive.report.selected_steps <= 8,
             "adaptive PCG selected an invalid checkpoint");
-    require(!adaptive.report.history.empty(),
+    require(adaptive.report.candidate_count > 0,
             "adaptive PCG did not record its decisions");
-    require(adaptive.report.history.size() <= 3U,
+    require(adaptive.report.candidate_count <= 3,
             "economy PCG exceeded its uniform candidate budget");
     require(adaptive.report.pilot_iterations == 16,
             "single-RHS selection did not use the low-setup pilot");
@@ -116,16 +110,10 @@ int main() {
             "adaptive PCG returned an invalid prolongation");
     require(adaptive.cycle->coarse_size() == grid.coarse_size(),
             "adaptive PCG returned an invalid reusable hierarchy");
-    require_throws(
-        [&]() {
-            (void)tgi::build_adaptive_global_pcg_interpolation(
-                grid, a, geometric.prolongation, adaptive_options, nullptr);
-        },
-        "adaptive PCG accepted a missing representative right-hand side");
     tgi::AdaptiveGlobalPcgOptions detailed_options = adaptive_options;
     detailed_options.expected_rhs_count = 256.0;
     const auto detailed = tgi::build_adaptive_global_pcg_interpolation(
-        grid, a, geometric.prolongation, detailed_options, &adaptive_rhs);
+        grid, a, geometric.prolongation, detailed_options, adaptive_rhs);
     require(detailed.report.pilot_iterations >
                 adaptive.report.pilot_iterations,
             "reuse-aware selection did not increase its evidence budget");
@@ -134,7 +122,7 @@ int main() {
     require(detailed.report.checkpoint_stride == 8 &&
                 detailed.report.maximum_sampled_steps == 8,
             "reuse-aware selection reported the wrong path budget");
-    require(detailed.report.history.size() <= 5U,
+    require(detailed.report.candidate_count <= 5,
             "reuse-aware PCG exceeded its candidate budget");
 
     tgi::AdaptiveGlobalPcgOptions invalid_options = adaptive_options;
@@ -143,7 +131,7 @@ int main() {
         [&]() {
             (void)tgi::build_adaptive_global_pcg_interpolation(
                 grid, a, geometric.prolongation, invalid_options,
-                &adaptive_rhs);
+                adaptive_rhs);
         },
         "adaptive PCG accepted fewer than one expected right-hand side");
 

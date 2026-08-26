@@ -1,8 +1,9 @@
 #pragma once
 
+#include "core/linear_algebra.hpp"
+
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -40,12 +41,15 @@ inline std::string scientific(double value, int precision = 3) {
     return stream.str();
 }
 
-inline std::string integer(double value) {
-    return std::to_string(static_cast<long long>(std::llround(value)));
-}
-
 inline void progress(const std::string& message) {
     std::cerr << "[progress] " << message << std::endl;
+}
+
+inline double interpolation_density_percent(
+    const tgi::SparseMatrix& prolongation) {
+    const double entries = static_cast<double>(prolongation.rows()) *
+        static_cast<double>(prolongation.cols());
+    return 100.0 * static_cast<double>(prolongation.nnz()) / entries;
 }
 
 inline std::filesystem::path write_result(

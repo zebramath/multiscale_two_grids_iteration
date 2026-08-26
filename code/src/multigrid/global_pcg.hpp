@@ -13,18 +13,11 @@
 #include <memory>
 #include <mutex>
 #include <stdexcept>
-#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
 
 namespace tgi {
-
-struct GlobalPcgPathReport {
-    int steps = 0;
-    double relative_preconditioned_residual = 0.0;
-    double total_ms = 0.0;
-};
 
 class GlobalEnergyPcgPath {
 public:
@@ -34,16 +27,13 @@ public:
 
     void advance_to(int target_steps);
     SparseMatrix prolongation(double drop_tolerance = 0.0);
-    GlobalPcgPathReport report() const;
+    int steps() const { return steps_; }
 
 private:
-    using Clock = std::chrono::steady_clock;
-
     struct ColumnState {
         Vector solution;
         Vector residual;
         Vector direction;
-        double initial_rz = 1.0;
         double rz = 0.0;
         int iterations = 0;
         bool active = true;
@@ -54,14 +44,12 @@ private:
     std::vector<ColumnState> columns_;
     int thread_count_ = 1;
     int steps_ = 0;
-    double solve_ms_ = 0.0;
-    Clock::time_point begin_;
 };
 
 inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& initial_prolongation, int thread_count)
-    : grid_(grid), begin_(Clock::now()) {
+    : grid_(grid) {
     system_ = energy_interpolation_detail::assemble_global_f_system(grid, a);
     thread_count_ = std::max(1, std::min(thread_count, grid.coarse_size()));
     columns_.resize(static_cast<std::size_t>(grid.coarse_size()));
@@ -103,14 +91,11 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
                 state.residual[index];
         }
         state.rz = dot(state.residual, state.direction);
-        state.initial_rz = std::max(state.rz, 1.0e-300);
         const double threshold = std::numeric_limits<double>::epsilon() *
             residual_scale;
         state.active = std::isfinite(state.rz) && state.rz > 0.0 &&
             norm2(state.residual) > threshold;
     }
-    system_.assembly_ms = std::chrono::duration<double, std::milli>(
-        Clock::now() - begin_).count();
 }
 
 inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
@@ -123,7 +108,6 @@ inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
             "GlobalEnergyPcgPath target steps must be nonnegative");
     }
     if (target_steps == steps_) return;
-    const auto solve_begin = Clock::now();
     std::atomic<int> next_column{0};
     std::exception_ptr worker_error;
     std::mutex error_mutex;
@@ -185,8 +169,6 @@ inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
     }
     if (worker_error) std::rethrow_exception(worker_error);
     steps_ = target_steps;
-    solve_ms_ += std::chrono::duration<double, std::milli>(
-        Clock::now() - solve_begin).count();
 }
 
 inline SparseMatrix GlobalEnergyPcgPath::prolongation(
@@ -217,21 +199,6 @@ inline SparseMatrix GlobalEnergyPcgPath::prolongation(
     return result;
 }
 
-inline GlobalPcgPathReport GlobalEnergyPcgPath::report() const {
-    GlobalPcgPathReport result;
-    result.steps = steps_;
-    result.total_ms = system_.assembly_ms + solve_ms_;
-    double rz_sum = 0.0;
-    double initial_rz_sum = 0.0;
-    for (const ColumnState& state : columns_) {
-        rz_sum += std::max(state.rz, 0.0);
-        initial_rz_sum += state.initial_rz;
-    }
-    result.relative_preconditioned_residual = std::sqrt(
-        rz_sum / initial_rz_sum);
-    return result;
-}
-
 }
 
 namespace tgi {
@@ -248,35 +215,14 @@ struct AdaptiveGlobalPcgOptions {
     double drop_tolerance = 0.0;
 };
 
-struct AdaptiveGlobalPcgCheckpoint {
-    int steps = 0;
-    std::string phase;
-    int pilot_iterations = 0;
-    int predicted_cycles = 0;
-    double density_percent = 0.0;
-    double rho_rhs_pilot = 0.0;
-    double pilot_relative_residual = 0.0;
-    double forecast_relative_uncertainty = 0.0;
-    double preconditioned_pcg_residual = 0.0;
-    double path_ms = 0.0;
-    double cycle_setup_ms = 0.0;
-    double pilot_ms = 0.0;
-    double predicted_solve_ms = 0.0;
-    double amortized_cost_ms = 0.0;
-    bool pilot_converged = false;
-    bool selected = false;
-};
-
 struct AdaptiveGlobalPcgReport {
     int selected_steps = 0;
-    int estimated_selected_cycles = 0;
+    int candidate_count = 0;
     int checkpoint_stride = 0;
     int maximum_sampled_steps = 0;
     int pilot_iterations = 0;
-    double expected_rhs_count = 1.0;
     bool used_local_refinement = false;
     double selection_wall_ms = 0.0;
-    std::vector<AdaptiveGlobalPcgCheckpoint> history;
 };
 
 struct AdaptiveGlobalPcgResult {
@@ -330,9 +276,6 @@ inline SelectionProfile selection_profile(
 }
 
 inline double median(std::vector<double> values) {
-    if (values.empty()) {
-        throw std::invalid_argument("median requires at least one value");
-    }
     const std::size_t middle = values.size() / 2U;
     std::nth_element(values.begin(), values.begin() + middle, values.end());
     double value = values[middle];
@@ -344,14 +287,9 @@ inline double median(std::vector<double> values) {
     return value;
 }
 
-struct TailModel {
-    double rho = 1.0;
-    double relative_uncertainty = 1.0;
-};
-
-inline TailModel fit_tail(const std::vector<double>& norms) {
+inline double fit_tail(const std::vector<double>& norms) {
     const int completed = static_cast<int>(norms.size()) - 1;
-    if (completed <= 0) return {};
+    if (completed <= 0) return 1.0;
     const int begin = std::max(1, completed / 2);
     std::vector<double> rates;
     rates.reserve(static_cast<std::size_t>(completed - begin + 1));
@@ -367,11 +305,7 @@ inline TailModel fit_tail(const std::vector<double>& norms) {
     deviations.reserve(rates.size());
     for (double rate : rates) deviations.push_back(std::abs(rate - center));
     const double scale = 1.4826 * median(std::move(deviations));
-    TailModel model;
-    model.rho = std::exp(std::min(-1.0e-10, center + 0.25 * scale));
-    model.relative_uncertainty = std::min(
-        2.0, scale / std::max(std::abs(center), 1.0e-10));
-    return model;
+    return std::exp(std::min(-1.0e-10, center + 0.25 * scale));
 }
 
 inline int forecast_cycles(
@@ -390,7 +324,12 @@ inline int forecast_cycles(
 struct Candidate {
     std::shared_ptr<SparseMatrix> prolongation;
     std::unique_ptr<TwoGridCycle> cycle;
-    AdaptiveGlobalPcgCheckpoint checkpoint;
+    int steps = 0;
+    int pilot_iterations = 0;
+    int predicted_cycles = 0;
+    double pilot_rho = 1.0;
+    double pilot_ms = 0.0;
+    bool pilot_converged = false;
     Vector solution;
     Vector residual;
     TwoGridCycle::Workspace workspace;
@@ -400,28 +339,14 @@ struct Candidate {
 
 inline std::unique_ptr<Candidate> make_candidate(
     const SparseMatrix& a, const Vector& rhs, SparseMatrix prolongation,
-    int steps, const std::string& phase,
-    const AdaptiveGlobalPcgOptions& options,
-    const GlobalPcgPathReport& path_report) {
+    int steps, const AdaptiveGlobalPcgOptions& options) {
     auto candidate = std::make_unique<Candidate>();
     candidate->prolongation = std::make_shared<SparseMatrix>(
         std::move(prolongation));
-    auto& checkpoint = candidate->checkpoint;
-    checkpoint.steps = steps;
-    checkpoint.phase = phase;
-    checkpoint.density_percent = 100.0 *
-        static_cast<double>(candidate->prolongation->nnz()) /
-        (static_cast<double>(candidate->prolongation->rows()) *
-         candidate->prolongation->cols());
-    checkpoint.path_ms = path_report.total_ms;
-    checkpoint.preconditioned_pcg_residual =
-        path_report.relative_preconditioned_residual;
-
+    candidate->steps = steps;
     candidate->cycle = std::make_unique<TwoGridCycle>(
         a, *candidate->prolongation,
         options.smoothing_steps, options.thread_count);
-    checkpoint.cycle_setup_ms =
-        candidate->cycle->setup_report().total_ms;
     candidate->solution.assign(rhs.size(), 0.0);
     candidate->residual = rhs;
     candidate->initial_norm = std::max(norm2(rhs), 1.0e-300);
@@ -433,38 +358,25 @@ inline void probe_candidate(
     Candidate& candidate, const Vector& rhs, int pilot_iterations,
     const AdaptiveGlobalPcgOptions& options) {
     const auto begin = Clock::now();
-    while (candidate.checkpoint.pilot_iterations < pilot_iterations &&
-           !candidate.checkpoint.pilot_converged) {
+    while (candidate.pilot_iterations < pilot_iterations &&
+           !candidate.pilot_converged) {
         const double squared = candidate.cycle->iterate(
             rhs, candidate.solution, candidate.residual,
             candidate.workspace);
         const double current = std::max(std::sqrt(squared), 1.0e-300);
         candidate.norms.push_back(current);
-        ++candidate.checkpoint.pilot_iterations;
-        candidate.checkpoint.pilot_converged =
+        ++candidate.pilot_iterations;
+        candidate.pilot_converged =
             current / candidate.initial_norm <= options.solve_tolerance;
     }
-    candidate.checkpoint.pilot_ms += milliseconds(begin, Clock::now());
-    candidate.checkpoint.pilot_relative_residual =
+    candidate.pilot_ms += milliseconds(begin, Clock::now());
+    const double relative_residual =
         candidate.norms.back() / candidate.initial_norm;
-    const TailModel model = fit_tail(candidate.norms);
-    candidate.checkpoint.rho_rhs_pilot = model.rho;
-    candidate.checkpoint.forecast_relative_uncertainty =
-        model.relative_uncertainty;
-    candidate.checkpoint.predicted_cycles = forecast_cycles(
-        candidate.checkpoint.pilot_iterations,
-        candidate.checkpoint.pilot_relative_residual,
-        candidate.checkpoint.rho_rhs_pilot,
+    candidate.pilot_rho = fit_tail(candidate.norms);
+    candidate.predicted_cycles = forecast_cycles(
+        candidate.pilot_iterations, relative_residual,
+        candidate.pilot_rho,
         options.solve_tolerance, options.maximum_cycles);
-    const double cycle_ms = candidate.checkpoint.pilot_ms /
-        static_cast<double>(
-            std::max(1, candidate.checkpoint.pilot_iterations));
-    candidate.checkpoint.predicted_solve_ms = cycle_ms *
-        static_cast<double>(candidate.checkpoint.predicted_cycles);
-    candidate.checkpoint.amortized_cost_ms =
-        candidate.checkpoint.cycle_setup_ms /
-            options.expected_rhs_count +
-        candidate.checkpoint.predicted_solve_ms;
 }
 
 inline std::size_t select_candidate(
@@ -472,16 +384,15 @@ inline std::size_t select_candidate(
     double slack) {
     int best = std::numeric_limits<int>::max();
     for (const auto& candidate : candidates) {
-        best = std::min(best, candidate->checkpoint.predicted_cycles);
+        best = std::min(best, candidate->predicted_cycles);
     }
     const double limit = (1.0 + slack) * static_cast<double>(best);
     std::size_t selected = 0;
     bool found = false;
     for (std::size_t index = 0; index < candidates.size(); ++index) {
-        const auto& checkpoint = candidates[index]->checkpoint;
-        if (static_cast<double>(checkpoint.predicted_cycles) <= limit &&
-            (!found || candidates[index]->checkpoint.steps <
-                candidates[selected]->checkpoint.steps)) {
+        const auto& candidate = candidates[index];
+        if (static_cast<double>(candidate->predicted_cycles) <= limit &&
+            (!found || candidate->steps < candidates[selected]->steps)) {
             selected = index;
             found = true;
         }
@@ -511,17 +422,8 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& initial_prolongation,
     const AdaptiveGlobalPcgOptions& options,
-    const Vector* representative_rhs) {
+    const Vector& representative_rhs) {
     using namespace adaptive_global_pcg_detail;
-    if (representative_rhs == nullptr) {
-        throw std::invalid_argument(
-            "adaptive global PCG requires a representative right-hand side");
-    }
-    if (representative_rhs->size() !=
-        static_cast<std::size_t>(a.rows())) {
-        throw std::invalid_argument(
-            "adaptive global PCG right-hand side has the wrong size");
-    }
     if (options.minimum_steps < 0 ||
         options.maximum_steps <= options.minimum_steps ||
         options.step_quantum <= 0 || options.maximum_cycles <= 0 ||
@@ -535,14 +437,11 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
             "adaptive global PCG received invalid options");
     }
     const auto begin = Clock::now();
-    const Vector& rhs = *representative_rhs;
+    const Vector& rhs = representative_rhs;
     const SelectionProfile profile = selection_profile(options);
     std::vector<std::unique_ptr<Candidate>> candidates;
-    GlobalPcgPathReport initial_report;
-    initial_report.relative_preconditioned_residual = 1.0;
     candidates.push_back(make_candidate(
-        a, rhs, initial_prolongation, 0, "sample",
-        options, initial_report));
+        a, rhs, initial_prolongation, 0, options));
     probe_candidate(
         *candidates.back(), rhs, profile.pilot_iterations, options);
 
@@ -553,14 +452,14 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
         path.advance_to(steps);
         candidates.push_back(make_candidate(
             a, rhs, path.prolongation(options.drop_tolerance),
-            steps, "sample", options, path.report()));
+            steps, options));
         probe_candidate(
             *candidates.back(), rhs, profile.pilot_iterations, options);
     }
 
     if (profile.refine) {
         const std::size_t provisional = select_candidate(candidates, 0.0);
-        const int center = candidates[provisional]->checkpoint.steps;
+        const int center = candidates[provisional]->steps;
         std::vector<int> refinement_steps;
         for (int steps : {center - options.step_quantum,
                           center + options.step_quantum}) {
@@ -569,7 +468,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
                 std::none_of(
                     candidates.begin(), candidates.end(),
                     [&](const auto& candidate) {
-                        return candidate->checkpoint.steps == steps;
+                        return candidate->steps == steps;
                     })) {
                 refinement_steps.push_back(steps);
             }
@@ -583,7 +482,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
                 candidates.push_back(make_candidate(
                     a, rhs,
                     refinement_path.prolongation(options.drop_tolerance),
-                    steps, "refine", options, refinement_path.report()));
+                    steps, options));
                 probe_candidate(
                     *candidates.back(), rhs,
                     profile.pilot_iterations, options);
@@ -594,19 +493,13 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
 
     const std::size_t selected = select_candidate(
         candidates, profile.near_optimal_slack);
-    candidates[selected]->checkpoint.selected = true;
     result.prolongation = std::move(candidates[selected]->prolongation);
     result.cycle = std::move(candidates[selected]->cycle);
-    result.report.selected_steps = candidates[selected]->checkpoint.steps;
-    result.report.estimated_selected_cycles =
-        candidates[selected]->checkpoint.predicted_cycles;
+    result.report.selected_steps = candidates[selected]->steps;
+    result.report.candidate_count = static_cast<int>(candidates.size());
     result.report.checkpoint_stride = profile.stride;
     result.report.maximum_sampled_steps = profile.maximum_steps;
     result.report.pilot_iterations = profile.pilot_iterations;
-    result.report.expected_rhs_count = options.expected_rhs_count;
-    for (const auto& candidate : candidates) {
-        result.report.history.push_back(candidate->checkpoint);
-    }
     result.report.selection_wall_ms = milliseconds(begin, Clock::now());
     return result;
 }

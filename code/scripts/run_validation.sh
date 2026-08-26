@@ -30,26 +30,22 @@ build_direct() {
     # shellcheck disable=SC2086
     "$cxx" $common tests/unit_core.cpp -o "$build_dir/unit_core"
     # shellcheck disable=SC2086
-    "$cxx" $common tests/regression_v44.cpp -o "$build_dir/regression_v44"
+    "$cxx" $common tests/regression_v45.cpp -o "$build_dir/regression_v45"
     # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment1_two_grid_comparison.cpp \
-        src/experiment/studies/two_grid_comparison.cpp \
         -o "$build_dir/experiment1_two_grid_comparison"
     # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment2_finite_path.cpp \
-        src/experiment/studies/finite_path_evidence.cpp \
         -o "$build_dir/experiment2_finite_path"
     # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment3_oracle_validation.cpp \
-        src/experiment/studies/oracle_quality.cpp \
         -o "$build_dir/experiment3_oracle_validation"
     # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment4_submission_robustness.cpp \
-        src/experiment/studies/submission_robustness.cpp \
         -o "$build_dir/experiment4_submission_robustness"
 }
 
@@ -64,7 +60,7 @@ else
     build_direct
     echo "[done]  build-direct"
     run_step unit-core "$build_dir/unit_core"
-    run_step regression-v44 "$build_dir/regression_v44"
+    run_step regression-v45 "$build_dir/regression_v45"
 fi
 
 if [ "$mode" = "quick" ]; then

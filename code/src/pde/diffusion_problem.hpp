@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <random>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -31,10 +30,6 @@ public:
     int coarse_fine_id(int coarse_id) const;
     bool is_coarse_node(int fine_id) const;
     std::vector<int> all_f_nodes() const;
-    std::vector<int> patch_f_nodes(int coarse_id, int patch_layers) const;
-    void patch_f_nodes(int coarse_id, int patch_layers,
-                       std::vector<int>& nodes) const;
-
 private:
     int fine_n_;
     int ratio_;
@@ -42,9 +37,6 @@ private:
 };
 
 enum class CoefficientDistribution {
-    Analytic,
-    RandomContinuous,
-    RandomBinaryCheckerboard,
     ChannelizedBinary,
     MeanderingChannelBinary,
     DiagonalChannelsBinary,
@@ -54,22 +46,16 @@ enum class CoefficientDistribution {
 };
 
 struct CoefficientOptions {
-    CoefficientDistribution distribution = CoefficientDistribution::Analytic;
+    CoefficientDistribution distribution =
+        CoefficientDistribution::ChannelizedBinary;
     double contrast = 1e4;
     std::uint64_t seed = 1;
-    int random_modes = 32;
-    int minimum_frequency = 2;
-    int maximum_frequency = 12;
-    double spectral_decay = 1.1;
-    int checkerboard_block_size = 8;
     int channel_background_block_size = 8;
     int channel_width_fine_cells = 2;
 };
 
 struct CoefficientField {
     Vector values;
-    double minimum = 0.0;
-    double maximum = 0.0;
     double actual_contrast = 0.0;
 };
 
@@ -119,60 +105,9 @@ inline std::vector<int> StructuredGrid::all_f_nodes() const {
     return nodes;
 }
 
-inline std::vector<int> StructuredGrid::patch_f_nodes(int id, int patch_layers) const {
-    std::vector<int> nodes;
-    patch_f_nodes(id, patch_layers, nodes);
-    return nodes;
-}
-
-inline void StructuredGrid::patch_f_nodes(int id, int patch_layers,
-                                   std::vector<int>& nodes) const {
-    const auto [center_x, center_y] = fine_coords(coarse_fine_id(id));
-    const int radius = patch_layers * ratio_;
-    const int xmin = std::max(0, center_x - radius);
-    const int xmax = std::min(fine_n_ - 1, center_x + radius);
-    const int ymin = std::max(0, center_y - radius);
-    const int ymax = std::min(fine_n_ - 1, center_y + radius);
-    nodes.clear();
-    nodes.reserve(static_cast<std::size_t>((xmax - xmin + 1) * (ymax - ymin + 1)));
-    for (int iy = ymin; iy <= ymax; ++iy) {
-        for (int ix = xmin; ix <= xmax; ++ix) {
-            const int fine = fine_id(ix, iy);
-            if (!is_coarse_node(fine)) nodes.push_back(fine);
-        }
-    }
-}
-
 namespace diffusion_problem_detail {
 
 constexpr double pi = 3.141592653589793238462643383279502884;
-
-struct FourierMode {
-    int kx;
-    int ky;
-    double amplitude;
-    double phase;
-};
-
-inline std::vector<FourierMode> make_random_modes(
-    int count, int minimum_frequency, int maximum_frequency,
-    double spectral_decay, std::uint64_t seed) {
-    std::mt19937_64 generator(seed);
-    std::uniform_int_distribution<int> wave_number(
-        minimum_frequency, maximum_frequency);
-    std::uniform_real_distribution<double> phase(0.0, 2.0 * pi);
-    std::vector<FourierMode> modes;
-    modes.reserve(static_cast<std::size_t>(count));
-    for (int index = 0; index < count; ++index) {
-        const int kx = wave_number(generator);
-        const int ky = wave_number(generator);
-        const double wave_norm = std::sqrt(static_cast<double>(kx * kx + ky * ky));
-        modes.push_back(
-            {kx, ky, 1.0 / std::pow(wave_norm, spectral_decay),
-             phase(generator)});
-    }
-    return modes;
-}
 
 inline double harmonic(double lhs, double rhs) {
     return 2.0 * lhs * rhs / (lhs + rhs);
@@ -197,15 +132,6 @@ inline bool is_high_conductivity_channel(double x, double y,
     const bool vertical =
         std::abs(x - vertical_center) <= 0.5 * width;
     return horizontal || vertical;
-}
-
-inline bool is_channel_distribution(CoefficientDistribution distribution) {
-    return distribution == CoefficientDistribution::ChannelizedBinary ||
-        distribution == CoefficientDistribution::MeanderingChannelBinary ||
-        distribution == CoefficientDistribution::DiagonalChannelsBinary ||
-        distribution == CoefficientDistribution::ParallelChannelsBinary ||
-        distribution == CoefficientDistribution::BranchingChannelsBinary ||
-        distribution == CoefficientDistribution::WindingRingBinary;
 }
 
 inline bool is_high_conductivity_topology(
@@ -262,137 +188,40 @@ inline bool is_high_conductivity_topology(
 
 inline CoefficientField make_coefficient(const StructuredGrid& grid,
                                   const CoefficientOptions& options) {
-    const bool invalid_random =
-        options.distribution == CoefficientDistribution::RandomContinuous &&
-        (options.random_modes <= 0 || options.minimum_frequency <= 0 ||
-         options.maximum_frequency < options.minimum_frequency ||
-         !(options.spectral_decay >= 0.0));
-    const bool invalid_checker =
-        options.distribution ==
-            CoefficientDistribution::RandomBinaryCheckerboard &&
-        options.checkerboard_block_size <= 0;
-    const bool invalid_channel =
-        diffusion_problem_detail::is_channel_distribution(
-            options.distribution) &&
-        (options.channel_background_block_size <= 0 ||
-         options.channel_width_fine_cells <= 0);
     if (!(options.contrast >= 1.0) || !std::isfinite(options.contrast) ||
-        invalid_random || invalid_checker || invalid_channel) {
+        options.channel_background_block_size <= 0 ||
+        options.channel_width_fine_cells <= 0) {
         throw std::invalid_argument("invalid coefficient-field options");
     }
-    if (diffusion_problem_detail::is_channel_distribution(
-            options.distribution)) {
-        CoefficientField field;
-        field.values.resize(static_cast<std::size_t>(grid.fine_size()));
-        const double width =
-            static_cast<double>(options.channel_width_fine_cells) *
-            grid.h();
-        for (int id = 0; id < grid.fine_size(); ++id) {
-            const auto [ix, iy] = grid.fine_coords(id);
-            const double x = static_cast<double>(ix + 1) * grid.h();
-            const double y = static_cast<double>(iy + 1) * grid.h();
-            const int block_x =
-                (ix + 1) / options.channel_background_block_size;
-            const int block_y =
-                (iy + 1) / options.channel_background_block_size;
-            const std::uint64_t hash = diffusion_problem_detail::mix_bits(
-                options.seed ^
-                (static_cast<std::uint64_t>(
-                     static_cast<std::uint32_t>(block_x)) << 32U) ^
-                static_cast<std::uint64_t>(
-                    static_cast<std::uint32_t>(block_y)));
-            const bool high_inclusion = (hash & 1ULL) != 0ULL;
-            field.values[static_cast<std::size_t>(id)] =
-                (diffusion_problem_detail::is_high_conductivity_topology(
-                     options.distribution, x, y, width, options.seed) ||
-                 high_inclusion)
-                    ? options.contrast
-                    : 1.0;
-        }
-        const auto [field_min, field_max] =
-            std::minmax_element(field.values.begin(), field.values.end());
-        field.minimum = *field_min;
-        field.maximum = *field_max;
-        field.actual_contrast = field.maximum / field.minimum;
-        return field;
-    }
-
-    if (options.distribution ==
-        CoefficientDistribution::RandomBinaryCheckerboard) {
-        CoefficientField field;
-        field.values.resize(static_cast<std::size_t>(grid.fine_size()));
-        for (int id = 0; id < grid.fine_size(); ++id) {
-            const auto [ix, iy] = grid.fine_coords(id);
-            const int block_x =
-                (ix + 1) / options.checkerboard_block_size;
-            const int block_y =
-                (iy + 1) / options.checkerboard_block_size;
-            const std::uint64_t hash = diffusion_problem_detail::mix_bits(
-                options.seed ^
-                (static_cast<std::uint64_t>(
-                     static_cast<std::uint32_t>(block_x)) << 32U) ^
-                static_cast<std::uint64_t>(
-                    static_cast<std::uint32_t>(block_y)));
-            field.values[static_cast<std::size_t>(id)] =
-                (hash & 1ULL) == 0ULL ? 1.0 : options.contrast;
-        }
-        const auto [field_min, field_max] =
-            std::minmax_element(field.values.begin(), field.values.end());
-        field.minimum = *field_min;
-        field.maximum = *field_max;
-        field.actual_contrast = field.maximum / field.minimum;
-        return field;
-    }
-
-    Vector raw(static_cast<std::size_t>(grid.fine_size()), 0.0);
-    const std::vector<diffusion_problem_detail::FourierMode> modes =
-        options.distribution == CoefficientDistribution::RandomContinuous
-            ? diffusion_problem_detail::make_random_modes(
-                  options.random_modes, options.minimum_frequency,
-                  options.maximum_frequency, options.spectral_decay,
-                  options.seed)
-            : std::vector<diffusion_problem_detail::FourierMode>{};
-
+    CoefficientField field;
+    field.values.resize(static_cast<std::size_t>(grid.fine_size()));
+    const double width =
+        static_cast<double>(options.channel_width_fine_cells) * grid.h();
     for (int id = 0; id < grid.fine_size(); ++id) {
         const auto [ix, iy] = grid.fine_coords(id);
         const double x = static_cast<double>(ix + 1) * grid.h();
         const double y = static_cast<double>(iy + 1) * grid.h();
-        double value = 0.0;
-        if (options.distribution == CoefficientDistribution::Analytic) {
-            value = std::sin(2.0 * diffusion_problem_detail::pi * x) *
-                    std::sin(2.0 * diffusion_problem_detail::pi * y);
-        } else {
-            for (const auto& mode : modes) {
-                value += mode.amplitude *
-                    std::cos(2.0 * diffusion_problem_detail::pi *
-                             (static_cast<double>(mode.kx) * x +
-                              static_cast<double>(mode.ky) * y) +
-                             mode.phase);
-            }
-        }
-        raw[static_cast<std::size_t>(id)] = value;
-    }
-
-    const auto [minimum_it, maximum_it] =
-        std::minmax_element(raw.begin(), raw.end());
-    const double raw_range = *maximum_it - *minimum_it;
-    if (!(raw_range > 0.0) || !std::isfinite(raw_range)) {
-        throw std::runtime_error(
-            "coefficient field has zero or invalid dynamic range");
-    }
-
-    CoefficientField field;
-    field.values.resize(raw.size());
-    const double log_contrast = std::log(options.contrast);
-    for (std::size_t i = 0; i < raw.size(); ++i) {
-        const double normalized = (raw[i] - *minimum_it) / raw_range;
-        field.values[i] = std::exp(log_contrast * normalized);
+        const int block_x =
+            (ix + 1) / options.channel_background_block_size;
+        const int block_y =
+            (iy + 1) / options.channel_background_block_size;
+        const std::uint64_t hash = diffusion_problem_detail::mix_bits(
+            options.seed ^
+            (static_cast<std::uint64_t>(
+                 static_cast<std::uint32_t>(block_x)) << 32U) ^
+            static_cast<std::uint64_t>(
+                static_cast<std::uint32_t>(block_y)));
+        const bool high_inclusion = (hash & 1ULL) != 0ULL;
+        field.values[static_cast<std::size_t>(id)] =
+            (diffusion_problem_detail::is_high_conductivity_topology(
+                 options.distribution, x, y, width, options.seed) ||
+             high_inclusion)
+                ? options.contrast
+                : 1.0;
     }
     const auto [field_min, field_max] =
         std::minmax_element(field.values.begin(), field.values.end());
-    field.minimum = *field_min;
-    field.maximum = *field_max;
-    field.actual_contrast = field.maximum / field.minimum;
+    field.actual_contrast = *field_max / *field_min;
     return field;
 }
 
