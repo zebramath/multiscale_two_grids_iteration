@@ -105,6 +105,11 @@ int main() {
             "adaptive PCG did not record its decisions");
     require(adaptive.report.history.size() <= 3U,
             "economy PCG exceeded its uniform candidate budget");
+    require(adaptive.report.pilot_iterations == 16,
+            "single-RHS selection did not use the low-setup pilot");
+    require(adaptive.report.checkpoint_stride == 20 &&
+                adaptive.report.maximum_sampled_steps == 2,
+            "single-RHS selection reported the wrong path budget");
     require(!adaptive.report.used_local_refinement,
             "single-right-hand-side selection unexpectedly refined");
     require(adaptive.prolongation->rows() == grid.fine_size(),
@@ -118,12 +123,17 @@ int main() {
         },
         "adaptive PCG accepted a missing representative right-hand side");
     tgi::AdaptiveGlobalPcgOptions detailed_options = adaptive_options;
-    detailed_options.expected_rhs_count = 128.0;
+    detailed_options.expected_rhs_count = 256.0;
     const auto detailed = tgi::build_adaptive_global_pcg_interpolation(
         grid, a, geometric.prolongation, detailed_options, &adaptive_rhs);
     require(detailed.report.pilot_iterations >
                 adaptive.report.pilot_iterations,
             "reuse-aware selection did not increase its evidence budget");
+    require(detailed.report.pilot_iterations == 160,
+            "reuse-aware selection did not use the full pilot budget");
+    require(detailed.report.checkpoint_stride == 8 &&
+                detailed.report.maximum_sampled_steps == 8,
+            "reuse-aware selection reported the wrong path budget");
     require(detailed.report.history.size() <= 5U,
             "reuse-aware PCG exceeded its candidate budget");
 

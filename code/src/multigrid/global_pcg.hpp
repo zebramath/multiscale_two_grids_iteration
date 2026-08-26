@@ -271,6 +271,7 @@ struct AdaptiveGlobalPcgReport {
     int selected_steps = 0;
     int estimated_selected_cycles = 0;
     int checkpoint_stride = 0;
+    int maximum_sampled_steps = 0;
     int pilot_iterations = 0;
     double expected_rhs_count = 1.0;
     bool used_local_refinement = false;
@@ -298,20 +299,32 @@ inline int quantize(int value, int quantum) {
 
 struct SelectionProfile {
     int stride = 8;
-    int pilot_iterations = 64;
-    double near_optimal_slack = 0.05;
+    int maximum_steps = 60;
+    int pilot_iterations = 160;
+    double near_optimal_slack = 0.02;
     bool refine = false;
 };
 
 inline SelectionProfile selection_profile(
     const AdaptiveGlobalPcgOptions& options) {
     const double detail = std::min(
-        1.0, std::max(0.0, std::log2(options.expected_rhs_count) / 7.0));
+        1.0, std::max(0.0, std::log2(options.expected_rhs_count) / 8.0));
     SelectionProfile profile;
-    profile.stride = quantize(8, options.step_quantum);
+    profile.stride = quantize(static_cast<int>(
+        std::lround(20.0 - 12.0 * detail)), options.step_quantum);
+    const int removable_tail = std::min(
+        8, options.maximum_steps - options.minimum_steps);
+    profile.maximum_steps = std::max(
+        options.minimum_steps,
+        quantize(static_cast<int>(std::lround(
+            static_cast<double>(options.maximum_steps - removable_tail) +
+            static_cast<double>(removable_tail) * detail)),
+            options.step_quantum));
+    profile.maximum_steps = std::min(
+        profile.maximum_steps, options.maximum_steps);
     profile.pilot_iterations = static_cast<int>(
-        std::lround(64.0 + 96.0 * detail));
-    profile.near_optimal_slack = 0.05 - 0.03 * detail;
+        std::lround(16.0 + 144.0 * detail));
+    profile.near_optimal_slack = 0.10 - 0.08 * detail;
     profile.refine = detail >= 0.5;
     return profile;
 }
@@ -477,15 +490,16 @@ inline std::size_t select_candidate(
 }
 
 inline std::vector<int> sampled_steps(
-    const AdaptiveGlobalPcgOptions& options, int stride) {
+    const AdaptiveGlobalPcgOptions& options,
+    const SelectionProfile& profile) {
     std::vector<int> steps;
     for (int value = options.minimum_steps;
-         value < options.maximum_steps;
-         value += stride) {
+         value < profile.maximum_steps;
+         value += profile.stride) {
         steps.push_back(value);
     }
-    if (steps.empty() || steps.back() != options.maximum_steps) {
-        steps.push_back(options.maximum_steps);
+    if (steps.empty() || steps.back() != profile.maximum_steps) {
+        steps.push_back(profile.maximum_steps);
     }
     steps.erase(std::unique(steps.begin(), steps.end()), steps.end());
     return steps;
@@ -535,7 +549,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
     AdaptiveGlobalPcgResult result;
     GlobalEnergyPcgPath path(
         grid, a, initial_prolongation, options.thread_count);
-    for (int steps : sampled_steps(options, profile.stride)) {
+    for (int steps : sampled_steps(options, profile)) {
         path.advance_to(steps);
         candidates.push_back(make_candidate(
             a, rhs, path.prolongation(options.drop_tolerance),
@@ -551,7 +565,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
         for (int steps : {center - options.step_quantum,
                           center + options.step_quantum}) {
             if (steps >= options.minimum_steps &&
-                steps <= options.maximum_steps &&
+                steps <= profile.maximum_steps &&
                 std::none_of(
                     candidates.begin(), candidates.end(),
                     [&](const auto& candidate) {
@@ -587,6 +601,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
     result.report.estimated_selected_cycles =
         candidates[selected]->checkpoint.predicted_cycles;
     result.report.checkpoint_stride = profile.stride;
+    result.report.maximum_sampled_steps = profile.maximum_steps;
     result.report.pilot_iterations = profile.pilot_iterations;
     result.report.expected_rhs_count = options.expected_rhs_count;
     for (const auto& candidate : candidates) {

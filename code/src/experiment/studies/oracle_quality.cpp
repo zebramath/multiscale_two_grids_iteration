@@ -57,7 +57,8 @@ int run_oracle_quality(int argc, char** argv) {
     const experiment_support::Row headers{
         "1/h", "1/H", "Contrast", "Topology", "Policy", "R",
         "Selected m", "Cycles", "Oracle m", "Oracle cycles", "Gap %",
-        "Selection ms", "Candidates", "Pilot", "Refine"};
+        "Selection ms", "Candidates", "Pilot", "Stride", "Max m",
+        "Refine"};
     experiment_support::Rows rows;
 
     int case_index = 0;
@@ -130,6 +131,8 @@ int run_oracle_quality(int argc, char** argv) {
                     adaptive.report.selection_wall_ms),
                 std::to_string(adaptive.report.history.size()),
                 std::to_string(adaptive.report.pilot_iterations),
+                std::to_string(adaptive.report.checkpoint_stride),
+                std::to_string(adaptive.report.maximum_sampled_steps),
                 adaptive.report.used_local_refinement ? "yes" : "no"});
         }
     }
@@ -142,13 +145,16 @@ int run_oracle_quality(int argc, char** argv) {
         {"Oracle candidates", "m=0 and m=12,14,...,60"},
         {"Solve tolerance", "1e-6"}});
     report.add_note(
-        "The step-two oracle is evaluation-only. Both policies sample "
-        "m=0,12,20,...,60. Fast uses a 64-cycle pilot; reuse uses a "
-        "160-cycle pilot and at most two neighboring step-two refinements. "
+        "The step-two oracle is evaluation-only. Fast samples "
+        "m=0,12,32,52 with a 16-cycle pilot, a 10% near-optimality slack "
+        "and no refinement. Reuse samples m=0,12,20,...,60 with a "
+        "160-cycle pilot, a 2% slack and at most two neighboring step-two "
+        "refinements. "
         "Neither policy reads scale, contrast or topology labels.");
     report.add_table(
         "Representative oracle gaps", headers,
-        {5, 5, 10, 20, 7, 4, 10, 8, 9, 14, 8, 13, 10, 7, 7}, rows, true);
+        {5, 5, 10, 20, 7, 4, 10, 8, 9, 14, 8, 13, 10, 7, 7, 7, 7}, rows,
+        true);
     report.save("oracle_quality");
     return 0;
 }

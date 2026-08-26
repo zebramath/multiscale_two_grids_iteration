@@ -1,32 +1,32 @@
 Adaptive PCG versus an offline step-two oracle
 ==============================================
 
-Version           : 4.2.0
+Version           : 4.3.0
 Threads           : 4
 Oracle candidates : m=0 and m=12,14,...,60
 Solve tolerance   : 1e-6
 
-Note: The step-two oracle is evaluation-only. Both policies sample m=0,12,20,...,60. Fast uses a 64-cycle pilot; reuse uses a 160-cycle pilot and at most two neighboring step-two refinements. Neither policy reads scale, contrast or topology labels.
+Note: The step-two oracle is evaluation-only. Fast samples m=0,12,32,52 with a 16-cycle pilot, a 10% near-optimality slack and no refinement. Reuse samples m=0,12,20,...,60 with a 160-cycle pilot, a 2% slack and at most two neighboring step-two refinements. Neither policy reads scale, contrast or topology labels.
 
 Representative oracle gaps
 --------------------------
-1/h      1/H    Contrast              Topology   Policy     R  Selected m    Cycles   Oracle m   Oracle cycles     Gap %   Selection ms  Candidates    Pilot   Refine
------  -----  ----------  --------------------  -------  ----  ----------  --------  ---------  --------------  --------  -------------  ----------  -------  -------
-32         8       1e+04         cross-channel     fast     1           0        40          0              40      0.00         50.926           8       64       no
-32         8       1e+04         cross-channel    reuse   256           0        40          0              40      0.00         44.041           8      160       no
+1/h      1/H    Contrast              Topology   Policy     R  Selected m    Cycles   Oracle m   Oracle cycles     Gap %   Selection ms  Candidates    Pilot   Stride    Max m   Refine
+-----  -----  ----------  --------------------  -------  ----  ----------  --------  ---------  --------------  --------  -------------  ----------  -------  -------  -------  -------
+32         8       1e+04         cross-channel     fast     1           0        40          0              40      0.00         59.145           4       16       20       52       no
+32         8       1e+04         cross-channel    reuse   256           0        40          0              40      0.00        137.109           8      160        8       60       no
 
-64         8       1e+04         cross-channel     fast     1          12       204         12             204      0.00        197.175           8       64       no
-64         8       1e+04         cross-channel    reuse   256          12       204         12             204      0.00        600.225           9      160      yes
-64        16       1e+04         cross-channel     fast     1          20        68         18              54     25.93        755.262           8       64       no
-64        16       1e+04         cross-channel    reuse   256          18        54         18              54      0.00       1250.420          10      160      yes
+64         8       1e+04         cross-channel     fast     1          12       204         12             204      0.00        137.031           4       16       20       52       no
+64         8       1e+04         cross-channel    reuse   256          12       204         12             204      0.00        783.183           9      160        8       60      yes
+64        16       1e+04         cross-channel     fast     1          32       114         18              54    111.11        605.269           4       16       20       52       no
+64        16       1e+04         cross-channel    reuse   256          18        54         18              54      0.00       2303.665          10      160        8       60      yes
 
-128       16       1e+04         cross-channel     fast     1          44       244         38             231      5.63       1425.734           8       64       no
-128       16       1e+04         cross-channel    reuse   256          42       238         38             231      3.03       3221.650          10      160      yes
-128       16       1e+02         cross-channel     fast     1          20       228         26             226      0.88       1748.332           8       64       no
-128       16       1e+02         cross-channel    reuse   256          20       228         26             226      0.88       3496.119          10      160      yes
-128       16       1e+06         cross-channel     fast     1          60       279         60             279      0.00       2400.343           8       64       no
-128       16       1e+06         cross-channel    reuse   256          52       298         60             279      6.81       9760.060          10      160      yes
-128       16       1e+04          winding-ring     fast     1          44       233         52             228      2.19      13721.662           8       64       no
-128       16       1e+04          winding-ring    reuse   256          44       233         52             228      2.19      14317.549          10      160      yes
+128       16       1e+04         cross-channel     fast     1          52       276         38             231     19.48       1489.451           4       16       20       52       no
+128       16       1e+04         cross-channel    reuse   256          42       238         38             231      3.03       6610.300          10      160        8       60      yes
+128       16       1e+02         cross-channel     fast     1          32       293         26             226     29.65       1456.633           4       16       20       52       no
+128       16       1e+02         cross-channel    reuse   256          20       228         26             226      0.88       5675.981          10      160        8       60      yes
+128       16       1e+06         cross-channel     fast     1          52       298         60             279      6.81        921.948           4       16       20       52       no
+128       16       1e+06         cross-channel    reuse   256          52       298         60             279      6.81       6022.139          10      160        8       60      yes
+128       16       1e+04          winding-ring     fast     1          52       228         52             228      0.00        978.851           4       16       20       52       no
+128       16       1e+04          winding-ring    reuse   256          44       233         52             228      2.19       5353.175          10      160        8       60      yes
 
 
