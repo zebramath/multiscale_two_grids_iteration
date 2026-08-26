@@ -160,7 +160,7 @@ int run_two_grid_comparison(int argc, char** argv) {
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
-        "The v4.3 matrix changes one axis at a time around the 128/16, "
+        "The v4.4 matrix changes one axis at a time around the 128/16, "
         "contrast 1e4 cross-channel center: four size pairs, three contrasts "
         "and all six channel topologies. Adaptive-fast uses R=1; "
         "it evaluates m=0,12,32,52 with a 16-cycle pilot and a 10% "

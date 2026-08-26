@@ -38,10 +38,16 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "4.3.0", "wrong package version");
-    require(tgi::version_major == 4 && tgi::version_minor == 3 &&
+    require(tgi::version == "4.4.0", "wrong package version");
+    require(tgi::version_major == 4 && tgi::version_minor == 4 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
+    require_throws(
+        []() { (void)tgi::StructuredGrid(14, 4); },
+        "grid accepted a nondivisible coarsening ratio");
+    require_throws(
+        []() { (void)tgi::StructuredGrid(3, 1); },
+        "grid accepted a unit coarsening ratio");
 
     const tgi::StructuredGrid grid(15, 4);
     tgi::CoefficientOptions coefficient_options;
@@ -50,6 +56,18 @@ int main() {
     coefficient_options.contrast = 1.0e4;
     coefficient_options.channel_background_block_size = 4;
     const auto coefficient = tgi::make_coefficient(grid, coefficient_options);
+    tgi::CoefficientOptions invalid_coefficient = coefficient_options;
+    invalid_coefficient.channel_background_block_size = 0;
+    require_throws(
+        [&]() { (void)tgi::make_coefficient(grid, invalid_coefficient); },
+        "coefficient generator accepted a zero block size");
+    require_throws(
+        [&]() {
+            (void)tgi::assemble_diffusion(
+                grid, tgi::Vector(
+                    static_cast<std::size_t>(grid.fine_size() - 1), 1.0));
+        },
+        "diffusion assembly accepted the wrong coefficient size");
     std::vector<tgi::Vector> complex_topologies;
     for (const auto distribution : {
              tgi::CoefficientDistribution::BranchingChannelsBinary,

@@ -30,7 +30,7 @@ build_direct() {
     # shellcheck disable=SC2086
     "$cxx" $common tests/unit_core.cpp -o "$build_dir/unit_core"
     # shellcheck disable=SC2086
-    "$cxx" $common tests/regression_v43.cpp -o "$build_dir/regression_v43"
+    "$cxx" $common tests/regression_v44.cpp -o "$build_dir/regression_v44"
     # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment1_two_grid_comparison.cpp \
@@ -46,6 +46,11 @@ build_direct() {
         experiments/experiment3_oracle_validation.cpp \
         src/experiment/studies/oracle_quality.cpp \
         -o "$build_dir/experiment3_oracle_validation"
+    # shellcheck disable=SC2086
+    "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
+        experiments/experiment4_submission_robustness.cpp \
+        src/experiment/studies/submission_robustness.cpp \
+        -o "$build_dir/experiment4_submission_robustness"
 }
 
 if command -v cmake >/dev/null 2>&1; then
@@ -59,7 +64,7 @@ else
     build_direct
     echo "[done]  build-direct"
     run_step unit-core "$build_dir/unit_core"
-    run_step regression-v43 "$build_dir/regression_v43"
+    run_step regression-v44 "$build_dir/regression_v44"
 fi
 
 if [ "$mode" = "quick" ]; then
@@ -73,6 +78,8 @@ elif [ "$mode" = "full" ]; then
         "$build_dir/experiment2_finite_path" --threads="$threads"
     run_step experiment3-oracle \
         "$build_dir/experiment3_oracle_validation" --threads="$threads"
+    run_step experiment4-submission \
+        "$build_dir/experiment4_submission_robustness" --threads="$threads"
 else
     echo "usage: $0 [quick|full]" >&2
     exit 2

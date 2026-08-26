@@ -82,6 +82,13 @@ inline SparseMatrix assemble_diffusion(const StructuredGrid& grid,
 inline StructuredGrid::StructuredGrid(int fine_interior_points, int coarsening_ratio)
     : fine_n_(fine_interior_points), ratio_(coarsening_ratio),
       coarse_n_(0) {
+    if (fine_interior_points <= 0 || coarsening_ratio < 2 ||
+        (fine_interior_points + 1) % coarsening_ratio != 0 ||
+        (fine_interior_points + 1) / coarsening_ratio < 2) {
+        throw std::invalid_argument(
+            "StructuredGrid requires a positive grid with an exactly "
+            "divisible coarsening ratio and at least one interior C-point");
+    }
     coarse_n_ = (fine_n_ + 1) / ratio_ - 1;
 }
 
@@ -255,6 +262,24 @@ inline bool is_high_conductivity_topology(
 
 inline CoefficientField make_coefficient(const StructuredGrid& grid,
                                   const CoefficientOptions& options) {
+    const bool invalid_random =
+        options.distribution == CoefficientDistribution::RandomContinuous &&
+        (options.random_modes <= 0 || options.minimum_frequency <= 0 ||
+         options.maximum_frequency < options.minimum_frequency ||
+         !(options.spectral_decay >= 0.0));
+    const bool invalid_checker =
+        options.distribution ==
+            CoefficientDistribution::RandomBinaryCheckerboard &&
+        options.checkerboard_block_size <= 0;
+    const bool invalid_channel =
+        diffusion_problem_detail::is_channel_distribution(
+            options.distribution) &&
+        (options.channel_background_block_size <= 0 ||
+         options.channel_width_fine_cells <= 0);
+    if (!(options.contrast >= 1.0) || !std::isfinite(options.contrast) ||
+        invalid_random || invalid_checker || invalid_channel) {
+        throw std::invalid_argument("invalid coefficient-field options");
+    }
     if (diffusion_problem_detail::is_channel_distribution(
             options.distribution)) {
         CoefficientField field;
@@ -373,6 +398,17 @@ inline CoefficientField make_coefficient(const StructuredGrid& grid,
 
 inline SparseMatrix assemble_diffusion(const StructuredGrid& grid,
                                 const Vector& coefficient) {
+    if (coefficient.size() !=
+        static_cast<std::size_t>(grid.fine_size()) ||
+        std::any_of(
+            coefficient.begin(), coefficient.end(),
+            [](double value) {
+                return !(value > 0.0) || !std::isfinite(value);
+            })) {
+        throw std::invalid_argument(
+            "diffusion coefficient must have one positive finite value "
+            "per fine-grid node");
+    }
     const double inverse_h2 = 1.0 / (grid.h() * grid.h());
     std::vector<int> row_ptr(
         static_cast<std::size_t>(grid.fine_size()) + 1U, 0);

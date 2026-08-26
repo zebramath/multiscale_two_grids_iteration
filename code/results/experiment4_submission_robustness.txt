@@ -1,0 +1,97 @@
+Submission-focused robustness checks
+====================================
+
+Version         : 4.4.0
+Grid            : 64/16
+Contrast        : 1e4
+Topology        : cross-channel
+Threads         : 4
+Solve tolerance : 1e-6
+
+Note: This single compact experiment adds only the three checks needed before submission: five coefficient seeds, six right-hand sides evaluated with interpolation trained only on the constant RHS, and five post-warmup timing repetitions. Timing order alternates by repetition; Q1, median and Q3 are reported instead of a single run.
+
+Coefficient-seed stability
+--------------------------
+Seed                 Method        m      Cycles   P density %   Converged
+-------  ------------------  -------  ----------  ------------  ----------
+1                      fast       32         114       45.1146         yes
+1                     reuse       18          54       21.5991         yes
+1          global-reference    exact         321       92.2549         yes
+
+3                      fast       52          95       75.2594         yes
+3                     reuse       18          63       21.5991         yes
+3          global-reference    exact          95       91.5811         yes
+
+7                      fast       12          65       13.1223         yes
+7                     reuse       18          55       21.5991         yes
+7          global-reference    exact         155       91.9725         yes
+
+11                     fast       12          96       13.1223         yes
+11                    reuse       18          54       21.5991         yes
+11         global-reference    exact         182       91.8145         yes
+
+19                     fast       32          87       45.1146         yes
+19                    reuse       18          55       21.5991         yes
+19         global-reference    exact         113       91.4472         yes
+
+Seed aggregate
+--------------
+Method               Converged    Cycle sum   Mean cycles   Worst cycles
+------------------  ----------  -----------  ------------  -------------
+fast                       5/5          457         91.40            114
+reuse                      5/5          281         56.20             63
+global-reference           5/5          866        173.20            321
+
+Right-hand-side transfer (constant-RHS training)
+------------------------------------------------
+Evaluation RHS                  Method        m        Cycles
+------------------  ------------------  -------  ------------
+constant                 adaptive-fast       32           114
+constant                adaptive-reuse       18            54
+constant              global-reference        -           321
+constant                     geometric        -   failed@6000
+
+smooth-low               adaptive-fast       32           119
+smooth-low              adaptive-reuse       18            55
+smooth-low            global-reference        -           328
+smooth-low                   geometric        -   failed@6000
+
+smooth-mixed             adaptive-fast       32           109
+smooth-mixed            adaptive-reuse       18            59
+smooth-mixed          global-reference        -           304
+smooth-mixed                 geometric        -   failed@6000
+
+localized-left           adaptive-fast       32            89
+localized-left          adaptive-reuse       18            53
+localized-left        global-reference        -            42
+localized-left               geometric        -   failed@6000
+
+localized-right          adaptive-fast       32           119
+localized-right         adaptive-reuse       18            48
+localized-right       global-reference        -           224
+localized-right              geometric        -   failed@6000
+
+oscillatory              adaptive-fast       32           105
+oscillatory             adaptive-reuse       18            54
+oscillatory           global-reference        -           288
+oscillatory                  geometric        -   failed@6000
+
+RHS aggregate
+-------------
+Method               Converged    Cycle sum   Mean cycles   Worst cycles
+------------------  ----------  -----------  ------------  -------------
+adaptive-fast              6/6          655        109.17            119
+adaptive-reuse             6/6          323         53.83             59
+global-reference           6/6         1507        251.17            328
+geometric                  0/6        36000       6000.00           6000
+
+Repeated wall-clock summary
+---------------------------
+Policy              Runs  Setup med ms    Setup Q1    Setup Q3  Solve med ms   Solve Q1   Solve Q3  Total med ms   Total Q1   Total Q3   Cycles med
+----------------  ------  -----------  ----------  ----------  ----------  ---------  ---------  ----------  ---------  ---------  -----------
+adaptive-fast          5      221.703     215.861     222.830      52.736     47.535     53.831     275.533    270.365    284.267          114
+adaptive-reuse         5      943.019     932.700     973.390      13.962     13.499     14.188     957.207    946.122    986.889           54
+
+Note: Using policy-wise medians in S+R*T, the measured fast/reuse break-even is R=18.60 right-hand sides on this case; it is a workload measurement, not a universal threshold.
+
+

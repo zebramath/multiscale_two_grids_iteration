@@ -12,13 +12,14 @@
 \DeclareMathOperator{\tr}{tr}
 \DeclareMathOperator{\diag}{diag}
 \DeclareMathOperator{\Ran}{Ran}
+\DeclareMathOperator{\cond}{cond}
 \newcommand{\R}{\mathbb R}
 \newcommand{\norm}[1]{\left\lVert #1\right\rVert}
 \newcommand{\abs}[1]{\left\lvert #1\right\rvert}
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与自适应两网格选择：理论分析 v4.3}
+\title{有限 Krylov 能量插值与自适应两网格选择：理论分析 v4.4}
 \author{崔正平}
 \date{}
 
@@ -37,7 +38,7 @@
 精确投影表达式，以及其对粗空间扰动的全局 Lipschitz 界。再次，在能量终点附近，
 两网格目标的一阶变化分解为“磨光后最坏模态的可见性”和“Krylov 路径的方向对齐”；
 这给出有限步优于精确能量插值的充分条件，并在显式余项控制下导出严格的反单调 PCG
-尾部。最后，本文把实际 v4.3 选择器写成一个由预期右端项数控制的单参数预算族，给出
+尾部。最后，本文把实际 v4.4 选择器写成一个由预期右端项数控制的单参数预算族，给出
 pilot 预测误差到候选选择后悔值的确定性传递界和多右端项盈亏平衡式。
 
 这些结论解释的是“为何应在有限 Krylov 路径上选点”，而不是宣称能量插值在任意 AMG
@@ -64,6 +65,27 @@ pilot 预测误差到候选选择后悔值的确定性传递界和多右端项�
 本文区分三个层次：能量极小插值是变分终点；有限 PCG 是生成候选的路径；两网格谱半径
 或代表右端项上的实际循环数才是最终选择目标。把这三个量混为一谈，正是“能量越小，
 两网格必然越好”这一错误直觉的来源。
+
+\subsection{审校后的假设层级}
+
+为避免把局部或条件性结果写成无条件结论，全文使用下列分层。
+\begin{center}
+\begin{tabular}{p{0.20\textwidth}p{0.69\textwidth}}
+\toprule
+结论层级 & 明确假设 \\
+\midrule
+代数恒等式 & $\bm A\succ0$、固定粗点单位注入；不要求规则网格 \\
+PCG 能量账本 & 每列方程使用 SPD 预条件的标准 CG，结论按精确算术陈述 \\
+两网格投影公式 & 精确 Galerkin 粗解，后磨光为前磨光的 $\bm A$--伴随 \\
+终点一阶机制 & 能量终点处相关最大奇异值为正且单 \\
+严格反单调尾部 & 另需进入局部邻域，并满足逐步方向条件~\eqref{eq:tailcondition} \\
+选择后悔界 & 另需候选上的循环预测具有统一误差界；该界不是算法自动保证 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+当前数值实现中名为“global-exact”的基线实际用 $10^{-10}$ 有限容差构造，它是高精度
+数值参考；数学符号 $\bm W^\ast$ 才表示精确能量极小点。两者在论文表述中应始终区分。
 
 \section{能量终点与有限 PCG 的精确账本}
 
@@ -94,6 +116,9 @@ pilot 预测误差到候选选择后悔值的确定性传递界和多右端项�
 $\bm W=\bm W^\ast+\bm\Delta$ 代回，交叉项因
 $\bm B\bm W^\ast+\bm C=0$ 消失，即得两式。
 \end{proof}
+
+能量极小插值的经典算法背景可参见~\cite{WanChanSmith2000}；本文关注的不是重新提出
+式~\eqref{eq:Wstar}，而是有限 Krylov 路径与两网格目标之间的非单调关系。
 
 第 $j$ 列满足 $\bm B\bm w_j^\ast=-\bm C\bm e_j$。
 设 $\bm w_{j,m}$ 是从给定初值运行 $m$ 步 PCG 的结果，
@@ -191,6 +216,37 @@ $\bm T^T(\bm I-\bm\Pi_{\mathcal U})\bm T$ 相似，故
  \rhoTG(\mathcal U)=
  \norm{(\bm I-\bm\Pi_{\mathcal U})\bm T}_2^2.         \label{eq:rho}
 \end{equation}
+
+\begin{proposition}[最坏谱因子与给定 RHS 循环数的层级]\label{prop:rhs}
+令
+$\bm K_{\mathcal U}=\bm T^T(\bm I-\bm\Pi_{\mathcal U})\bm T$。
+若 $\rhoTG(\mathcal U)<1$，则对任意非零初始误差
+\begin{equation}
+ \norm{\bm e_k}_{\bm A}
+ \le \rhoTG(\mathcal U)^k\norm{\bm e_0}_{\bm A}.      \label{eq:energycontract}
+\end{equation}
+对应欧氏残量满足
+\begin{equation}
+ \frac{\norm{\bm r_k}_2}{\norm{\bm r_0}_2}
+ \le \sqrt{\cond_2(\bm A)}\,
+       \rhoTG(\mathcal U)^k.                           \label{eq:residualcontract}
+\end{equation}
+但给定 RHS 的实际循环数还取决于初始误差在
+$\bm K_{\mathcal U}$ 各特征方向上的分量，因此不由 $\rhoTG$ 单独决定。
+\end{proposition}
+
+\begin{proof}
+$\bm K_{\mathcal U}$ 对称半正定且
+$\norm{\bm K_{\mathcal U}}_2=\rhoTG(\mathcal U)$，故第一式成立。
+再用
+$\sqrt{\lambda_{\min}(\bm A)}\norm{\bm e}_{\bm A}
+\le\norm{\bm A\bm e}_2
+\le\sqrt{\lambda_{\max}(\bm A)}\norm{\bm e}_{\bm A}$
+作用于分子和分母即可。
+\end{proof}
+
+命题~\ref{prop:rhs} 是理论与实现之间必须保留的界面：谱半径描述最坏情形，而代码用
+代表 RHS 的短残量历史选择候选。二者相关，但不能互相冒充。
 
 \begin{proposition}[由 $\bm Z$ 给出的精确粗投影]\label{prop:projector}
 在基~\eqref{eq:bases} 中，图空间的正交投影为
@@ -307,6 +363,9 @@ $t^2\norm{\bm H\Sc^{1/2}}_F^2/2>0$。
    {\norm{\bm u_F}_2\norm{\bm H}_F\norm{\bm a}_2}}_{\text{路径对齐}}
   \norm{\bm H}_F.                                     \label{eq:visibility}
 \end{equation}
+式~\eqref{eq:visibility} 仅在
+$\norm{\bm u_F}_2\norm{\bm H}_F\norm{\bm a}_2>0$ 时使用；若任一因子为零，
+式~\eqref{eq:derivative} 的一阶收益为零，必须转向高阶分析，本文不作无条件分类。
 第一项由系数场、粗点与磨光器决定；第二项取决于实际 Krylov 误差方向。
 这解释了为什么仅凭尺度、对比度或拓扑标签不能稳定预测最佳步数：标签可以改变可见性，
 却不能完全决定路径对齐。
@@ -314,7 +373,8 @@ $t^2\norm{\bm H\Sc^{1/2}}_F^2/2>0$。
 \subsection{严格反单调 PCG 尾部}
 
 令 $\bm Z_m=\bm B^{1/2}\bm\Delta_m\Sc^{-1/2}$，
-$\bm D_m=\bm Z_m-\bm Z_{m+1}$。由单奇异值假设和投影的光滑性，存在邻域
+$\bm D_m=\bm Z_m-\bm Z_{m+1}$。由单奇异值假设、投影的解析性以及最大奇异值的
+局部光滑性，存在邻域
 $\norm{\bm Z}_F\le r$ 与常数 $K>0$，使
 \begin{equation}
  f(\bm Z)=f(0)-\bm u_F^T\bm Z\bm a+R(\bm Z),
@@ -336,7 +396,9 @@ $\norm{\bm Z}_F\le r$ 与常数 $K>0$，使
 \end{theorem}
 
 \begin{proof}
-第一式由定理~\ref{thm:pcgtail}。另一方面，由~\eqref{eq:taylor}，
+条件~\eqref{eq:tailcondition} 的右端非负且左端严格为正，故
+$\bm D_m\ne0$，相应 PCG 步非零。第一式于是由定理~\ref{thm:pcgtail} 严格成立。
+另一方面，由~\eqref{eq:taylor}，
 \begin{align*}
  f(\bm Z_{m+1})-f(\bm Z_m)
  &=\bm u_F^T\bm D_m\bm a+R(\bm Z_{m+1})-R(\bm Z_m)\\
@@ -373,7 +435,7 @@ $\bm x=\bm D^{1/2}\bm 1_S$。则
 该命题只解释高对比拓扑为何容易提高式~\eqref{eq:visibility} 中的“问题可见性”；它不推出
 某一拓扑必有固定最佳 PCG 步数，后者还取决于粗点覆盖和路径对齐。
 
-\section{与 v4.3 实现一致的自适应选择}
+\section{与 v4.4 实现一致的自适应选择}
 
 选择器只暴露预期右端项数 $R\ge1$。令
 \begin{equation}
@@ -392,7 +454,7 @@ $m_{\min},m_{\min}+s(R),\ldots,\bar m(R)$，并总是包含端点 $\bar m(R)$；
 
 因此 $R=1$ 的激进档只检查
 \begin{equation}
- m\in\{0,12,32,52\},\qquad L=16,quad\delta=10\%,       \label{eq:fast}
+ m\in\{0,12,32,52\},\qquad L=16,\quad\delta=10\%,      \label{eq:fast}
 \end{equation}
 且不细化；$R=256$ 的复用档检查
 $m=0,12,20,\ldots,60$，使用 $L=160$、$\delta=2\%$ 并允许局部细化。
@@ -458,13 +520,21 @@ step--2 oracle 同样的循环数，而是接受适度后悔值来显著压缩 s
 \end{equation}
 这也是 $R$ 作为唯一策略参数的含义：它不是 PDE 标签，而是可解释的复用预算。
 当代表右端项与后续右端项分布不一致时，式~\eqref{eq:breakeven} 仍是成本恒等式，
-但 pilot 循环数的代表性必须由多右端项实验另行检验。
+但 pilot 循环数的代表性必须由多右端项实验另行检验。v4.4 因此只增加一个紧凑的
+RHS 迁移实验：候选仍由常数 RHS 选择，再在六种平滑、局部与振荡 RHS 上独立求解；
+这验证代表性，而不把有限样本结果提升为分布无关定理。
 
 \section{可推广结论、不可推广结论与投稿表述}
 
+投稿时应明确区分“背景工具”和“本文主张”。定理~\ref{thm:energy}、
+定理~\ref{thm:globalopt} 以及标准主角恒等式是已有线性代数与多重网格理论的重组，
+不单独声称原创。本文的核心理论主张是：用同一个 $\bm Z$ 坐标把这些工具闭合到有限
+PCG 路径；由式~\eqref{eq:derivative} 得到可见性--对齐机制；并由
+定理~\ref{thm:antimonotone} 给出能量下降而两网格因子上升的严格局部充分条件。
+
 \begin{enumerate}
  \item 定理~\ref{thm:energy}--\ref{thm:lipschitz} 依赖有限维 SPD、固定粗点和对称
- 两网格结构，不依赖二维规则网格。把 Jacobi 换成一般 SPD 预条件器，不改变 PCG 能量
+ 两网格结构，不依赖二维规则网格。把 Jacobi 换成固定 SPD 预条件器，不改变 PCG 能量
  正交账本，只会改变实际 Krylov 路径。
  \item 定理~\ref{thm:firstorder} 与~\ref{thm:antimonotone} 是局部机制结论，要求最大
  奇异值的单性及方向条件；它们不保证每个问题都存在明显有限步优势。
@@ -491,7 +561,7 @@ step--2 oracle 同样的循环数，而是接受适度后悔值来显著压缩 s
 能量极小插值仍是重要的变分基准，但固定磨光器关心的是磨光后误差相对粗空间的方向。
 因此有限 PCG 候选可以在保留非零能量误差的同时更好地捕获最坏可见模态。
 全局稳定界限制了这种优势的幅度，一阶公式解释其方向来源，严格尾部定理给出可验证的
-充分条件，而 v4.3 选择器以少右端项和多右端项之间的 setup--solve 权衡将该机制落地。
+充分条件，而 v4.4 选择器以少右端项和多右端项之间的 setup--solve 权衡将该机制落地。
 
 \begin{thebibliography}{99}
 

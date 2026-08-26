@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 4.3.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 4.4.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -56,9 +56,12 @@ tgi_add_program(experiment2_finite_path
 tgi_add_program(experiment3_oracle_validation
     experiments/experiment3_oracle_validation.cpp
     src/experiment/studies/oracle_quality.cpp)
+tgi_add_program(experiment4_submission_robustness
+    experiments/experiment4_submission_robustness.cpp
+    src/experiment/studies/submission_robustness.cpp)
 add_custom_target(experiments
     DEPENDS experiment1_two_grid_comparison experiment2_finite_path
-            experiment3_oracle_validation)
+            experiment3_oracle_validation experiment4_submission_robustness)
 
 include(CTest)
 if(BUILD_TESTING)
@@ -68,7 +71,7 @@ if(BUILD_TESTING)
         set_property(TARGET unit_core PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE TRUE)
     endif()
     add_test(NAME unit_core COMMAND unit_core)
-    add_executable(regression_v43 tests/regression_v43.cpp)
-    target_link_libraries(regression_v43 PRIVATE tgi_headers)
-    add_test(NAME regression_v43 COMMAND regression_v43)
+    add_executable(regression_v44 tests/regression_v44.cpp)
+    target_link_libraries(regression_v44 PRIVATE tgi_headers)
+    add_test(NAME regression_v44 COMMAND regression_v44)
 endif()
