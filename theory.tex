@@ -21,7 +21,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 插值与自适应两网格选择：核心理论分析 v15}
+\title{有限 Krylov 插值与自适应两网格选择：核心理论分析 v16}
 \author{崔正平}
 \date{}
 
@@ -41,9 +41,11 @@ $\frac12\norm{\bm W-\bm W^\ast}_{\bm B,F}^2$；局部 Galerkin、支撑外残差
 对对称前后磨光，
 $\sqrt{\rhoTG}$ 对粗空间夹角全局 Lipschitz，因此能量误差可以转成两网格性能误差。
 第三，能量越来越小并不推出两网格性能单调改善：在能量终点附近，最坏磨光模态若在
-粗坐标方向上可见，就存在一阶有利方向；对受限 Krylov 方向，其可达到的一阶收益可分成
-“问题本身的可见性”和“实际路径的对齐程度”。第四，PCG 正交能量、两端候选性能和
-剩余能量可以组成严格的区间下界、尾部停止条件和整条候选路径的近最优证书。
+粗坐标方向上可见，就存在一阶有利方向；对受限 Krylov 方向，其一阶收益可分成
+“问题本身的可见性”和“实际路径的对齐程度”。更强地，若一段 PCG 尾部持续沿有利方向
+逼近能量终点且已进入显式小邻域，则插值能量严格下降而两网格谱半径严格上升，形成真正的
+反单调尾部。第四，PCG 正交能量、两端候选性能和剩余能量可以组成严格的区间下界、
+尾部停止条件和整条候选路径的近最优证书。
 
 本文避免把二维高对比实验外推成任意 AMG 的无条件规律，也不再保留只增加术语负担而
 不能改善算法判断的高阶几何分类。
@@ -261,6 +263,25 @@ $\bm W_\nu=\bm W^\ast$，并且
 CG 搜索方向的 $\bm B$ 共轭性使不同步修正正交；
 终点误差为零后，对尾和应用勾股定理。
 \end{proof}
+
+对任意固定块长 $s\ge1$，从任意第 $m$ 步继续运行 $s$ 步 PCG，标准
+Chebyshev 界给出
+\begin{equation}
+ \norm{\bm E_{m+s}}_{\bm B,F}
+ \le \vartheta_s\norm{\bm E_m}_{\bm B,F},
+ \qquad
+ \vartheta_s=
+ \frac{2q^s}{1+q^{2s}}<1,                               \label{eq:blockcontract}
+\end{equation}
+其中 $q$ 见~\eqref{eq:cheb}；若使用实际谱上的 $\chi_s$，可进一步把
+$\vartheta_s$ 换成更小的认证因子。结合~\eqref{eq:tailenergy}，
+\begin{equation}
+ \norm{\bm W_{m+s}-\bm W_m}_{\bm B,F}
+ \ge
+ \sqrt{1-\vartheta_s^2}\,
+ \norm{\bm E_m}_{\bm B,F}.                               \label{eq:blockmove}
+\end{equation}
+这两个块估计是后文反单调定理所需的唯一额外 PCG 收缩信息。
 
 令所有列的残差矩阵为
 \begin{equation}
@@ -630,12 +651,15 @@ $\nu_{\mathcal L}$ 很小，算法生成的方向根本看不到最有利方向�
  C_{\rm loc}&=c_0+\frac{2c_1^2}{\delta},\qquad
  z_0=\min\left\{1,\frac{\delta}{4c_1}\right\}.           \label{eq:Cloc}
 \end{align}
-则当 $\norm{\bm Z}_2\le z_0$ 时，
+则当 $\norm{\bm Z}_2\le z_0$ 时，有双边二阶余项界
 \begin{equation}
+ \sigma^2-2\sigma\,\bm u^T\bm Z\bm a
+ -c_0\norm{\bm Z}_2^2
+ \le
  \rhoTG(\bm Z)
  \le
  \sigma^2-2\sigma\,\bm u^T\bm Z\bm a
- +C_{\rm loc}\norm{\bm Z}_2^2.                          \label{eq:localupper}
+ +C_{\rm loc}\norm{\bm Z}_2^2.                          \label{eq:localtwosided}
 \end{equation}
 因此
 \begin{equation}
@@ -644,6 +668,135 @@ $\nu_{\mathcal L}$ 很小，算法生成的方向根本看不到最有利方向�
  \frac{C_{\rm loc}}{2\sigma}\norm{\bm Z}_2^2             \label{eq:strictlocal}
 \end{equation}
 是 $\rhoTG(\bm Z)<\rho_\ast$ 的显式充分条件。
+
+
+\subsection{严格反单调尾部：能量越接近最优，两网格反而越慢}
+
+前面的方向导数只说明某个单独方向是否有利。下面恢复并用 v16 的简化记号重写一个更强的
+结论：在一段方向持续一致的 PCG 尾部上，可以严格证明“能量继续下降，而两网格谱半径
+逐点上升”。
+
+取等距检查点
+\begin{equation}
+ m_j=m_0+js,\qquad j=0,\ldots,L,\qquad \bm W_{m_L}=\bm W^\ast,
+\end{equation}
+并记
+\begin{align}
+ e_j&=\norm{\bm W_{m_j}-\bm W^\ast}_{\bm B,F},\\
+ d_j&=\norm{\bm W_{m_{j+1}}-\bm W_{m_j}}_{\bm B,F},\\
+ \bm H_j&=\bm Z_{m_j}-\bm Z_{m_{j+1}},
+ \qquad
+ \bm Z_m=\bm B^{1/2}(\bm W_m-\bm W^\ast)\Sc^{-1/2}.      \label{eq:antiblocks}
+\end{align}
+由 PCG 正交性，
+\begin{equation}
+ e_j^2=d_j^2+e_{j+1}^2.                                  \label{eq:antipyth}
+\end{equation}
+仍记
+$\bm a=\bm Y\bm v$、
+$\beta=\norm{\Sc^{-1/2}\bm a}_2$，
+$s_{\min}=\lambda_{\min}(\Sc)$。
+
+\begin{theorem}[有限 PCG 的严格反单调尾部]\label{thm:antimonotone}
+假设 $\bm X$ 的最大奇异值 $\sigma>0$ 简单，$\bm a\ne0$，并且存在
+$\eta\in(0,1]$，使尾部每个块都满足统一有利方向条件
+\begin{equation}
+ \bm u^T\bm H_j\bm a
+ \ge
+ \eta\,\beta\,d_j.                                      \label{eq:uniformfavorable}
+\end{equation}
+设 $z_0,C_{\rm loc},c_0$ 由~\eqref{eq:Cloc} 定义，
+$\vartheta_s$ 由~\eqref{eq:blockcontract} 定义。
+若初始尾误差满足
+\begin{equation}
+ e_0\le z_0\sqrt{s_{\min}}                               \label{eq:antismall1}
+\end{equation}
+以及
+\begin{equation}
+ e_0<
+ \frac{
+  2\sigma\eta\beta\sqrt{1-\vartheta_s^2}\,s_{\min}
+ }{
+  C_{\rm loc}+c_0\vartheta_s^2
+ },                                                       \label{eq:antithreshold}
+\end{equation}
+则对每个 $j<L$，
+\begin{equation}
+ J(\bm W_{m_{j+1}})<J(\bm W_{m_j}),
+ \qquad
+ \rhoTG(\bm W_{m_{j+1}})
+ >
+ \rhoTG(\bm W_{m_j}).                                    \label{eq:antimonotonicity}
+\end{equation}
+即在这一整段尾部上，能量指标与两网格谱性能严格反向单调。
+
+此外，每个尚未到终点的检查点都严格优于能量终点；更具体地，
+若还满足
+\begin{equation}
+ e_0<
+ \frac{2\sigma\eta\beta\,s_{\min}}{C_{\rm loc}},         \label{eq:tailbetterthreshold}
+\end{equation}
+则
+\begin{equation}
+ \rho_\ast-\rhoTG(\bm W_{m_j})
+ \ge
+ 2\sigma\eta\beta\,e_j
+ -
+ \frac{C_{\rm loc}}{s_{\min}}e_j^2
+ >0,\qquad j<L.                                         \label{eq:tailbettermargin}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+由
+$\bm Z_{m_j}=\sum_{l=j}^{L-1}\bm H_l$
+和~\eqref{eq:uniformfavorable}，
+\[
+ \bm u^T\bm Z_{m_j}\bm a
+ \ge\eta\beta\sum_{l=j}^{L-1}d_l
+ \ge\eta\beta e_j,
+\]
+最后一步使用
+$e_j^2=\sum_{l=j}^{L-1}d_l^2$。
+同时
+\[
+ \norm{\bm Z_{m_j}}_2^2
+ \le\frac{e_j^2}{s_{\min}}.
+\]
+代入~\eqref{eq:localtwosided} 的上界即得
+\eqref{eq:tailbettermargin}。
+
+再比较相邻两点。由双边界，
+\begin{align*}
+ \rhoTG(\bm W_{m_{j+1}})-\rhoTG(\bm W_{m_j})
+ &\ge
+ 2\sigma\,\bm u^T\bm H_j\bm a
+ -\frac{c_0e_{j+1}^2+C_{\rm loc}e_j^2}{s_{\min}}.
+\end{align*}
+式~\eqref{eq:blockcontract}--\eqref{eq:blockmove} 给出
+\[
+ e_{j+1}\le\vartheta_s e_j,\qquad
+ d_j\ge\sqrt{1-\vartheta_s^2}\,e_j.
+\]
+结合~\eqref{eq:uniformfavorable}，
+\[
+ \rhoTG(\bm W_{m_{j+1}})-\rhoTG(\bm W_{m_j})
+ \ge
+ 2\sigma\eta\beta\sqrt{1-\vartheta_s^2}\,e_j
+ -
+ \frac{C_{\rm loc}+c_0\vartheta_s^2}{s_{\min}}e_j^2,
+\]
+而~\eqref{eq:antithreshold} 使右端严格为正。
+能量严格下降由~\eqref{eq:Jstep} 或~\eqref{eq:antipyth} 直接得到。
+\end{proof}
+
+\begin{remark}
+定理~\ref{thm:antimonotone} 是\emph{条件性反单调定理}，不是说所有 PCG 尾部都会如此。
+它要求三件事同时成立：尾部已经足够接近能量终点；最坏磨光模态在粗坐标中可见
+($\beta>0$)；各 PCG 块持续沿同一有利方向
+\eqref{eq:uniformfavorable}。在这些条件下，非单调不再只是“可能发生”，而是被加强为
+一整段严格的反向单调性。
+\end{remark}
 
 \subsection{高对比通道为什么容易出现慢模态}
 
@@ -1044,7 +1197,8 @@ $\norm{\bm I-\omega\bm R_c}_2$；最小值为
 }
 \]
 能量极小插值是唯一变分终点，但固定磨光器真正关心的是磨光后误差与粗空间的相对方向，
-所以有限 PCG 可能在终点之前取得更好的两网格性能。
+所以有限 PCG 可能在终点之前取得更好的两网格性能；在统一有利方向与显式小邻域条件下，
+定理~\ref{thm:antimonotone} 进一步证明能量严格下降而两网格谱半径严格上升。
 这种非单调现象不是不可控的：全局 Lipschitz 界限制了性能能跳多远；
 一阶可见性解释了为什么会改善；PCG 正交能量又把尚未测试的候选压成可认证的区间和尾部
 下界。对算法设计而言，最值得使用的量因此不是“离精确插值还有几步”，而是
