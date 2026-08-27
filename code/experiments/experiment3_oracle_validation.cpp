@@ -39,8 +39,6 @@ int cycles_for(
 }
 
 int main(int argc, char** argv) {
-    experiment_support::begin_result_group(
-        "experiment3_oracle_validation");
     int threads = 4;
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
@@ -61,7 +59,7 @@ int main(int argc, char** argv) {
     const experiment_support::Row headers{
         "1/h", "1/H", "Contrast", "Topology", "Policy", "R",
         "Selected m", "Cycles", "Oracle m", "Oracle cycles", "Gap %",
-        "Selection ms", "Candidates", "Pilot", "Stride", "Max m",
+        "Selection ms", "Candidates", "Pilot cap", "Stride", "Max m",
         "Refine"};
     experiment_support::Rows rows;
 
@@ -133,7 +131,7 @@ int main(int argc, char** argv) {
                 experiment_support::fixed(
                     adaptive.report.selection_wall_ms),
                 std::to_string(adaptive.report.candidate_count),
-                std::to_string(adaptive.report.pilot_iterations),
+                std::to_string(adaptive.report.pilot_limit),
                 std::to_string(adaptive.report.checkpoint_stride),
                 std::to_string(adaptive.report.maximum_sampled_steps),
                 adaptive.report.used_local_refinement ? "yes" : "no"});
@@ -149,15 +147,15 @@ int main(int argc, char** argv) {
         {"Solve tolerance", "1e-6"}});
     report.add_note(
         "The step-two oracle is evaluation-only. Fast samples "
-        "m=0,12,32,52 with a 16-cycle pilot, a 10% near-optimality slack "
+        "m=0,12,32,52 with a 16-cycle pilot cap, a 10% near-optimality slack "
         "and no refinement. Reuse samples m=0,12,20,...,60 with a "
-        "160-cycle pilot, a 2% slack and at most two neighboring step-two "
+        "160-cycle pilot cap, a 2% slack and at most two neighboring step-two "
         "refinements. "
         "Neither policy reads scale, contrast or topology labels.");
     report.add_table(
         "Representative oracle gaps", headers,
-        {5, 5, 10, 20, 7, 4, 10, 8, 9, 14, 8, 13, 10, 7, 7, 7, 7}, rows,
+        {5, 5, 10, 20, 7, 4, 10, 8, 9, 14, 8, 13, 10, 9, 7, 7, 7}, rows,
         true);
-    report.save("oracle_quality");
+    report.save("experiment3_oracle_validation");
     return 0;
 }

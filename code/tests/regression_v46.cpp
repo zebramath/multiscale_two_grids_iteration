@@ -99,8 +99,8 @@ int main() {
             "adaptive PCG did not record its decisions");
     require(adaptive.report.candidate_count <= 3,
             "economy PCG exceeded its uniform candidate budget");
-    require(adaptive.report.pilot_iterations == 16,
-            "single-RHS selection did not use the low-setup pilot");
+    require(adaptive.report.pilot_limit == 16,
+            "single-RHS selection reported the wrong pilot cap");
     require(adaptive.report.checkpoint_stride == 20 &&
                 adaptive.report.maximum_sampled_steps == 2,
             "single-RHS selection reported the wrong path budget");
@@ -110,20 +110,28 @@ int main() {
             "adaptive PCG returned an invalid prolongation");
     require(adaptive.cycle->coarse_size() == grid.coarse_size(),
             "adaptive PCG returned an invalid reusable hierarchy");
+    const auto adaptive_solve = tgi::solve_two_grid(
+        adaptive_rhs, *adaptive.cycle, 1.0e-6, 1000);
+    require(adaptive_solve.converged,
+            "single-RHS adaptive hierarchy did not converge");
     tgi::AdaptiveGlobalPcgOptions detailed_options = adaptive_options;
     detailed_options.expected_rhs_count = 256.0;
     const auto detailed = tgi::build_adaptive_global_pcg_interpolation(
         grid, a, geometric.prolongation, detailed_options, adaptive_rhs);
-    require(detailed.report.pilot_iterations >
-                adaptive.report.pilot_iterations,
+    require(detailed.report.pilot_limit >
+                adaptive.report.pilot_limit,
             "reuse-aware selection did not increase its evidence budget");
-    require(detailed.report.pilot_iterations == 160,
-            "reuse-aware selection did not use the full pilot budget");
+    require(detailed.report.pilot_limit == 160,
+            "reuse-aware selection reported the wrong pilot cap");
     require(detailed.report.checkpoint_stride == 8 &&
                 detailed.report.maximum_sampled_steps == 8,
             "reuse-aware selection reported the wrong path budget");
     require(detailed.report.candidate_count <= 5,
             "reuse-aware PCG exceeded its candidate budget");
+    const auto detailed_solve = tgi::solve_two_grid(
+        adaptive_rhs, *detailed.cycle, 1.0e-6, 1000);
+    require(detailed_solve.converged,
+            "reuse-aware adaptive hierarchy did not converge");
 
     tgi::AdaptiveGlobalPcgOptions invalid_options = adaptive_options;
     invalid_options.expected_rhs_count = 0.5;

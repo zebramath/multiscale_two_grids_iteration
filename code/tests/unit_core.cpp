@@ -28,8 +28,8 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "4.5.0", "wrong package version");
-    require(tgi::version_major == 4 && tgi::version_minor == 5 &&
+    require(tgi::version == "4.6.0", "wrong package version");
+    require(tgi::version_major == 4 && tgi::version_minor == 6 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
 
@@ -73,6 +73,11 @@ int main() {
         grid, matrix, global_options);
     require(global.report.column_solves.failed_systems == 0,
             "global energy interpolation did not converge");
+    require(global.report.column_solves.maximum_relative_residual <=
+                1.01 * global_options.tolerance,
+            "global energy interpolation missed its residual tolerance");
+    require(global.report.threads_used == 2,
+            "global energy interpolation ignored its thread budget");
 
     tgi::GlobalEnergyOptions fixed_step_options = global_options;
     fixed_step_options.tolerance = 0.0;

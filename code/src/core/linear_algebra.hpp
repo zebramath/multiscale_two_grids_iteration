@@ -23,10 +23,6 @@ inline void axpy(double alpha, const Vector& x, Vector& y) {
     for (std::size_t i = 0; i < x.size(); ++i) y[i] += alpha * x[i];
 }
 
-inline void scale(double alpha, Vector& x) {
-    for (double& value : x) value *= alpha;
-}
-
 inline Vector subtract(const Vector& x, const Vector& y) {
     Vector result(x.size());
     for (std::size_t i = 0; i < x.size(); ++i) result[i] = x[i] - y[i];
@@ -62,7 +58,6 @@ public:
     double residual_squared(const Vector& x, const Vector& rhs,
                             Vector& residual,
                             int thread_count = 1) const;
-    void transpose_multiply(const Vector& x, Vector& result) const;
     SparseMatrix transpose(int thread_count = 1) const;
     Vector diagonal() const;
 
@@ -85,7 +80,6 @@ public:
         const SparseMatrix& matrix,
         const std::vector<int>& new_to_old_permutation = {});
     void solve(const Vector& rhs, Vector& result, Vector& work) const;
-    std::size_t nnz() const { return values_.size(); }
 
 private:
     int n_ = 0;
@@ -251,17 +245,6 @@ inline double SparseMatrix::residual_squared(const Vector& x, const Vector& rhs,
         squared_norm += value * value;
     }
     return squared_norm;
-}
-
-inline void SparseMatrix::transpose_multiply(const Vector& x, Vector& result) const {
-    result.assign(static_cast<std::size_t>(cols_), 0.0);
-    for (int row = 0; row < rows_; ++row) {
-        for (int pos = row_ptr_[static_cast<std::size_t>(row)];
-             pos < row_ptr_[static_cast<std::size_t>(row) + 1U]; ++pos) {
-            result[static_cast<std::size_t>(col_idx_[static_cast<std::size_t>(pos)])] +=
-                values_[static_cast<std::size_t>(pos)] * x[static_cast<std::size_t>(row)];
-        }
-    }
 }
 
 inline SparseMatrix SparseMatrix::transpose(int thread_count) const {

@@ -55,8 +55,6 @@ experiment_support::Row measurement_row(
 }
 
 int main(int argc, char** argv) {
-    experiment_support::begin_result_group(
-        "experiment1_two_grid_comparison");
     bool quick = false;
     int threads = 4;
     for (int index = 1; index < argc; ++index) {
@@ -119,11 +117,11 @@ int main(int argc, char** argv) {
         const tgi::TwoGridCycle exact_cycle(
             problem.matrix, exact.prolongation, 1, threads);
         rows.push_back(measurement_row(
-            item, "global-exact", "tol=1e-10", exact.prolongation,
+            item, "global-reference", "tol=1e-10", exact.prolongation,
             exact_cycle, problem.rhs,
             exact.report.timing.total_ms +
                 exact_cycle.setup_report().total_ms,
-            maximum_cycles, aggregates["global-exact"]));
+            maximum_cycles, aggregates["global-reference"]));
 
         const tgi::TwoGridCycle geometric_cycle(
             problem.matrix, geometric.prolongation, 1, threads);
@@ -137,7 +135,7 @@ int main(int argc, char** argv) {
     experiment_support::Rows summary_rows;
     for (const std::string method :
          {"adaptive-fast", "adaptive-reuse",
-          "global-exact", "geometric"}) {
+          "global-reference", "geometric"}) {
         const Aggregate& value = aggregates[method];
         summary_rows.push_back({
             method,
@@ -163,12 +161,12 @@ int main(int argc, char** argv) {
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
-        "The v4.5 matrix changes one axis at a time around the 128/16, "
+        "The v4.6 matrix changes one axis at a time around the 128/16, "
         "contrast 1e4 cross-channel center: four size pairs, three contrasts "
         "and all six channel topologies. Adaptive-fast uses R=1; "
-        "it evaluates m=0,12,32,52 with a 16-cycle pilot and a 10% "
+        "it evaluates m=0,12,32,52 with a 16-cycle pilot cap and a 10% "
         "near-optimality slack. Adaptive-reuse uses R=256; it evaluates "
-        "m=0,12,20,...,60 with a 160-cycle pilot, a 2% slack and at most "
+        "m=0,12,20,...,60 with a 160-cycle pilot cap, a 2% slack and at most "
         "two step-two refinements. Every row uses identical coarse nodes, "
         "right-hand side and smoother across interpolation methods. The "
         "reuse policy represents a many-right-hand-side workload (R=256).");
@@ -180,6 +178,6 @@ int main(int argc, char** argv) {
         {"Method", "Converged", "Cycle sum", "Mean density %",
          "Setup sum ms", "Solve sum ms", "Total R=1 ms", "Total R=256 ms"},
         {15, 10, 11, 14, 13, 12, 13, 14}, summary_rows);
-    report.save("two_grid_comparison");
+    report.save("experiment1_two_grid_comparison");
     return 0;
 }

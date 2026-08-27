@@ -115,6 +115,11 @@ inline Vector solve_pcg(
     Vector direction = z;
     Vector action;
     double rz = dot(residual, z);
+    if (!(rz > 0.0) || !std::isfinite(rz)) {
+        stats.relative_residual =
+            std::sqrt(residual_squared) / residual_scale;
+        return x;
+    }
     for (int iteration = 0; iteration < maximum_iterations; ++iteration) {
         matrix.multiply(direction, action);
         const double denominator = dot(direction, action);
@@ -125,18 +130,39 @@ inline Vector solve_pcg(
         stats.iterations = iteration + 1;
         residual_squared = dot(residual, residual);
         if (residual_squared <= target_squared) {
-            stats.converged = true;
-            break;
+            matrix.multiply(x, product);
+            residual = rhs;
+            axpy(-1.0, product, residual);
+            residual_squared = dot(residual, residual);
+            if (residual_squared <= target_squared) {
+                stats.converged = true;
+                break;
+            }
+            for (std::size_t index = 0; index < z.size(); ++index) {
+                z[index] = (*inverse_diagonal)[index] * residual[index];
+            }
+            rz = dot(residual, z);
+            if (!(rz > 0.0) || !std::isfinite(rz)) break;
+            direction = z;
+            continue;
         }
         for (std::size_t index = 0; index < z.size(); ++index) {
             z[index] = (*inverse_diagonal)[index] * residual[index];
         }
         const double rz_new = dot(residual, z);
+        if (!(rz_new > 0.0) || !std::isfinite(rz_new)) break;
         const double beta = rz_new / rz;
         for (std::size_t index = 0; index < direction.size(); ++index) {
             direction[index] = z[index] + beta * direction[index];
         }
         rz = rz_new;
+    }
+    matrix.multiply(x, product);
+    residual = rhs;
+    axpy(-1.0, product, residual);
+    residual_squared = dot(residual, residual);
+    if (!fixed_budget && residual_squared <= target_squared) {
+        stats.converged = true;
     }
     stats.relative_residual =
         std::sqrt(residual_squared) / residual_scale;

@@ -65,29 +65,6 @@ inline std::filesystem::path write_result(
     return path;
 }
 
-inline std::string& active_result_group() {
-    static std::string name;
-    return name;
-}
-
-inline void begin_result_group(const std::string& name) {
-    active_result_group() = name;
-    write_result(name, "");
-}
-
-inline std::filesystem::path append_group_result(
-    const std::string& contents) {
-    const std::filesystem::path directory = TGI_RESULTS_DIR;
-    const std::filesystem::path path =
-        directory / (active_result_group() + ".txt");
-    std::ofstream stream(path, std::ios::app);
-    if (!stream || !(stream << contents << '\n')) {
-        throw std::runtime_error(
-            "cannot append result file " + path.string());
-    }
-    return path;
-}
-
 class Report {
 public:
     explicit Report(const std::string& title) {
@@ -136,9 +113,7 @@ public:
     }
 
     void save(const std::string& name) const {
-        const std::filesystem::path path = active_result_group().empty()
-            ? write_result(name, text_.str())
-            : append_group_result(text_.str());
+        const std::filesystem::path path = write_result(name, text_.str());
         std::cout << text_.str() << "Saved: " << path.string() << '\n';
     }
 

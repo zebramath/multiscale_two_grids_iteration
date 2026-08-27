@@ -46,7 +46,6 @@ experiment_support::Row path_row(
 }
 
 int main(int argc, char** argv) {
-    experiment_support::begin_result_group("experiment2_finite_path");
     experiment_support::BasicConfig base;
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
@@ -100,7 +99,7 @@ int main(int argc, char** argv) {
                 config.threads, maximum_cycles));
         }
         rows.push_back(path_row(
-            item, "global-exact", -1, problem.matrix, problem.rhs,
+            item, "global-reference", -1, problem.matrix, problem.rhs,
             exact.prolongation, exact_energy, initial_excess,
             config.threads, maximum_cycles));
     }
@@ -123,6 +122,6 @@ int main(int argc, char** argv) {
         {"1/h", "1/H", "Topology", "Contrast", "Method", "m", "Energy excess",
          "P density %", "Cycles"},
         {5, 5, 20, 10, 14, 7, 13, 11, 12}, rows, true);
-    report.save("finite_path_evidence");
+    report.save("experiment2_finite_path");
     return 0;
 }

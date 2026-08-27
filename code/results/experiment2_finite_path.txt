@@ -1,7 +1,7 @@
 Finite-PCG path evidence for nonmonotone two-grid behavior
 ==========================================================
 
-Version         : 4.5.0
+Version         : 4.6.0
 Threads         : 4
 Cases           : 3
 Checkpoints     : m=0,12,20,...,60 and exact
@@ -21,7 +21,7 @@ Finite path comparison
 64        16         cross-channel       1e+04      finite-PCG       44      1.349e-07      64.5206           274
 64        16         cross-channel       1e+04      finite-PCG       52      7.450e-09      75.2594           313
 64        16         cross-channel       1e+04      finite-PCG       60      3.757e-10      83.1472           319
-64        16         cross-channel       1e+04    global-exact    exact      0.000e+00      92.2549           321
+64        16         cross-channel       1e+04  global-reference    exact      0.000e+00      92.2549           321
 
 128       16         cross-channel       1e+04       geometric        0      1.000e+00       1.3950   failed@6000
 128       16         cross-channel       1e+04      finite-PCG       12      5.355e-02       6.7417          5523
@@ -31,7 +31,7 @@ Finite path comparison
 128       16         cross-channel       1e+04      finite-PCG       44      2.006e-04      30.3389           244
 128       16         cross-channel       1e+04      finite-PCG       52      1.062e-04      37.3532           276
 128       16         cross-channel       1e+04      finite-PCG       60      5.992e-05      44.4826           360
-128       16         cross-channel       1e+04    global-exact    exact      0.000e+00      97.8420          3227
+128       16         cross-channel       1e+04  global-reference    exact      0.000e+00      97.8420          3227
 128       16         cross-channel       1e+06       geometric        0      1.000e+00       1.3950   failed@6000
 128       16         cross-channel       1e+06      finite-PCG       12      5.363e-02       6.7417   failed@6000
 128       16         cross-channel       1e+06      finite-PCG       20      1.038e-02      11.6236   failed@6000
@@ -40,6 +40,5 @@ Finite path comparison
 128       16         cross-channel       1e+06      finite-PCG       44      2.034e-04      30.3389          1590
 128       16         cross-channel       1e+06      finite-PCG       52      1.084e-04      37.3532           298
 128       16         cross-channel       1e+06      finite-PCG       60      6.152e-05      44.4826           279
-128       16         cross-channel       1e+06    global-exact    exact      0.000e+00      96.2311          3471
-
+128       16         cross-channel       1e+06  global-reference    exact      0.000e+00      96.2311          3471
 

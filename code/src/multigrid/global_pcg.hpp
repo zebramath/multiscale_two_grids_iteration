@@ -199,10 +199,6 @@ inline SparseMatrix GlobalEnergyPcgPath::prolongation(
     return result;
 }
 
-}
-
-namespace tgi {
-
 struct AdaptiveGlobalPcgOptions {
     int minimum_steps = 12;
     int maximum_steps = 60;
@@ -220,7 +216,7 @@ struct AdaptiveGlobalPcgReport {
     int candidate_count = 0;
     int checkpoint_stride = 0;
     int maximum_sampled_steps = 0;
-    int pilot_iterations = 0;
+    int pilot_limit = 0;
     bool used_local_refinement = false;
     double selection_wall_ms = 0.0;
 };
@@ -246,7 +242,7 @@ inline int quantize(int value, int quantum) {
 struct SelectionProfile {
     int stride = 8;
     int maximum_steps = 60;
-    int pilot_iterations = 160;
+    int pilot_limit = 160;
     double near_optimal_slack = 0.02;
     bool refine = false;
 };
@@ -268,7 +264,7 @@ inline SelectionProfile selection_profile(
             options.step_quantum));
     profile.maximum_steps = std::min(
         profile.maximum_steps, options.maximum_steps);
-    profile.pilot_iterations = static_cast<int>(
+    profile.pilot_limit = static_cast<int>(
         std::lround(16.0 + 144.0 * detail));
     profile.near_optimal_slack = 0.10 - 0.08 * detail;
     profile.refine = detail >= 0.5;
@@ -276,13 +272,14 @@ inline SelectionProfile selection_profile(
 }
 
 inline double median(std::vector<double> values) {
-    const std::size_t middle = values.size() / 2U;
-    std::nth_element(values.begin(), values.begin() + middle, values.end());
-    double value = values[middle];
+    const auto middle = values.begin() + static_cast<std::ptrdiff_t>(
+        values.size() / 2U);
+    std::nth_element(values.begin(), middle, values.end());
+    double value = *middle;
     if (values.size() % 2U == 0U) {
-        std::nth_element(
-            values.begin(), values.begin() + middle - 1U, values.end());
-        value = 0.5 * (value + values[middle - 1U]);
+        const auto lower = middle - 1;
+        std::nth_element(values.begin(), lower, values.end());
+        value = 0.5 * (value + *lower);
     }
     return value;
 }
@@ -327,8 +324,6 @@ struct Candidate {
     int steps = 0;
     int pilot_iterations = 0;
     int predicted_cycles = 0;
-    double pilot_rho = 1.0;
-    double pilot_ms = 0.0;
     bool pilot_converged = false;
     Vector solution;
     Vector residual;
@@ -355,10 +350,9 @@ inline std::unique_ptr<Candidate> make_candidate(
 }
 
 inline void probe_candidate(
-    Candidate& candidate, const Vector& rhs, int pilot_iterations,
+    Candidate& candidate, const Vector& rhs, int pilot_limit,
     const AdaptiveGlobalPcgOptions& options) {
-    const auto begin = Clock::now();
-    while (candidate.pilot_iterations < pilot_iterations &&
+    while (candidate.pilot_iterations < pilot_limit &&
            !candidate.pilot_converged) {
         const double squared = candidate.cycle->iterate(
             rhs, candidate.solution, candidate.residual,
@@ -369,13 +363,12 @@ inline void probe_candidate(
         candidate.pilot_converged =
             current / candidate.initial_norm <= options.solve_tolerance;
     }
-    candidate.pilot_ms += milliseconds(begin, Clock::now());
     const double relative_residual =
         candidate.norms.back() / candidate.initial_norm;
-    candidate.pilot_rho = fit_tail(candidate.norms);
+    const double pilot_rho = fit_tail(candidate.norms);
     candidate.predicted_cycles = forecast_cycles(
         candidate.pilot_iterations, relative_residual,
-        candidate.pilot_rho,
+        pilot_rho,
         options.solve_tolerance, options.maximum_cycles);
 }
 
@@ -443,7 +436,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
     candidates.push_back(make_candidate(
         a, rhs, initial_prolongation, 0, options));
     probe_candidate(
-        *candidates.back(), rhs, profile.pilot_iterations, options);
+        *candidates.back(), rhs, profile.pilot_limit, options);
 
     AdaptiveGlobalPcgResult result;
     GlobalEnergyPcgPath path(
@@ -454,7 +447,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
             a, rhs, path.prolongation(options.drop_tolerance),
             steps, options));
         probe_candidate(
-            *candidates.back(), rhs, profile.pilot_iterations, options);
+            *candidates.back(), rhs, profile.pilot_limit, options);
     }
 
     if (profile.refine) {
@@ -485,7 +478,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
                     steps, options));
                 probe_candidate(
                     *candidates.back(), rhs,
-                    profile.pilot_iterations, options);
+                    profile.pilot_limit, options);
             }
             result.report.used_local_refinement = true;
         }
@@ -499,7 +492,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
     result.report.candidate_count = static_cast<int>(candidates.size());
     result.report.checkpoint_stride = profile.stride;
     result.report.maximum_sampled_steps = profile.maximum_steps;
-    result.report.pilot_iterations = profile.pilot_iterations;
+    result.report.pilot_limit = profile.pilot_limit;
     result.report.selection_wall_ms = milliseconds(begin, Clock::now());
     return result;
 }

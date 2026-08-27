@@ -185,8 +185,6 @@ experiment_support::Row timing_row(
 }  // namespace
 
 int main(int argc, char** argv) {
-    experiment_support::begin_result_group(
-        "experiment4_submission_robustness");
     int threads = 4;
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
@@ -413,6 +411,6 @@ int main(int argc, char** argv) {
         "break-even is R=" + experiment_support::fixed(break_even, 2) +
         " right-hand sides on this case; it is a workload measurement, not "
         "a universal threshold.");
-    report.save("submission_robustness");
+    report.save("experiment4_submission_robustness");
     return 0;
 }

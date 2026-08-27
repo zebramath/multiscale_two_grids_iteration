@@ -1,7 +1,7 @@
 Submission-focused robustness checks
 ====================================
 
-Version         : 4.5.0
+Version         : 4.6.0
 Grid            : 64/16
 Contrast        : 1e4
 Topology        : cross-channel
@@ -89,9 +89,8 @@ Repeated wall-clock summary
 ---------------------------
 Policy              Runs  Setup med ms    Setup Q1    Setup Q3  Solve med ms   Solve Q1   Solve Q3  Total med ms   Total Q1   Total Q3   Cycles med
 ----------------  ------  -----------  ----------  ----------  ----------  ---------  ---------  ----------  ---------  ---------  -----------
-adaptive-fast          5      218.239     210.566     225.760      48.037     41.587     48.436     266.675    259.227    273.797          114
-adaptive-reuse         5      941.549     894.819     946.191      14.291     12.724     14.345     955.894    909.110    958.474           54
+adaptive-fast          5      159.565     157.978     160.639      37.090     34.602     38.444     198.453    192.247    199.083          114
+adaptive-reuse         5      733.957     729.427     746.356      11.505     11.345     12.058     745.301    741.485    757.861           54
 
-Note: Using policy-wise medians in S+R*T, the measured fast/reuse break-even is R=21.43 right-hand sides on this case; it is a workload measurement, not a universal threshold.
-
+Note: Using policy-wise medians in S+R*T, the measured fast/reuse break-even is R=22.45 right-hand sides on this case; it is a workload measurement, not a universal threshold.
 

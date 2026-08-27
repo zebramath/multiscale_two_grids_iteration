@@ -6,11 +6,8 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
-#include <cstdint>
 #include <exception>
-#include <limits>
 #include <mutex>
-#include <random>
 #include <stdexcept>
 #include <thread>
 #include <utility>
@@ -18,51 +15,29 @@
 
 namespace tgi {
 
-inline SparseMatrix sparse_multiply(const SparseMatrix& lhs,
-                             const SparseMatrix& rhs,
-                             double drop_tolerance = 0.0,
-                             int thread_count = 1);
-inline SparseMatrix galerkin_sparse(const SparseMatrix& a,
-                             const SparseMatrix& p,
-                             double drop_tolerance = 0.0,
-                             int thread_count = 1);
+inline SparseMatrix sparse_multiply(
+    const SparseMatrix& lhs, const SparseMatrix& rhs,
+    double drop_tolerance = 0.0, int thread_count = 1);
 
 struct CoarseSetupReport {
-    double transpose_ms = 0.0;
-    double fine_product_ms = 0.0;
-    double coarse_product_ms = 0.0;
-    double galerkin_ms = 0.0;
-    double ordering_ms = 0.0;
-    double factorization_ms = 0.0;
     double total_ms = 0.0;
     double interpolation_energy = 0.0;
     std::size_t coarse_nnz = 0;
-    std::size_t factor_nnz = 0;
 };
 
 class TwoGridCycle {
 public:
     struct Workspace {
-        Vector current_residual;
-        Vector sweep_correction;
-        Vector fine_product;
         Vector coarse_rhs;
         Vector coarse_solution;
         Vector coarse_work;
-        Vector coarse_correction;
     };
 
     TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
                  int smoothing_steps = 1, int setup_threads = 1);
 
-    Vector apply(const Vector& residual) const;
-    void apply(const Vector& residual, Vector& correction,
-               Workspace& workspace) const;
     double iterate(const Vector& rhs, Vector& solution, Vector& residual,
                    Workspace& workspace) const;
-    Vector apply_error(const Vector& error) const;
-    double estimate_convergence_factor(int iterations = 80,
-                                       std::uint64_t seed = 12345) const;
     void solve_coarse_system(const Vector& rhs, Vector& solution,
                              Vector& work) const {
         coarse_solver_.solve(rhs, solution, work);
@@ -72,14 +47,10 @@ public:
     int coarse_size() const { return p_.cols(); }
 
 private:
-    void apply_correction_cycle(Vector& residual, Vector& correction,
-                                Workspace& workspace) const;
     void solve_gauss_seidel_sweep(const Vector& rhs, bool forward,
                                   Vector& solution) const;
     void restrict_fine_residual(const Vector& rhs, const Vector& solution,
                                 Vector& coarse_rhs) const;
-    void solve_gauss_seidel_correction(const Vector& residual, bool forward,
-                                       Vector& correction) const;
 
     const SparseMatrix& a_;
     const SparseMatrix& p_;
@@ -592,18 +563,8 @@ inline SparseMatrix sparse_multiply(const SparseMatrix& lhs,
         lhs, rhs, drop_tolerance, thread_count, false);
 }
 
-inline SparseMatrix galerkin_sparse(const SparseMatrix& a,
-                             const SparseMatrix& p,
-                             double drop_tolerance,
-                             int thread_count) {
-    const SparseMatrix ap =
-        sparse_multiply(a, p, drop_tolerance, thread_count);
-    return two_grid_solver_detail::multiply_sparse_matrices(
-        p.transpose(thread_count), ap, drop_tolerance, thread_count, true);
-}
-
 inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
-                           int smoothing_steps, int setup_threads)
+                                  int smoothing_steps, int setup_threads)
     : a_(a), p_(p), smoothing_steps_(smoothing_steps) {
     const auto setup_begin = two_grid_solver_detail::Clock::now();
     inverse_diagonal_.resize(static_cast<std::size_t>(a_.rows()));
@@ -630,51 +591,23 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
         diagonal_position_[i] = position;
     }
 
-    const auto galerkin_begin = two_grid_solver_detail::Clock::now();
-    const auto transpose_begin = two_grid_solver_detail::Clock::now();
     p_transpose_ = p_.transpose(setup_threads);
-    const auto transpose_end = two_grid_solver_detail::Clock::now();
-    setup_report_.transpose_ms =
-        two_grid_solver_detail::milliseconds(transpose_begin, transpose_end);
-    const auto fine_product_begin = two_grid_solver_detail::Clock::now();
     const SparseMatrix ap =
         sparse_multiply(a_, p_, 0.0, setup_threads);
-    const auto fine_product_end = two_grid_solver_detail::Clock::now();
-    setup_report_.fine_product_ms =
-        two_grid_solver_detail::milliseconds(
-            fine_product_begin, fine_product_end);
-    const auto coarse_product_begin = two_grid_solver_detail::Clock::now();
     coarse_matrix_ =
         two_grid_solver_detail::multiply_sparse_matrices(
             p_transpose_, ap, 0.0, setup_threads, true);
-    const auto coarse_product_end = two_grid_solver_detail::Clock::now();
-    setup_report_.coarse_product_ms =
-        two_grid_solver_detail::milliseconds(
-            coarse_product_begin, coarse_product_end);
-    const auto galerkin_end = two_grid_solver_detail::Clock::now();
-    setup_report_.galerkin_ms =
-        two_grid_solver_detail::milliseconds(galerkin_begin, galerkin_end);
     setup_report_.coarse_nnz = coarse_matrix_.nnz();
     for (double value : coarse_matrix_.diagonal()) {
         setup_report_.interpolation_energy += value;
     }
 
-    const auto ordering_begin = two_grid_solver_detail::Clock::now();
     const std::vector<int> ordering =
         two_grid_solver_detail::coarse_ordering(coarse_matrix_);
-    const auto ordering_end = two_grid_solver_detail::Clock::now();
-    setup_report_.ordering_ms =
-        two_grid_solver_detail::milliseconds(ordering_begin, ordering_end);
-
-    const auto factorization_begin = two_grid_solver_detail::Clock::now();
     coarse_solver_.factorize(coarse_matrix_, ordering);
-    const auto factorization_end = two_grid_solver_detail::Clock::now();
-    setup_report_.factorization_ms =
-        two_grid_solver_detail::milliseconds(
-            factorization_begin, factorization_end);
-    setup_report_.factor_nnz = coarse_solver_.nnz();
     setup_report_.total_ms =
-        two_grid_solver_detail::milliseconds(setup_begin, factorization_end);
+        two_grid_solver_detail::milliseconds(
+            setup_begin, two_grid_solver_detail::Clock::now());
 
     unsigned int requested = setup_threads > 0
         ? static_cast<unsigned int>(setup_threads)
@@ -691,28 +624,6 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
                      {8, static_cast<int>(requested),
                       p_.rows(), p_.cols()}))
         : 1;
-}
-
-inline void TwoGridCycle::solve_gauss_seidel_correction(
-    const Vector& residual, bool forward, Vector& correction) const {
-    correction.resize(residual.size());
-    const int begin = forward ? 0 : a_.rows() - 1;
-    const int end = forward ? a_.rows() : -1;
-    const int increment = forward ? 1 : -1;
-    for (int row = begin; row != end; row += increment) {
-        double value = residual[static_cast<std::size_t>(row)];
-        for (int pos = a_.row_ptr()[static_cast<std::size_t>(row)];
-             pos < a_.row_ptr()[static_cast<std::size_t>(row) + 1U]; ++pos) {
-            const int col = a_.col_idx()[static_cast<std::size_t>(pos)];
-            const bool triangular_entry = forward ? col < row : col > row;
-            if (triangular_entry) {
-                value -= a_.values()[static_cast<std::size_t>(pos)] *
-                         correction[static_cast<std::size_t>(col)];
-            }
-        }
-        correction[static_cast<std::size_t>(row)] =
-            value * inverse_diagonal_[static_cast<std::size_t>(row)];
-    }
 }
 
 inline void TwoGridCycle::solve_gauss_seidel_sweep(
@@ -772,61 +683,6 @@ inline void TwoGridCycle::restrict_fine_residual(
     }
 }
 
-inline Vector TwoGridCycle::apply(const Vector& residual) const {
-    Vector correction;
-    Workspace workspace;
-    apply(residual, correction, workspace);
-    return correction;
-}
-
-inline void TwoGridCycle::apply(const Vector& residual, Vector& correction,
-                         Workspace& workspace) const {
-    workspace.current_residual = residual;
-    apply_correction_cycle(
-        workspace.current_residual, correction, workspace);
-}
-
-inline void TwoGridCycle::apply_correction_cycle(
-    Vector& residual, Vector& correction, Workspace& workspace) const {
-    correction.assign(residual.size(), 0.0);
-    for (int step = 0; step < smoothing_steps_; ++step) {
-        solve_gauss_seidel_correction(
-            residual, true,
-            workspace.sweep_correction);
-        axpy(1.0, workspace.sweep_correction, correction);
-        a_.multiply(
-            workspace.sweep_correction, workspace.fine_product,
-            application_threads_);
-        axpy(-1.0, workspace.fine_product, residual);
-    }
-
-    two_grid_solver_detail::multiply_parallel(
-        p_transpose_, residual, workspace.coarse_rhs,
-        application_threads_);
-    coarse_solver_.solve(
-        workspace.coarse_rhs, workspace.coarse_solution,
-        workspace.coarse_work);
-    p_.multiply(
-        workspace.coarse_solution, workspace.coarse_correction,
-        application_threads_);
-    axpy(1.0, workspace.coarse_correction, correction);
-    a_.multiply(
-        workspace.coarse_correction, workspace.fine_product,
-        application_threads_);
-    axpy(-1.0, workspace.fine_product, residual);
-
-    for (int step = 0; step < smoothing_steps_; ++step) {
-        solve_gauss_seidel_correction(
-            residual, false,
-            workspace.sweep_correction);
-        axpy(1.0, workspace.sweep_correction, correction);
-        a_.multiply(
-            workspace.sweep_correction, workspace.fine_product,
-            application_threads_);
-        axpy(-1.0, workspace.fine_product, residual);
-    }
-}
-
 inline double TwoGridCycle::iterate(
     const Vector& rhs, Vector& solution, Vector& residual,
     Workspace& workspace) const {
@@ -855,31 +711,6 @@ inline double TwoGridCycle::iterate(
     }
     return a_.residual_squared(
         solution, rhs, residual, application_threads_);
-}
-
-inline Vector TwoGridCycle::apply_error(const Vector& error) const {
-    return subtract(error, apply(a_.multiply(error)));
-}
-
-inline double TwoGridCycle::estimate_convergence_factor(int iterations,
-                                                 std::uint64_t seed) const {
-    std::mt19937_64 rng(seed);
-    std::uniform_real_distribution<double> distribution(-1.0, 1.0);
-    Vector x(static_cast<std::size_t>(a_.rows()));
-    for (double& value : x) value = distribution(rng);
-    double energy_norm = std::sqrt(dot(x, a_.multiply(x)));
-    scale(1.0 / energy_norm, x);
-
-    double contraction = 0.0;
-    for (int iteration = 0; iteration < iterations; ++iteration) {
-        Vector y = apply_error(x);
-        const double y_norm = std::sqrt(std::max(0.0, dot(y, a_.multiply(y))));
-        if (!(y_norm > std::numeric_limits<double>::epsilon())) return 0.0;
-        contraction = y_norm;
-        scale(1.0 / y_norm, y);
-        x.swap(y);
-    }
-    return contraction;
 }
 
 inline TwoGridIterationResult solve_two_grid(const Vector& rhs,
