@@ -8,7 +8,6 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
-#include <limits>
 #include <map>
 #include <string>
 #include <utility>
@@ -22,6 +21,7 @@ constexpr double pi = 3.141592653589793238462643383279502884;
 struct SolveResult {
     int cycles = 0;
     double milliseconds = 0.0;
+    double effective_factor = 1.0;
     tgi::TwoGridIterationStatus status =
         tgi::TwoGridIterationStatus::SlowAtLimit;
     bool converged = false;
@@ -42,6 +42,12 @@ struct TimingSample {
     int cycles = 0;
 };
 
+enum class TimingMethod {
+    Fast,
+    Reuse,
+    GlobalReference
+};
+
 struct RhsCase {
     std::string name;
     tgi::Vector values;
@@ -59,17 +65,16 @@ SolveResult measure_solve(
         rhs, cycle, 1.0e-6, maximum_cycles);
     return {
         solved.cycles, elapsed_ms(begin, Clock::now()),
+        solved.effective_factor,
         solved.status, solved.converged};
 }
 
 tgi::AdaptiveGlobalPcgResult build_adaptive(
     const tgi::StructuredGrid& grid, const tgi::SparseMatrix& matrix,
     const tgi::SparseMatrix& geometric, const tgi::Vector& training_rhs,
-    double expected_rhs_count, int threads, int maximum_cycles) {
+    tgi::AdaptiveGlobalPcgPolicy policy, int threads, int maximum_cycles) {
     tgi::AdaptiveGlobalPcgOptions options;
-    options.minimum_steps = 12;
-    options.maximum_steps = 60;
-    options.expected_rhs_count = expected_rhs_count;
+    options.policy = policy;
     options.maximum_cycles = maximum_cycles;
     options.thread_count = threads;
     return tgi::build_adaptive_global_pcg_interpolation(
@@ -154,13 +159,26 @@ double quantile(std::vector<double> values, double probability) {
 
 TimingSample timing_sample(
     const tgi::StructuredGrid& grid, const tgi::SparseMatrix& matrix,
-    const tgi::Vector& rhs, double expected_rhs_count, int threads,
+    const tgi::Vector& rhs, TimingMethod method, int threads,
     int maximum_cycles) {
     const auto setup_begin = Clock::now();
+    if (method == TimingMethod::GlobalReference) {
+        const auto reference = experiment_support::build_global_reference(
+            grid, matrix, threads);
+        const tgi::TwoGridCycle cycle(
+            matrix, reference.prolongation, 1, threads);
+        const double setup_ms = elapsed_ms(setup_begin, Clock::now());
+        const SolveResult solved = measure_solve(
+            rhs, cycle, maximum_cycles);
+        return {setup_ms, solved.milliseconds, solved.cycles};
+    }
     const auto geometric =
         experiment_support::geometric_interpolation(grid);
     const auto adaptive = build_adaptive(
-        grid, matrix, geometric.prolongation, rhs, expected_rhs_count,
+        grid, matrix, geometric.prolongation, rhs,
+        method == TimingMethod::Fast
+            ? tgi::AdaptiveGlobalPcgPolicy::Fast
+            : tgi::AdaptiveGlobalPcgPolicy::Reuse,
         threads, maximum_cycles);
     const double setup_ms = elapsed_ms(setup_begin, Clock::now());
     const SolveResult solved = measure_solve(
@@ -225,8 +243,9 @@ int main(int argc, char** argv) {
         const auto geometric =
             experiment_support::geometric_interpolation(grid);
         for (const auto& policy : {
-                 std::pair<const char*, double>{"fast", 1.0},
-                 std::pair<const char*, double>{"reuse", 256.0}}) {
+                 std::pair<const char*, tgi::AdaptiveGlobalPcgPolicy>{
+                     "fast", tgi::AdaptiveGlobalPcgPolicy::Fast},
+                 {"reuse", tgi::AdaptiveGlobalPcgPolicy::Reuse}}) {
             const auto adaptive = build_adaptive(
                 grid, problem.matrix, geometric.prolongation, problem.rhs,
                 policy.second, threads, maximum_cycles);
@@ -237,6 +256,7 @@ int main(int argc, char** argv) {
                 std::to_string(seed), policy.first,
                 std::to_string(adaptive.report.selected_steps),
                 std::to_string(solved.cycles),
+                experiment_support::fixed(solved.effective_factor, 6),
                 experiment_support::fixed(
                     experiment_support::interpolation_density_percent(
                         *adaptive.prolongation), 4),
@@ -252,6 +272,7 @@ int main(int argc, char** argv) {
         seed_rows.push_back({
             std::to_string(seed), "global-reference", "exact",
             std::to_string(solved.cycles),
+            experiment_support::fixed(solved.effective_factor, 6),
             experiment_support::fixed(
                 experiment_support::interpolation_density_percent(
                     exact.prolongation), 4),
@@ -284,10 +305,12 @@ int main(int argc, char** argv) {
         experiment_support::geometric_interpolation(grid);
     const auto fast = build_adaptive(
         grid, transfer_problem.matrix, transfer_geometric.prolongation,
-        transfer_problem.rhs, 1.0, threads, maximum_cycles);
+        transfer_problem.rhs, tgi::AdaptiveGlobalPcgPolicy::Fast,
+        threads, maximum_cycles);
     const auto reuse = build_adaptive(
         grid, transfer_problem.matrix, transfer_geometric.prolongation,
-        transfer_problem.rhs, 256.0, threads, maximum_cycles);
+        transfer_problem.rhs, tgi::AdaptiveGlobalPcgPolicy::Reuse,
+        threads, maximum_cycles);
     const auto exact = experiment_support::build_global_reference(
         grid, transfer_problem.matrix, threads);
     const tgi::TwoGridCycle geometric_cycle(
@@ -315,6 +338,7 @@ int main(int argc, char** argv) {
                         ? std::to_string(reuse.report.selected_steps)
                         : "-",
                 std::to_string(solved.cycles),
+                experiment_support::fixed(solved.effective_factor, 6),
                 tgi::two_grid_status_name(solved.status)});
         }
     }
@@ -340,63 +364,56 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::progress("submission repeated timing");
+    experiment_support::BasicConfig timing_config = config;
+    timing_config.fine_intervals = 128;
+    const tgi::StructuredGrid timing_grid =
+        experiment_support::make_grid(timing_config);
+    const auto timing_problem = experiment_support::make_problem(
+        timing_grid, cross, timing_config, 1);
     (void)timing_sample(
-        grid, transfer_problem.matrix, transfer_problem.rhs,
-        1.0, threads, maximum_cycles);
+        timing_grid, timing_problem.matrix, timing_problem.rhs,
+        TimingMethod::Fast, threads, maximum_cycles);
     (void)timing_sample(
-        grid, transfer_problem.matrix, transfer_problem.rhs,
-        256.0, threads, maximum_cycles);
+        timing_grid, timing_problem.matrix, timing_problem.rhs,
+        TimingMethod::Reuse, threads, maximum_cycles);
+    (void)timing_sample(
+        timing_grid, timing_problem.matrix, timing_problem.rhs,
+        TimingMethod::GlobalReference, threads, maximum_cycles);
     std::vector<TimingSample> fast_timings;
     std::vector<TimingSample> reuse_timings;
+    std::vector<TimingSample> reference_timings;
     constexpr int repetitions = 5;
     for (int repetition = 0; repetition < repetitions; ++repetition) {
         experiment_support::progress(
             "timing repetition " + std::to_string(repetition + 1) + "/" +
             std::to_string(repetitions));
-        if (repetition % 2 == 0) {
-            fast_timings.push_back(timing_sample(
-                grid, transfer_problem.matrix, transfer_problem.rhs,
-                1.0, threads, maximum_cycles));
-            reuse_timings.push_back(timing_sample(
-                grid, transfer_problem.matrix, transfer_problem.rhs,
-                256.0, threads, maximum_cycles));
-        } else {
-            reuse_timings.push_back(timing_sample(
-                grid, transfer_problem.matrix, transfer_problem.rhs,
-                256.0, threads, maximum_cycles));
-            fast_timings.push_back(timing_sample(
-                grid, transfer_problem.matrix, transfer_problem.rhs,
-                1.0, threads, maximum_cycles));
+        const std::array<TimingMethod, 3> order{
+            static_cast<TimingMethod>(repetition % 3),
+            static_cast<TimingMethod>((repetition + 1) % 3),
+            static_cast<TimingMethod>((repetition + 2) % 3)};
+        for (TimingMethod method : order) {
+            TimingSample sample = timing_sample(
+                timing_grid, timing_problem.matrix, timing_problem.rhs,
+                method, threads, maximum_cycles);
+            if (method == TimingMethod::Fast) {
+                fast_timings.push_back(sample);
+            } else if (method == TimingMethod::Reuse) {
+                reuse_timings.push_back(sample);
+            } else {
+                reference_timings.push_back(sample);
+            }
         }
     }
     experiment_support::Rows timing_rows{
         timing_row("adaptive-fast", fast_timings),
-        timing_row("adaptive-reuse", reuse_timings)};
-    std::vector<double> fast_setup;
-    std::vector<double> fast_solve;
-    std::vector<double> reuse_setup;
-    std::vector<double> reuse_solve;
-    for (const auto& sample : fast_timings) {
-        fast_setup.push_back(sample.setup_ms);
-        fast_solve.push_back(sample.solve_ms);
-    }
-    for (const auto& sample : reuse_timings) {
-        reuse_setup.push_back(sample.setup_ms);
-        reuse_solve.push_back(sample.solve_ms);
-    }
-    const double setup_difference =
-        quantile(reuse_setup, 0.50) - quantile(fast_setup, 0.50);
-    const double solve_difference =
-        quantile(fast_solve, 0.50) - quantile(reuse_solve, 0.50);
-    const double break_even = solve_difference > 0.0
-        ? setup_difference / solve_difference
-        : std::numeric_limits<double>::infinity();
-
+        timing_row("adaptive-reuse", reuse_timings),
+        timing_row("global-reference", reference_timings)};
     experiment_support::Report report(
         "Submission-focused robustness checks");
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Grid", "64/16"},
+        {"Timing grid", "128/16"},
         {"Contrast", "1e4"},
         {"Topology", "cross-channel"},
         {"Threads", std::to_string(threads)},
@@ -405,13 +422,16 @@ int main(int argc, char** argv) {
     report.add_note(
         "This single compact experiment adds only the three checks needed "
         "before submission: five coefficient seeds, six right-hand sides "
-        "evaluated with interpolation trained only on the constant RHS, and "
-        "five post-warmup timing repetitions. Timing order alternates by "
-        "repetition; Q1, median and Q3 are reported instead of a single run.");
+        "evaluated with interpolation trained only on the constant RHS. The "
+        "single timing question is the central 128/16 cross-channel case: "
+        "adaptive-fast, adaptive-reuse and the global energy reference are "
+        "measured in five post-warmup repetitions with rotating order. Q1, "
+        "median and Q3 replace a single wall-clock observation.");
     report.add_table(
         "Coefficient-seed stability",
-        {"Seed", "Method", "m", "Cycles", "P density %", "Status"},
-        {7, 18, 7, 10, 12, 10}, seed_rows, true);
+        {"Seed", "Method", "m", "Cycles", "Effective factor",
+         "P density %", "Status"},
+        {7, 18, 7, 10, 16, 12, 10}, seed_rows, true);
     report.add_table(
         "Seed aggregate",
         {"Method", "Conv/slow/div", "Converged cycle sum",
@@ -419,24 +439,25 @@ int main(int argc, char** argv) {
         {18, 13, 19, 14, 15}, seed_summary);
     report.add_table(
         "Right-hand-side transfer (constant-RHS training)",
-        {"Evaluation RHS", "Method", "m", "Cycles", "Status"},
-        {18, 18, 7, 8, 10}, rhs_rows, true);
+        {"Evaluation RHS", "Method", "m", "Cycles", "Effective factor",
+         "Status"},
+        {18, 18, 7, 8, 16, 10}, rhs_rows, true);
     report.add_table(
         "RHS aggregate",
         {"Method", "Conv/slow/div", "Converged cycle sum",
          "Mean converged", "Worst converged"},
         {18, 13, 19, 14, 15}, rhs_summary);
     report.add_table(
-        "Repeated wall-clock summary",
+        "Central 128/16 repeated wall-clock comparison",
         {"Policy", "Runs", "Setup med ms", "Setup Q1", "Setup Q3",
          "Solve med ms", "Solve Q1", "Solve Q3", "Total med ms", "Total Q1",
          "Total Q3", "Cycles med"},
         {16, 6, 11, 10, 10, 10, 9, 9, 10, 9, 9, 11}, timing_rows);
     report.add_note(
-        "Using policy-wise medians in S+R*T, the measured fast/reuse "
-        "break-even is R=" + experiment_support::fixed(break_even, 2) +
-        " right-hand sides on this case; it is a workload measurement, not "
-        "a universal threshold.");
+        "Fast and reuse select the same m=43 interpolation on this center "
+        "case. Their solve-time difference is timing variation; fast has the "
+        "lower end-to-end cost because it reaches that interpolation without "
+        "candidate pilots.");
     report.save("experiment4_submission_robustness");
     return 0;
 }

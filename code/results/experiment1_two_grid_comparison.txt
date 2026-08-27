@@ -1,91 +1,82 @@
 Cross-problem two-grid interpolation comparison
 ===============================================
 
-Version         : 4.7.0
+Version         : 4.8.0
 Cases           : 13
 Mode            : full
 Threads         : 4
 Solve tolerance : 1e-6
-Maximum cycles  : 12000
+Maximum cycles  : 20000
 
-Note: The v4.7 matrix varies fine/coarse scale, contrast and six channel topologies. Two fixed-H scale extensions, 160/16 and 192/16, test larger fine-grid separation. Fast evaluates m=0,12,32,52 with a 16-cycle pilot cap; reuse evaluates m=0,12,20,...,60 with a 160-cycle cap and at most two step-two refinements. A slow-limit row still contracts at the 12000-cycle cap; a diverged row has nonfinite residual or sustained growing tail. Solve and total times are shown only for converged rows.
+Note: The v4.8 matrix varies fine/coarse scale, contrast and six channel topologies. The two 256/16 extensions test cross-channel and winding-ring coefficients at the largest scale. Fast directly uses (1/h)/3, moving to (1/h)/2 only when the matrix diagonal ratio is at least 1e5. Reuse tests the five normalized checkpoints 0,(1/h)/8,(1/h)/4,(1/h)/3,(1/h)/2 and selects by a residual contraction forecast. Effective factor is the whole-solve geometric mean contraction; tail factor uses the last 32 cycles.
 
 All two-grid cases
 ------------------
-Axis            1/h    1/H    Contrast    Seed              Topology            Method     Parameter  P density %     Ac nnz    Setup ms    Solve ms    Total ms    Cycles      Status  Final relres  Tail factor
-------------  -----  -----  ----------  ------  --------------------  ----------------  ------------  -----------  ---------  ----------  ----------  ----------  --------  ----------  ------------  -----------
-size             32      8       1e+04       1         cross-channel     adaptive-fast       R=1,m=0       5.0989        361      14.721       1.045      15.766        40   converged      8.38e-07     0.697533
-size             32      8       1e+04       1         cross-channel    adaptive-reuse     R=256,m=0       5.0989        361      43.664       0.832      44.496        40   converged      8.38e-07     0.697533
-size             32      8       1e+04       1         cross-channel  global-reference     tol=1e-10      95.0052       2401       9.198       2.430      11.629        54   converged      8.75e-07     0.787326
-size             32      8       1e+04       1         cross-channel         geometric           P_G       5.0989        361       0.142       0.889       1.031        40   converged      8.38e-07     0.697533
-size             64      8       1e+04       1         cross-channel     adaptive-fast      R=1,m=12      24.6651       1717      57.435      17.953      75.387       204   converged      9.67e-07     0.935538
-size             64      8       1e+04       1         cross-channel    adaptive-reuse    R=256,m=12      24.6651       1717     273.526      20.672     294.197       204   converged      9.67e-07     0.935538
-size             64      8       1e+04       1         cross-channel  global-reference     tol=1e-10      98.7906       2401      77.473      51.229     128.702       264   converged      9.69e-07     0.954615
-size             64      8       1e+04       1         cross-channel         geometric           P_G       5.6689        361       0.364      28.287      28.652       302   converged      9.73e-07     0.959655
-size             64     16       1e+04       1         cross-channel     adaptive-fast      R=1,m=32      45.1146      48645     197.468      37.588     235.056       114   converged      8.98e-07     0.896010
-size             64     16       1e+04       1         cross-channel    adaptive-reuse    R=256,m=18      21.5991      34561     807.661      11.381     819.042        54   converged      8.56e-07     0.730086
-size             64     16       1e+04       1         cross-channel  global-reference     tol=1e-10      92.2549      50625     186.302     166.672     352.974       321   converged      9.69e-07     0.962692
-size             64     16       1e+04       1         cross-channel         geometric           P_G       1.2346       1849       0.396          --          --     12000  slow-limit      1.18e-03     0.999389
+Axis            1/h    1/H    Contrast    Seed              Topology            Method     Parameter  P density %     Ac nnz    Cycles      Status  Final relres  Effective factor  Tail factor
+------------  -----  -----  ----------  ------  --------------------  ----------------  ------------  -----------  ---------  --------  ----------  ------------  ----------------  -----------
+size             32      8       1e+04       1         cross-channel     adaptive-fast          m=11      40.2408       2261        40   converged      7.36e-07          0.702550     0.665400
+size             32      8       1e+04       1         cross-channel    adaptive-reuse           m=4      15.9039       1305        37   converged      7.34e-07          0.682669     0.664730
+size             32      8       1e+04       1         cross-channel  global-reference     tol=1e-10      95.0052       2401        54   converged      8.75e-07          0.772358     0.787326
+size             32      8       1e+04       1         cross-channel         geometric           P_G       5.0989        361        40   converged      8.38e-07          0.704815     0.697533
+size             64      8       1e+04       1         cross-channel     adaptive-fast          m=21      41.7691       2261       251   converged      9.73e-07          0.946341     0.947535
+size             64      8       1e+04       1         cross-channel    adaptive-reuse           m=8      17.8614       1305       123   converged      9.20e-07          0.893149     0.887225
+size             64      8       1e+04       1         cross-channel  global-reference     tol=1e-10      98.7906       2401       264   converged      9.69e-07          0.948901     0.954615
+size             64      8       1e+04       1         cross-channel         geometric           P_G       5.6689        361       302   converged      9.73e-07          0.955198     0.959655
+size             64     16       1e+04       1         cross-channel     adaptive-fast          m=21      26.6650      38325        65   converged      8.21e-07          0.806080     0.803424
+size             64     16       1e+04       1         cross-channel    adaptive-reuse          m=16      18.7750      31025        60   converged      7.71e-07          0.790885     0.748576
+size             64     16       1e+04       1         cross-channel  global-reference     tol=1e-10      92.2549      50625       321   converged      9.69e-07          0.957779     0.962692
+size             64     16       1e+04       1         cross-channel         geometric           P_G       1.2346       1849     20000  slow-limit      1.28e-05          0.999437     0.999472
 
-center          128     16       1e+04       1         cross-channel     adaptive-fast      R=1,m=52      37.3532      45165     548.100     331.264     879.363       276   converged      9.89e-07     0.952423
-center          128     16       1e+04       1         cross-channel    adaptive-reuse    R=256,m=42      28.6040      40701    2692.886     222.196    2915.082       238   converged      9.74e-07     0.948227
-center          128     16       1e+04       1         cross-channel  global-reference     tol=1e-10      97.8420      50625    2000.156    8363.877   10364.033      3227   converged      9.97e-07     0.996163
-center          128     16       1e+04       1         cross-channel         geometric           P_G       1.3950       1849       1.147          --          --     12000  slow-limit      2.63e-01     0.999769
+center          128     16       1e+04       1         cross-channel     adaptive-fast          m=43      29.4678      40701       242   converged      9.74e-07          0.944407     0.948869
+center          128     16       1e+04       1         cross-channel    adaptive-reuse          m=43      29.4678      40701       242   converged      9.74e-07          0.944407     0.948869
+center          128     16       1e+04       1         cross-channel  global-reference     tol=1e-10      97.8420      50625      3227   converged      9.97e-07          0.995727     0.996163
+center          128     16       1e+04       1         cross-channel         geometric           P_G       1.3950       1849     20000  slow-limit      4.51e-02          0.999845     0.999789
 
-large-scale     160     16       1e+04       1         cross-channel     adaptive-fast      R=1,m=52      28.6073      40701     982.827     577.614    1560.440       379   converged      9.78e-07     0.967201
-large-scale     160     16       1e+04       1         cross-channel    adaptive-reuse    R=256,m=50      27.3063      37809    4632.653     602.549    5235.202       376   converged      9.72e-07     0.967785
-large-scale     160     16       1e+04       1         cross-channel  global-reference     tol=1e-10      98.4960      50625    9203.015   22986.874   32189.888      5462   converged      9.98e-07     0.997723
-large-scale     160     16       1e+04       1         cross-channel         geometric           P_G       1.4279       1849       3.029          --          --     12000  slow-limit      6.62e-01     0.999834
-large-scale     192     16       1e+04       1         cross-channel     adaptive-fast      R=1,m=52      22.9863      34561    1218.997    2081.359    3300.356      1011   converged      9.91e-07     0.984989
-large-scale     192     16       1e+04       1         cross-channel    adaptive-reuse    R=256,m=60      27.4949      37809    6340.970    1249.091    7590.061       545   converged      9.88e-07     0.978230
-large-scale     192     16       1e+04       1         cross-channel  global-reference     tol=1e-10      98.8576      50625    7874.151   47121.905   54996.056      7847   converged      9.99e-07     0.998408
-large-scale     192     16       1e+04       1         cross-channel         geometric           P_G       1.4501       1849       3.716          --          --     12000  slow-limit      1.16e+00     0.999874
+large-scale     256     16       1e+04       1         cross-channel     adaptive-fast          m=85      29.8295      40701       998   converged      9.98e-07          0.986251     0.987807
+large-scale     256     16       1e+04       1         cross-channel    adaptive-reuse          m=85      29.8295      40701       998   converged      9.98e-07          0.986251     0.987807
+large-scale     256     16       1e+04       1         cross-channel  global-reference     tol=1e-10      99.2675      50625     13948   converged      1.00e-06          0.999010     0.999098
+large-scale     256     16       1e+04       1         cross-channel         geometric           P_G       1.4779       1849     20000  slow-limit      1.17e+00          1.000008     0.999924
+large-scale     256     16       1e+04       1          winding-ring     adaptive-fast          m=85      29.8295      40701      1002   converged      9.92e-07          0.986299     0.987034
+large-scale     256     16       1e+04       1          winding-ring    adaptive-reuse         m=128      49.0768      48645       950   converged      9.97e-07          0.985560     0.986328
+large-scale     256     16       1e+04       1          winding-ring  global-reference     tol=1e-10      99.2124      50625      3950   converged      9.97e-07          0.996508     0.996801
+large-scale     256     16       1e+04       1          winding-ring         geometric           P_G       1.4779       1849     20000  slow-limit      4.50e-01          0.999960     0.999940
 
-contrast        128     16       1e+02       1         cross-channel     adaptive-fast      R=1,m=32      20.4547      31025     559.695     228.273     787.968       293   converged      9.69e-07     0.965704
-contrast        128     16       1e+02       1         cross-channel    adaptive-reuse    R=256,m=20      11.6236      19429    2519.026     135.490    2654.516       228   converged      9.62e-07     0.945038
-contrast        128     16       1e+02       1         cross-channel  global-reference     tol=1e-10      98.4106      50625    2400.211    3170.823    5571.033       756   converged      9.96e-07     0.983815
-contrast        128     16       1e+02       1         cross-channel         geometric           P_G       1.3950       1849       1.792     714.581     716.372      1501   converged      9.94e-07     0.991632
-contrast        128     16       1e+06       1         cross-channel     adaptive-fast      R=1,m=52      37.3532      45165     963.513     689.374    1652.886       298   converged      9.94e-07     0.945670
-contrast        128     16       1e+06       1         cross-channel    adaptive-reuse    R=256,m=52      37.3532      45165    3115.739     340.489    3456.228       298   converged      9.94e-07     0.945670
-contrast        128     16       1e+06       1         cross-channel  global-reference     tol=1e-10      96.2311      50625    3396.858    8953.687   12350.544      3471   converged      9.98e-07     0.996432
-contrast        128     16       1e+06       1         cross-channel         geometric           P_G       1.3950       1849       2.725          --          --     12000  slow-limit      5.26e+00     0.999997
+contrast        128     16       1e+02       1         cross-channel     adaptive-fast          m=43      29.4678      40701       387   converged      9.95e-07          0.964918     0.969992
+contrast        128     16       1e+02       1         cross-channel    adaptive-reuse          m=32      20.4547      31025       293   converged      9.69e-07          0.953841     0.965704
+contrast        128     16       1e+02       1         cross-channel  global-reference     tol=1e-10      98.4106      50625       756   converged      9.96e-07          0.981886     0.983815
+contrast        128     16       1e+02       1         cross-channel         geometric           P_G       1.3950       1849      1501   converged      9.94e-07          0.990834     0.991632
+contrast        128     16       1e+06       1         cross-channel     adaptive-fast          m=64      48.1166      48645       273   converged      9.67e-07          0.950536     0.949075
+contrast        128     16       1e+06       1         cross-channel    adaptive-reuse          m=64      48.1166      48645       273   converged      9.67e-07          0.950536     0.949075
+contrast        128     16       1e+06       1         cross-channel  global-reference     tol=1e-10      96.2311      50625      3471   converged      9.98e-07          0.996027     0.996432
+contrast        128     16       1e+06       1         cross-channel         geometric           P_G       1.3950       1849     20000  slow-limit      5.15e+00          1.000082     0.999997
 
-topology        128     16       1e+04       1    meandering-channel     adaptive-fast      R=1,m=52      37.3532      45165     521.690     375.137     896.827       336   converged      9.64e-07     0.957781
-topology        128     16       1e+04       1    meandering-channel    adaptive-reuse    R=256,m=36      23.5999      34561    2579.889     212.451    2792.340       272   converged      9.88e-07     0.943259
-topology        128     16       1e+04       1    meandering-channel  global-reference     tol=1e-10      97.3763      50625    1656.300    1895.555    3551.855       759   converged      9.98e-07     0.984424
-topology        128     16       1e+04       1    meandering-channel         geometric           P_G       1.3950       1849       1.387          --          --     12000  slow-limit      2.11e-01     0.999777
-topology        128     16       1e+04       1     diagonal-channels     adaptive-fast      R=1,m=52      37.3532      45165     504.285     451.308     955.593       351   converged      9.81e-07     0.963785
-topology        128     16       1e+04       1     diagonal-channels    adaptive-reuse    R=256,m=36      23.5999      34561    2472.274     230.495    2702.769       297   converged      9.72e-07     0.949045
-topology        128     16       1e+04       1     diagonal-channels  global-reference     tol=1e-10      97.5489      50625    1641.293     980.272    2621.564       418   converged      9.97e-07     0.970696
-topology        128     16       1e+04       1     diagonal-channels         geometric           P_G       1.3950       1849       2.115          --          --     12000  slow-limit      9.76e-02     0.999835
-topology        128     16       1e+04       1     parallel-channels     adaptive-fast      R=1,m=52      37.3532      45165     508.140     395.561     903.701       363   converged      9.95e-07     0.965087
-topology        128     16       1e+04       1     parallel-channels    adaptive-reuse    R=256,m=42      28.6040      40701    2764.549     236.350    3000.898       251   converged      9.69e-07     0.946954
-topology        128     16       1e+04       1     parallel-channels  global-reference     tol=1e-10      97.4038      50625    1792.815     998.835    2791.650       421   converged      9.93e-07     0.972055
-topology        128     16       1e+04       1     parallel-channels         geometric           P_G       1.3950       1849       1.842          --          --     12000  slow-limit      6.59e-02     0.999847
-topology        128     16       1e+04       1    branching-channels     adaptive-fast      R=1,m=32      20.4547      31025     521.315     269.456     790.771       347   converged      9.62e-07     0.956394
-topology        128     16       1e+04       1    branching-channels    adaptive-reuse    R=256,m=36      23.5999      34561    2468.378     218.828    2687.206       267   converged      1.00e-06     0.943778
-topology        128     16       1e+04       1    branching-channels  global-reference     tol=1e-10      97.4536      50625    1756.768    1652.295    3409.063       615   converged      9.93e-07     0.980299
-topology        128     16       1e+04       1    branching-channels         geometric           P_G       1.3950       1849       1.740          --          --     12000  slow-limit      1.34e-01     0.999797
-topology        128     16       1e+04       1          winding-ring     adaptive-fast      R=1,m=52      37.3532      45165     653.695    1141.304    1794.999       228   converged      9.65e-07     0.946768
-topology        128     16       1e+04       1          winding-ring    adaptive-reuse    R=256,m=44      30.3389      40701    3806.873     216.163    4023.036       233   converged      9.58e-07     0.948697
-topology        128     16       1e+04       1          winding-ring  global-reference     tol=1e-10      97.3042      50625    1668.862    1789.520    3458.382       768   converged      9.90e-07     0.983993
-topology        128     16       1e+04       1          winding-ring         geometric           P_G       1.3950       1849       1.581          --          --     12000  slow-limit      1.55e-01     0.999839
+topology        128     16       1e+04       1    meandering-channel     adaptive-fast          m=43      29.4678      40701       266   converged      9.81e-07          0.949319     0.948051
+topology        128     16       1e+04       1    meandering-channel    adaptive-reuse          m=43      29.4678      40701       266   converged      9.81e-07          0.949319     0.948051
+topology        128     16       1e+04       1    meandering-channel  global-reference     tol=1e-10      97.3763      50625       759   converged      9.98e-07          0.981959     0.984424
+topology        128     16       1e+04       1    meandering-channel         geometric           P_G       1.3950       1849     20000  slow-limit      3.94e-02          0.999838     0.999800
+topology        128     16       1e+04       1     diagonal-channels     adaptive-fast          m=43      29.4678      40701       346   converged      9.98e-07          0.960851     0.963726
+topology        128     16       1e+04       1     diagonal-channels    adaptive-reuse          m=43      29.4678      40701       346   converged      9.98e-07          0.960851     0.963726
+topology        128     16       1e+04       1     diagonal-channels  global-reference     tol=1e-10      97.5489      50625       418   converged      9.97e-07          0.967481     0.970696
+topology        128     16       1e+04       1     diagonal-channels         geometric           P_G       1.3950       1849     20000  slow-limit      2.69e-02          0.999819     0.999841
+topology        128     16       1e+04       1     parallel-channels     adaptive-fast          m=43      29.4678      40701       260   converged      9.73e-07          0.948151     0.948407
+topology        128     16       1e+04       1     parallel-channels    adaptive-reuse          m=43      29.4678      40701       260   converged      9.73e-07          0.948151     0.948407
+topology        128     16       1e+04       1     parallel-channels  global-reference     tol=1e-10      97.4038      50625       421   converged      9.93e-07          0.967700     0.972055
+topology        128     16       1e+04       1     parallel-channels         geometric           P_G       1.3950       1849     20000  slow-limit      2.02e-02          0.999805     0.999854
+topology        128     16       1e+04       1    branching-channels     adaptive-fast          m=43      29.4678      40701       317   converged      9.93e-07          0.957333     0.957133
+topology        128     16       1e+04       1    branching-channels    adaptive-reuse          m=43      29.4678      40701       317   converged      9.93e-07          0.957333     0.957133
+topology        128     16       1e+04       1    branching-channels  global-reference     tol=1e-10      97.4536      50625       615   converged      9.93e-07          0.977776     0.980299
+topology        128     16       1e+04       1    branching-channels         geometric           P_G       1.3950       1849     20000  slow-limit      2.87e-02          0.999822     0.999816
+topology        128     16       1e+04       1          winding-ring     adaptive-fast          m=43      29.4678      40701       237   converged      9.50e-07          0.943169     0.948960
+topology        128     16       1e+04       1          winding-ring    adaptive-reuse          m=43      29.4678      40701       237   converged      9.50e-07          0.943169     0.948960
+topology        128     16       1e+04       1          winding-ring  global-reference     tol=1e-10      97.3042      50625       768   converged      9.90e-07          0.982159     0.983993
+topology        128     16       1e+04       1          winding-ring         geometric           P_G       1.3950       1849     20000  slow-limit      4.38e-02          0.999844     0.999844
 
 Convergence and setup summary
 -----------------------------
-Method            Conv/slow/div  Converged cycle sum  Mean density %   Setup sum ms
-----------------  -------------  -------------------  --------------  -------------
-adaptive-fast            13/0/0                 4240         30.1154       7251.880
-adaptive-reuse           13/0/0                 3303         24.1144      34518.088
-global-reference         13/0/0                24383         97.1519      33663.401
-geometric                3/10/0                 1843          2.0031         21.975
-
-Timing on the jointly converged subset
---------------------------------------
-Method              Cases   Setup sum ms  Solve sum ms   Total R=1 ms  Total R=256 ms
-----------------  -------  -------------  ------------  -------------  --------------
-adaptive-fast           3        631.851       247.270        879.121       63933.042
-adaptive-reuse          3       2836.216       156.993       2993.209       43026.520
-global-reference        3       2486.882      3224.483       5711.364      827954.417
-geometric               3          2.298       743.757        746.055      190404.158
+Method            Conv/slow/div  Converged cycle sum  Mean density %
+----------------  -------------  -------------------  --------------
+adaptive-fast            13/0/0                 4684         32.5173
+adaptive-reuse           13/0/0                 4402         28.9865
+global-reference         13/0/0                28972         97.2386
+geometric                3/10/0                 1843          2.0091
 

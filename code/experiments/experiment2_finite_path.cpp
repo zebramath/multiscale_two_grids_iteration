@@ -42,6 +42,7 @@ experiment_support::Row path_row(
         std::to_string(solved.cycles),
         tgi::two_grid_status_name(solved.status),
         experiment_support::scientific(solved.relative_residual, 2),
+        experiment_support::fixed(solved.effective_factor, 6),
         experiment_support::fixed(solved.tail_factor, 6)};
 }
 
@@ -60,8 +61,6 @@ int main(int argc, char** argv) {
         PathCase{64, 16, 1.0e4, 1, topologies[0]},
         PathCase{128, 16, 1.0e4, 1, topologies[0]},
         PathCase{128, 16, 1.0e6, 1, topologies[0]}};
-    constexpr std::array<int, 7> checkpoints{
-        12, 20, 28, 36, 44, 52, 60};
     constexpr int maximum_cycles =
         experiment_support::maximum_two_grid_cycles;
     experiment_support::Rows rows;
@@ -94,7 +93,9 @@ int main(int argc, char** argv) {
             config.threads, maximum_cycles));
         tgi::GlobalEnergyPcgPath path(
             grid, problem.matrix, geometric.prolongation, config.threads);
-        for (int steps : checkpoints) {
+        for (int numerator = 1; numerator <= 8; ++numerator) {
+            const int steps =
+                (numerator * item.fine + 8) / 16;
             path.advance_to(steps);
             rows.push_back(path_row(
                 item, "finite-PCG", steps, problem.matrix, problem.rhs,
@@ -113,7 +114,7 @@ int main(int argc, char** argv) {
         {"Version", std::string(tgi::version)},
         {"Threads", std::to_string(base.threads)},
         {"Cases", std::to_string(cases.size())},
-        {"Checkpoints", "m=0,12,20,...,60 and exact"},
+        {"Checkpoints", "m/(1/h)=0,1/16,...,1/2 and exact"},
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
@@ -125,8 +126,8 @@ int main(int argc, char** argv) {
         "Finite path comparison",
         {"1/h", "1/H", "Topology", "Contrast", "Method", "m",
          "Energy excess", "P density %", "Cycles", "Status",
-         "Final relres", "Tail factor"},
-        {5, 5, 20, 10, 14, 7, 13, 11, 8, 10, 12, 11}, rows, true);
+         "Final relres", "Effective factor", "Tail factor"},
+        {5, 5, 20, 10, 14, 7, 13, 11, 8, 10, 12, 16, 11}, rows, true);
     report.save("experiment2_finite_path");
     return 0;
 }

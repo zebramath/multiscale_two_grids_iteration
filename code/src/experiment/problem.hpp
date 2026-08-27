@@ -10,7 +10,7 @@
 
 namespace experiment_support {
 
-inline constexpr int maximum_two_grid_cycles = 12000;
+inline constexpr int maximum_two_grid_cycles = 20000;
 
 struct BasicConfig {
     int fine_intervals = 128;

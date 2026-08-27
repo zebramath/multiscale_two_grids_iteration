@@ -19,7 +19,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与自适应两网格选择：理论分析 v4.7}
+\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v4.8}
 \author{崔正平}
 \date{}
 
@@ -38,8 +38,9 @@
 精确投影表达式，以及其对粗空间扰动的全局 Lipschitz 界。再次，在能量终点附近，
 两网格目标的一阶变化分解为“磨光后最坏模态的可见性”和“Krylov 路径的方向对齐”；
 这给出有限步优于精确能量插值的充分条件，并在显式余项控制下导出严格的反单调 PCG
-尾部。最后，本文把实际 v4.7 选择器写成一个由预期右端项数控制的单参数预算族，给出
-pilot 预测误差到候选选择后悔值的确定性传递界和多右端项盈亏平衡式。
+尾部。最后，本文给出与网格分辨率同步伸缩的 fast/reuse 两档选择：fast 只构造一个
+经验路径点，reuse 在归一化区间内检查五个候选，并给出 pilot 预测误差到候选选择
+后悔值的确定性传递界和多右端项盈亏平衡式。
 
 这些结论构成“为何在有限 Krylov 路径上选点”的理论依据。数值验证采用二维规则网格、
 高对比扩散、固定粗点和两网格结构，以受控方式检验这一机制。
@@ -446,48 +447,43 @@ $\bm x=\bm D^{1/2}\bm 1_S$。则
 该命题解释高对比拓扑提高式~\eqref{eq:visibility} 中“问题可见性”的来源；最佳 PCG
 步数还由粗点覆盖和路径对齐共同确定。
 
-\section{与 v4.7 实现一致的自适应选择}
+\section{与 v4.8 实现一致的尺度自适应选择}
 
-选择器以预期右端项数 $R\ge1$ 作为策略参数。令
+令 $n=1/h$ 为每个坐标方向的细网格区间数，并定义可由矩阵直接取得的对角尺度比
 \begin{equation}
- d(R)=\min\{1,\max\{0,\log_2(R)/8\}\}.                \label{eq:detail}
+ \chi_A=\frac{\max_i A_{ii}}{\min_i A_{ii}}.           \label{eq:diagratio}
 \end{equation}
-在默认 $m_{\min}=12,m_{\max}=60$、量化步长 $q=2$ 下，预算为
-\begin{align}
- s(R)&=Q_q(20-12d(R)),                                  \label{eq:stride}\\
- \bar m(R)&=Q_q(52+8d(R)),                              \label{eq:maxm}\\
- L(R)&=\operatorname{round}(16+144d(R)),                \label{eq:pilot}\\
- \delta(R)&=0.10-0.08d(R).                              \label{eq:slack}
-\end{align}
-这里 $Q_q$ 表示舍入到步长 $q$。候选包含 $m=0$ 和
-$m_{\min},m_{\min}+s(R),\ldots,\bar m(R)$，并总是包含端点 $\bar m(R)$；
-仅当 $d(R)\ge1/2$ 时，在暂优候选两侧增加至多两个 step--$q$ 候选。
+v4.8 只保留 fast 与 reuse 两档。fast 面向单个或少量右端项，不运行 pilot，只构造
+\begin{equation}
+ m_{\rm fast}=
+ \begin{cases}
+ \operatorname{round}(n/2),&\chi_A\ge10^5,\\
+ \operatorname{round}(n/3),&\chi_A<10^5.
+ \end{cases}                                           \label{eq:fast}
+\end{equation}
+这条规则把原来的固定 $m\le60$ 改为随分辨率伸缩的路径位置；对角尺度比只负责把强
+异质问题推向同一区间的右端。它只有一次路径推进、一次插值组装和一次粗算子构造。
 
-因此 $R=1$ 的激进档只检查
+reuse 面向插值被多个右端项复用的场景，在归一化区间 $[0,n/2]$ 上取固定五点
 \begin{equation}
- m\in\{0,12,32,52\},\qquad L=16,\quad\delta=10\%,      \label{eq:fast}
+\mathcal M_{\rm reuse}
+ =\operatorname{round}\left\{0,n/8,n/4,n/3,n/2\right\},
+ \qquad L=\operatorname{round}(n/2).                  \label{eq:reuse}
 \end{equation}
-且每个候选至多运行 16 次 pilot；$R=256$ 的复用档检查
-$m=0,12,20,\ldots,60$，每个候选至多运行 160 次 pilot，取 $\delta=2\%$ 并允许局部细化。
-这一族由实际 pilot 收敛历史响应网格尺度、对比度和拓扑变化，参数预算保持统一。
+重复候选在小网格上合并。候选数不随 $n$ 增长，而搜索区间和 pilot 长度随 $n$ 同步
+伸缩；实现按 $m$ 递增地延续同一条 PCG 路径，并流式保留当前优胜者。
 
-\subsection{稳健 pilot 预测与选择规则}
+\subsection{收敛预测与选择规则}
 
-对候选 $m$，令 $\ell_m\le L(R)$ 为实际执行的 pilot 循环数：达到正式容差时提前停止，
-否则 $\ell_m=L(R)$。记第 $k$ 个两网格循环后的相对残量为 $r_{m,k}$，在已有历史的
-后半段计算
+对 reuse 候选 $m$，令 $\ell_m\le L$ 为实际执行的 pilot 循环数，达到正式容差时提前
+停止。记第 $k$ 个两网格循环后的相对残量为 $r_{m,k}$，取历史中点
+$k_0=\lfloor\ell_m/2\rfloor$，并用后半段几何平均收缩率
 \begin{equation}
-y_{m,k}=\log(r_{m,k}/r_{m,k-1}),\quad
- c_m=\operatorname{median}(y_{m,k}),\quad
- s_{m,{\rm MAD}}=1.4826\operatorname{median}\abs{y_{m,k}-c_m},
+ \widehat\rho_m=
+ \left(\frac{r_{m,\ell_m}}{r_{m,k_0}}\right)^{1/(\ell_m-k_0)}.
+                                                               \label{eq:pilotfactor}
 \end{equation}
-并取保守速率
-\begin{equation}
- \widehat\rho_m=\exp\!\left(
- \min\{-10^{-10},c_m+0.25s_{m,{\rm MAD}}\}\right).
-\end{equation}
-其中中位数均在当前候选已有的 $y_{m,k}$ 上计算。若 pilot 尚未收敛，由此预测达到容差
-$\tau$ 的总循环数
+若 pilot 尚未收敛，由此预测达到容差 $\tau$ 的总循环数
 \begin{equation}
  \widehat N_m=\ell_m+
  \max\left\{0,
@@ -495,34 +491,26 @@ $\tau$ 的总循环数
  {\log\widehat\rho_m}\right\rceil
  \right\},                                             \label{eq:forecast}
 \end{equation}
-并截断到最大循环数；若已在 pilot 内收敛，则直接取
-$\widehat N_m=\ell_m$。MAD 在这里承担稳健拟合修正的作用。
-
-设候选集合为 $\mathcal M_R$。算法先求
-$\widehat N_{\min}=\min_{m\in\mathcal M_R}\widehat N_m$，再从
-\begin{equation}
- \{m:\widehat N_m\le(1+\delta(R))\widehat N_{\min}\} \label{eq:nearset}
-\end{equation}
-中选择最小 $m$。该词典序原则先保持近优预测循环数，再偏向较早路径点，从而降低插值
-路径和粗算子构造成本，并以统一预算适配不同问题。
+并截断到正式循环上限；若已在 pilot 内收敛，则取 $\widehat N_m=\ell_m$。reuse 选择
+$\widehat N_m$ 最小者，预测相同时取较小的 $m$。式~\eqref{eq:pilotfactor} 直接估计
+实际使用的两网格残量收缩，与投影目标 $\rhoTG$ 具有一致的“越小越好”方向。
 
 \begin{theorem}[预测误差到选择后悔值]\label{thm:regret}
 假设在已评估候选上存在统一误差界
-$\abs{\widehat N_m-N_m}\le\varepsilon$。令 $\widehat m$ 为规则
-\eqref{eq:nearset} 的输出，$m_\ast$ 为候选集内真实循环数最少者，则
+$\abs{\widehat N_m-N_m}\le\varepsilon$。令 $\widehat m$ 为上述规则的输出，
+$m_\ast$ 为候选集内真实循环数最少者，则
 \begin{equation}
  N_{\widehat m}
- \le(1+\delta(R))N_{m_\ast}+(2+\delta(R))\varepsilon.  \label{eq:regret}
+ \le N_{m_\ast}+2\varepsilon.                         \label{eq:regret}
 \end{equation}
 \end{theorem}
 
 \begin{proof}
-$\widehat N_{\widehat m}\le(1+\delta)\min_m\widehat N_m
-\le(1+\delta)\widehat N_{m_\ast}$。两端各应用一次统一误差界即可。
+$\widehat N_{\widehat m}\le\widehat N_{m_\ast}$，两端各应用一次统一误差界即可。
 \end{proof}
 
-该结果把 pilot 精度与选择损失定量联系起来。激进档接受较大的预测误差预算以压缩
-setup；复用档用更长 pilot 和局部细化换取接近离线 step--2 oracle 的循环数。
+该结果把 reuse 的 pilot 精度与选择损失定量联系起来。fast 以单点经验规则消除选择
+开销；reuse 支付五个候选的预测成本，以提高多右端项下的摊销收益。
 
 \subsection{多右端项的盈亏平衡}
 
@@ -535,8 +523,8 @@ setup；复用档用更长 pilot 和局部细化换取接近离线 step--2 oracl
 \begin{equation}
  R>R_{\rm break}=\frac{S_b-S_a}{T_a-T_b}.              \label{eq:breakeven}
 \end{equation}
-这也是 $R$ 作为策略参数的含义：它表示可解释的复用预算。式~\eqref{eq:breakeven}
-给出成本恒等式，代表右端项的迁移能力由多右端项实验检验。v4.7 因此保留一个紧凑的
+式~\eqref{eq:breakeven} 给出两档策略的可解释选择阈值，代表右端项的迁移能力由多
+右端项实验检验。v4.8 因此保留一个紧凑的
 RHS 迁移实验：候选仍由常数 RHS 选择，再在六种平滑、局部与振荡 RHS 上独立求解；
 其结果直接衡量当前测试族上的代表性。
 
@@ -557,9 +545,12 @@ RHS 迁移实验：候选仍由常数 RHS 选择，再在六种平滑、局部�
 $r_K$ 与 $\rho_{\rm tail}$；计算中若残量超过 $10^8$ 且已高于历史最优值十倍，则提前
 归入同一增长状态。
 
-wall-clock 汇总采用共同收敛子集：逐行 solve/total 时间对 \texttt{converged} 求解
-给出，跨方法总时间在同一算例上所有比较方法均达到容差时累加。由此，循环上限承担
-状态判别作用，端到端速度比较始终对应完整收敛过程。
+另报告全程有效收敛因子
+\begin{equation}
+ \rho_{\rm eff}=r_K^{1/K},                             \label{eq:effectiverate}
+\end{equation}
+使不同循环数的完整求解可按统一尺度比较。wall-clock 只在中心 $128/16$ 问题上比较
+fast、reuse 与 global-reference，并以五次预热后重复的中位数和四分位数报告。
 
 \section{适用范围与投稿表述}
 
@@ -579,7 +570,7 @@ wall-clock 汇总采用共同收敛子集：逐行 solve/total 时间对 \texttt
  式~\eqref{eq:tailcondition} 构成理论解释与后续诊断指标。
  \item 数值部分采用二维规则网格、高对比扩散、固定粗点和两网格，集中隔离插值路径
  对粗空间质量的影响。
- \item 论文的核心贡献包括有限 Krylov 插值的非单调两网格机制、单参数预算化选择器，
+ \item 论文的核心贡献包括有限 Krylov 插值的非单调两网格机制、尺度自适应两档选择器，
  以及跨尺度、对比度和通道拓扑的受控验证。
 \end{enumerate}
 
@@ -591,12 +582,13 @@ wall-clock 汇总采用共同收敛子集：逐行 solve/total 时间对 \texttt
  \text{PCG 正交能量尾}
  \longrightarrow \bm Z\text{ 的粗空间几何}
  \longrightarrow \rhoTG\text{ 的投影目标}
- \longrightarrow \text{有限步非单调性与预算化选择}.}
+ \longrightarrow \text{有限步非单调性与尺度自适应选择}.}
 \]
 能量极小插值仍是重要的变分基准，但固定磨光器关心的是磨光后误差相对粗空间的方向。
 因此有限 PCG 候选可以在保留非零能量误差的同时更好地捕获最坏可见模态。
 全局稳定界限制了这种优势的幅度，一阶公式解释其方向来源，严格尾部定理给出可验证的
-充分条件，而 v4.7 选择器以少右端项和多右端项之间的 setup--solve 权衡将该机制落地。
+充分条件，而 v4.8 的 fast/reuse 两档以少右端项和多右端项之间的 setup--solve 权衡
+将该机制落地。
 
 \begin{thebibliography}{99}
 

@@ -89,6 +89,7 @@ struct TwoGridIterationResult {
     int cycles = 0;
     double relative_residual = 0.0;
     double best_relative_residual = 1.0;
+    double effective_factor = 1.0;
     double tail_factor = 1.0;
     TwoGridIterationStatus status = TwoGridIterationStatus::SlowAtLimit;
     bool converged = false;
@@ -751,6 +752,7 @@ inline TwoGridIterationResult solve_two_grid(const Vector& rhs,
         result.converged = true;
         result.relative_residual = 0.0;
         result.best_relative_residual = 0.0;
+        result.effective_factor = 0.0;
         result.tail_factor = 0.0;
         result.status = TwoGridIterationStatus::Converged;
         return result;
@@ -788,6 +790,13 @@ inline TwoGridIterationResult solve_two_grid(const Vector& rhs,
         }
     }
     if (result.cycles > 0 && std::isfinite(result.relative_residual)) {
+        if (result.relative_residual > 0.0) {
+            result.effective_factor = std::exp(
+                std::log(result.relative_residual) /
+                static_cast<double>(result.cycles));
+        } else {
+            result.effective_factor = 0.0;
+        }
         const int span = std::min(result.cycles, tail_window);
         const double anchor = recent_residuals[static_cast<std::size_t>(
             (result.cycles - span) % (tail_window + 1))];

@@ -82,30 +82,20 @@ int main() {
         "continued PCG path accepted a decreasing checkpoint");
 
     tgi::AdaptiveGlobalPcgOptions adaptive_options;
-    adaptive_options.minimum_steps = 2;
-    adaptive_options.maximum_steps = 8;
-    adaptive_options.step_quantum = 2;
-    adaptive_options.expected_rhs_count = 1.0;
+    adaptive_options.policy = tgi::AdaptiveGlobalPcgPolicy::Fast;
     adaptive_options.maximum_cycles = 1000;
     adaptive_options.thread_count = 2;
     const tgi::Vector adaptive_rhs(
         static_cast<std::size_t>(grid.fine_size()), 1.0);
     const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
         grid, a, geometric.prolongation, adaptive_options, adaptive_rhs);
-    require(adaptive.report.selected_steps >= 0 &&
-                adaptive.report.selected_steps <= 8,
-            "adaptive PCG selected an invalid checkpoint");
-    require(adaptive.report.candidate_count > 0,
-            "adaptive PCG did not record its decisions");
-    require(adaptive.report.candidate_count <= 3,
-            "economy PCG exceeded its uniform candidate budget");
-    require(adaptive.report.pilot_limit == 16,
-            "single-RHS selection reported the wrong pilot cap");
-    require(adaptive.report.checkpoint_stride == 20 &&
-                adaptive.report.maximum_sampled_steps == 2,
-            "single-RHS selection reported the wrong path budget");
-    require(!adaptive.report.used_local_refinement,
-            "single-right-hand-side selection unexpectedly refined");
+    require(adaptive.report.selected_steps == 5,
+            "fast PCG selected the wrong scaled checkpoint");
+    require(adaptive.report.candidate_count == 1 &&
+                adaptive.report.pilot_cycles == 0,
+            "fast PCG performed avoidable candidate probes");
+    require(adaptive.report.maximum_sampled_steps == 5,
+            "fast PCG reported the wrong scale-aware path budget");
     require(adaptive.prolongation->rows() == grid.fine_size(),
             "adaptive PCG returned an invalid prolongation");
     require(adaptive.cycle->coarse_size() == grid.coarse_size(),
@@ -115,33 +105,29 @@ int main() {
     require(adaptive_solve.converged,
             "single-RHS adaptive hierarchy did not converge");
     tgi::AdaptiveGlobalPcgOptions detailed_options = adaptive_options;
-    detailed_options.expected_rhs_count = 256.0;
+    detailed_options.policy = tgi::AdaptiveGlobalPcgPolicy::Reuse;
     const auto detailed = tgi::build_adaptive_global_pcg_interpolation(
         grid, a, geometric.prolongation, detailed_options, adaptive_rhs);
-    require(detailed.report.pilot_limit >
-                adaptive.report.pilot_limit,
-            "reuse-aware selection did not increase its evidence budget");
-    require(detailed.report.pilot_limit == 160,
-            "reuse-aware selection reported the wrong pilot cap");
-    require(detailed.report.checkpoint_stride == 8 &&
-                detailed.report.maximum_sampled_steps == 8,
+    require(detailed.report.pilot_cycles == 8,
+            "reuse-aware selection reported the wrong scaled pilot budget");
+    require(detailed.report.maximum_sampled_steps == 8,
             "reuse-aware selection reported the wrong path budget");
-    require(detailed.report.candidate_count <= 5,
-            "reuse-aware PCG exceeded its candidate budget");
+    require(detailed.report.candidate_count == 5,
+            "reuse-aware PCG did not use its fixed candidate budget");
     const auto detailed_solve = tgi::solve_two_grid(
         adaptive_rhs, *detailed.cycle, 1.0e-6, 1000);
     require(detailed_solve.converged,
             "reuse-aware adaptive hierarchy did not converge");
 
     tgi::AdaptiveGlobalPcgOptions invalid_options = adaptive_options;
-    invalid_options.expected_rhs_count = 0.5;
+    invalid_options.maximum_cycles = 0;
     require_throws(
         [&]() {
             (void)tgi::build_adaptive_global_pcg_interpolation(
                 grid, a, geometric.prolongation, invalid_options,
                 adaptive_rhs);
         },
-        "adaptive PCG accepted fewer than one expected right-hand side");
+        "adaptive PCG accepted a nonpositive cycle limit");
 
     return 0;
 }

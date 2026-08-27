@@ -1,45 +1,48 @@
 Finite-PCG path evidence for nonmonotone two-grid behavior
 ==========================================================
 
-Version         : 4.7.0
+Version         : 4.8.0
 Threads         : 4
 Cases           : 3
-Checkpoints     : m=0,12,20,...,60 and exact
+Checkpoints     : m/(1/h)=0,1/16,...,1/2 and exact
 Solve tolerance : 1e-6
-Maximum cycles  : 12000
+Maximum cycles  : 20000
 
 Note: The three cross-channel cases isolate scale and contrast. Only the energy excess, interpolation density and independently measured two-grid cycles are retained: energy decreases along the PCG path, whereas the iteration count can attain a much better finite minimum.
 
 Finite path comparison
 ----------------------
-1/h      1/H              Topology    Contrast          Method        m  Energy excess  P density %    Cycles      Status  Final relres  Tail factor
------  -----  --------------------  ----------  --------------  -------  -------------  -----------  --------  ----------  ------------  -----------
-64        16         cross-channel       1e+04       geometric        0      1.000e+00       1.2346     12000  slow-limit      1.18e-03     0.999389
-64        16         cross-channel       1e+04      finite-PCG       12      2.640e-03      13.1223       123   converged      9.53e-07     0.884608
-64        16         cross-channel       1e+04      finite-PCG       20      3.164e-04      24.9629        68   converged      9.41e-07     0.830832
-64        16         cross-channel       1e+04      finite-PCG       28      4.190e-05      38.2884       108   converged      9.32e-07     0.889235
-64        16         cross-channel       1e+04      finite-PCG       36      2.481e-06      51.8535       139   converged      9.52e-07     0.906882
-64        16         cross-channel       1e+04      finite-PCG       44      1.349e-07      64.5206       274   converged      9.81e-07     0.958605
-64        16         cross-channel       1e+04      finite-PCG       52      7.450e-09      75.2594       313   converged      9.90e-07     0.962551
-64        16         cross-channel       1e+04      finite-PCG       60      3.757e-10      83.1472       319   converged      9.94e-07     0.962681
-64        16         cross-channel       1e+04  global-reference    exact      0.000e+00      92.2549       321   converged      9.69e-07     0.962692
+1/h      1/H              Topology    Contrast          Method        m  Energy excess  P density %    Cycles      Status  Final relres  Effective factor  Tail factor
+-----  -----  --------------------  ----------  --------------  -------  -------------  -----------  --------  ----------  ------------  ----------------  -----------
+64        16         cross-channel       1e+04       geometric        0      1.000e+00       1.2346     20000  slow-limit      1.28e-05          0.999437     0.999472
+64        16         cross-channel       1e+04      finite-PCG        4      1.081e-01       4.1191      3829   converged      9.96e-07          0.996397     0.995840
+64        16         cross-channel       1e+04      finite-PCG        8      1.537e-02       8.1773       832   converged      9.88e-07          0.983518     0.982222
+64        16         cross-channel       1e+04      finite-PCG       12      2.640e-03      13.1223       123   converged      9.53e-07          0.893405     0.884608
+64        16         cross-channel       1e+04      finite-PCG       16      7.372e-04      18.7750        60   converged      7.71e-07          0.790885     0.748576
+64        16         cross-channel       1e+04      finite-PCG       20      3.164e-04      24.9629        68   converged      9.41e-07          0.815406     0.830832
+64        16         cross-channel       1e+04      finite-PCG       24      1.287e-04      31.5204        77   converged      9.48e-07          0.835176     0.867008
+64        16         cross-channel       1e+04      finite-PCG       28      4.190e-05      38.2884       108   converged      9.32e-07          0.879349     0.889235
+64        16         cross-channel       1e+04      finite-PCG       32      1.047e-05      45.1146       114   converged      8.98e-07          0.885032     0.896010
+64        16         cross-channel       1e+04  global-reference    exact      0.000e+00      92.2549       321   converged      9.69e-07          0.957779     0.962692
 
-128       16         cross-channel       1e+04       geometric        0      1.000e+00       1.3950     12000  slow-limit      2.63e-01     0.999769
-128       16         cross-channel       1e+04      finite-PCG       12      5.355e-02       6.7417      5523   converged      1.00e-06     0.996994
-128       16         cross-channel       1e+04      finite-PCG       20      1.036e-02      11.6236      1861   converged      9.94e-07     0.992006
-128       16         cross-channel       1e+04      finite-PCG       28      2.012e-03      17.3034       441   converged      9.84e-07     0.966500
-128       16         cross-channel       1e+04      finite-PCG       36      5.207e-04      23.5999       268   converged      9.69e-07     0.943621
-128       16         cross-channel       1e+04      finite-PCG       44      2.006e-04      30.3389       244   converged      9.94e-07     0.949372
-128       16         cross-channel       1e+04      finite-PCG       52      1.062e-04      37.3532       276   converged      9.89e-07     0.952423
-128       16         cross-channel       1e+04      finite-PCG       60      5.992e-05      44.4826       360   converged      9.67e-07     0.963748
-128       16         cross-channel       1e+04  global-reference    exact      0.000e+00      97.8420      3227   converged      9.97e-07     0.996163
-128       16         cross-channel       1e+06       geometric        0      1.000e+00       1.3950     12000  slow-limit      5.26e+00     0.999997
-128       16         cross-channel       1e+06      finite-PCG       12      5.363e-02       6.7417     12000  slow-limit      1.25e+01     0.999964
-128       16         cross-channel       1e+06      finite-PCG       20      1.038e-02      11.6236     12000  slow-limit      5.40e+00     0.999836
-128       16         cross-channel       1e+06      finite-PCG       28      2.020e-03      17.3034     12000  slow-limit      1.17e-02     0.999485
-128       16         cross-channel       1e+06      finite-PCG       36      5.246e-04      23.5999     12000  slow-limit      1.40e-06     0.998654
-128       16         cross-channel       1e+06      finite-PCG       44      2.034e-04      30.3389      1590   converged      9.94e-07     0.989126
-128       16         cross-channel       1e+06      finite-PCG       52      1.084e-04      37.3532       298   converged      9.94e-07     0.945670
-128       16         cross-channel       1e+06      finite-PCG       60      6.152e-05      44.4826       279   converged      9.85e-07     0.940822
-128       16         cross-channel       1e+06  global-reference    exact      0.000e+00      96.2311      3471   converged      9.98e-07     0.996432
+128       16         cross-channel       1e+04       geometric        0      1.000e+00       1.3950     20000  slow-limit      4.51e-02          0.999845     0.999789
+128       16         cross-channel       1e+04      finite-PCG        8      1.065e-01       4.7096      9058   converged      9.99e-07          0.998476     0.998191
+128       16         cross-channel       1e+04      finite-PCG       16      2.148e-02       9.1300      4043   converged      9.98e-07          0.996588     0.996377
+128       16         cross-channel       1e+04      finite-PCG       24      4.771e-03      14.4398       926   converged      9.97e-07          0.985188     0.983485
+128       16         cross-channel       1e+04      finite-PCG       32      1.012e-03      20.4547       347   converged      9.67e-07          0.960874     0.956522
+128       16         cross-channel       1e+04      finite-PCG       40      3.030e-04      26.9969       234   converged      9.90e-07          0.942629     0.948201
+128       16         cross-channel       1e+04      finite-PCG       48      1.422e-04      33.8960       256   converged      9.68e-07          0.947343     0.947934
+128       16         cross-channel       1e+04      finite-PCG       56      7.928e-05      40.9881       276   converged      9.96e-07          0.951161     0.959732
+128       16         cross-channel       1e+04      finite-PCG       64      4.520e-05      48.1166       366   converged      9.62e-07          0.962855     0.960083
+128       16         cross-channel       1e+04  global-reference    exact      0.000e+00      97.8420      3227   converged      9.97e-07          0.995727     0.996163
+128       16         cross-channel       1e+06       geometric        0      1.000e+00       1.3950     20000  slow-limit      5.15e+00          1.000082     0.999997
+128       16         cross-channel       1e+06      finite-PCG        8      1.066e-01       4.7096     20000  slow-limit      9.65e+00          1.000113     0.999979
+128       16         cross-channel       1e+06      finite-PCG       16      2.151e-02       9.1300     20000  slow-limit      6.00e+00          1.000090     0.999925
+128       16         cross-channel       1e+06      finite-PCG       24      4.783e-03      14.4398     20000  slow-limit      1.12e-01          0.999890     0.999788
+128       16         cross-channel       1e+06      finite-PCG       32      1.017e-03      20.4547     20000  slow-limit      3.66e-06          0.999374     0.999264
+128       16         cross-channel       1e+06      finite-PCG       40      3.062e-04      26.9969      2982   converged      9.92e-07          0.995375     0.994254
+128       16         cross-channel       1e+06      finite-PCG       48      1.447e-04      33.8960       755   converged      9.84e-07          0.981847     0.977691
+128       16         cross-channel       1e+06      finite-PCG       56      8.116e-05      40.9881       291   converged      9.95e-07          0.953616     0.943449
+128       16         cross-channel       1e+06      finite-PCG       64      4.656e-05      48.1166       273   converged      9.67e-07          0.950536     0.949075
+128       16         cross-channel       1e+06  global-reference    exact      0.000e+00      96.2311      3471   converged      9.98e-07          0.996027     0.996432
 

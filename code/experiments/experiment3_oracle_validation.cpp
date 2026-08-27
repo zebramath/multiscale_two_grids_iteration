@@ -22,6 +22,7 @@ struct OracleCase {
 
 struct CycleMeasurement {
     int cycles = 0;
+    double effective_factor = 1.0;
     tgi::TwoGridIterationStatus status =
         tgi::TwoGridIterationStatus::SlowAtLimit;
     bool converged = false;
@@ -33,14 +34,16 @@ CycleMeasurement cycles_for(
     const tgi::TwoGridCycle cycle(a, p, 1, threads);
     const auto solved = tgi::solve_two_grid(
         rhs, cycle, 1.0e-6, maximum);
-    return {solved.cycles, solved.status, solved.converged};
+    return {solved.cycles, solved.effective_factor,
+            solved.status, solved.converged};
 }
 
 CycleMeasurement cycles_for(
     const tgi::Vector& rhs, const tgi::TwoGridCycle& cycle, int maximum) {
     const auto solved = tgi::solve_two_grid(
         rhs, cycle, 1.0e-6, maximum);
-    return {solved.cycles, solved.status, solved.converged};
+    return {solved.cycles, solved.effective_factor,
+            solved.status, solved.converged};
 }
 
 }
@@ -64,12 +67,12 @@ int main(int argc, char** argv) {
     }};
     constexpr int maximum_cycles =
         experiment_support::maximum_two_grid_cycles;
+    constexpr int oracle_candidate_limit = 6000;
     const experiment_support::Row headers{
         "1/h", "1/H", "Contrast", "Topology", "Policy", "R",
-        "Selected m", "Cycles", "Status", "Oracle m", "Oracle cycles",
-        "Oracle status", "Gap %",
-        "Selection ms", "Candidates", "Pilot cap", "Stride", "Max m",
-        "Refine"};
+        "Selected m", "Cycles", "Eff factor", "Status", "Oracle m",
+        "Oracle cycles", "Oracle factor", "Oracle status", "Gap %",
+        "Selection ms", "Candidates", "Pilot cycles", "Max m"};
     experiment_support::Rows rows;
 
     int case_index = 0;
@@ -95,12 +98,15 @@ int main(int argc, char** argv) {
             threads, maximum_cycles);
         tgi::GlobalEnergyPcgPath path(
             grid, problem.matrix, geometric.prolongation, threads);
-        for (int steps = 12; steps <= 60; steps += 2) {
+        int first_oracle_step = std::max(2, item.fine / 8);
+        if (first_oracle_step % 2 != 0) ++first_oracle_step;
+        for (int steps = first_oracle_step;
+             steps <= item.fine / 2; steps += 2) {
             path.advance_to(steps);
             const tgi::SparseMatrix candidate = path.prolongation(0.0);
             const CycleMeasurement measured = cycles_for(
                 problem.matrix, problem.rhs, candidate,
-                threads, maximum_cycles);
+                threads, oracle_candidate_limit);
             if (measured.converged &&
                 (!oracle.converged || measured.cycles < oracle.cycles)) {
                 oracle = measured;
@@ -109,12 +115,11 @@ int main(int argc, char** argv) {
         }
 
         for (const auto& policy : {
-                 std::pair<const char*, double>{"fast", 1.0},
-                 std::pair<const char*, double>{"reuse", 256.0}}) {
+                 std::pair<const char*, tgi::AdaptiveGlobalPcgPolicy>{
+                     "fast", tgi::AdaptiveGlobalPcgPolicy::Fast},
+                 {"reuse", tgi::AdaptiveGlobalPcgPolicy::Reuse}}) {
             tgi::AdaptiveGlobalPcgOptions options;
-            options.minimum_steps = 12;
-            options.maximum_steps = 60;
-            options.expected_rhs_count = policy.second;
+            options.policy = policy.second;
             options.maximum_cycles = maximum_cycles;
             options.thread_count = threads;
             const auto adaptive =
@@ -132,12 +137,16 @@ int main(int argc, char** argv) {
                 std::to_string(item.fine), std::to_string(item.coarse),
                 experiment_support::scientific(item.contrast, 0),
                 item.field.name, policy.first,
-                experiment_support::fixed(policy.second, 0),
+                policy.second == tgi::AdaptiveGlobalPcgPolicy::Fast
+                    ? "1" : "many",
                 std::to_string(adaptive.report.selected_steps),
                 std::to_string(adaptive_cycles.cycles),
+                experiment_support::fixed(
+                    adaptive_cycles.effective_factor, 6),
                 tgi::two_grid_status_name(adaptive_cycles.status),
                 std::to_string(oracle_steps),
                 std::to_string(oracle.cycles),
+                experiment_support::fixed(oracle.effective_factor, 6),
                 tgi::two_grid_status_name(oracle.status),
                 adaptive_cycles.converged && oracle.converged
                     ? experiment_support::fixed(gap, 2)
@@ -145,10 +154,8 @@ int main(int argc, char** argv) {
                 experiment_support::fixed(
                     adaptive.report.selection_wall_ms),
                 std::to_string(adaptive.report.candidate_count),
-                std::to_string(adaptive.report.pilot_limit),
-                std::to_string(adaptive.report.checkpoint_stride),
-                std::to_string(adaptive.report.maximum_sampled_steps),
-                adaptive.report.used_local_refinement ? "yes" : "no"});
+                std::to_string(adaptive.report.pilot_cycles),
+                std::to_string(adaptive.report.maximum_sampled_steps)});
         }
     }
 
@@ -157,19 +164,22 @@ int main(int argc, char** argv) {
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Threads", std::to_string(threads)},
-        {"Oracle candidates", "m=0 and m=12,14,...,60"},
+        {"Oracle candidates", "m=0 and (1/h)/8,...,(1/h)/2 by 2"},
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
-        "The step-two oracle is evaluation-only. Fast samples "
-        "m=0,12,32,52 with a 16-cycle pilot cap, a 10% near-optimality slack "
-        "and no refinement. Reuse samples m=0,12,20,...,60 with a "
-        "160-cycle pilot cap, a 2% slack and at most two neighboring step-two "
-        "refinements. "
-        "Neither policy reads scale, contrast or topology labels.");
+        "The step-two oracle is evaluation-only. Fast directly uses (1/h)/3, "
+        "or (1/h)/2 when the matrix diagonal ratio is at least 1e5, without "
+        "pilot solves. Reuse evaluates "
+        "0,(1/h)/8,(1/h)/4,(1/h)/3,(1/h)/2 with a (1/h)/2-cycle "
+        "pilot. It selects the smallest forecasted cycle count, breaking ties "
+        "toward the cheaper checkpoint. Neither policy uses contrast or "
+        "topology labels. Oracle candidates are screened to 6000 cycles; a "
+        "candidate still above tolerance at that point cannot beat any "
+        "reported oracle minimum.");
     report.add_table(
         "Representative oracle gaps", headers,
-        {5, 5, 10, 20, 7, 4, 10, 8, 10, 9, 14, 13, 8, 13, 10, 9, 7, 7, 7}, rows,
+        {5, 5, 10, 20, 7, 6, 10, 8, 11, 10, 9, 14, 13, 13, 8, 13, 10, 12, 7}, rows,
         true);
     report.save("experiment3_oracle_validation");
     return 0;
