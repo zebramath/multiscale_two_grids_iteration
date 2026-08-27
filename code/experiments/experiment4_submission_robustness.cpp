@@ -22,12 +22,16 @@ constexpr double pi = 3.141592653589793238462643383279502884;
 struct SolveResult {
     int cycles = 0;
     double milliseconds = 0.0;
+    tgi::TwoGridIterationStatus status =
+        tgi::TwoGridIterationStatus::SlowAtLimit;
     bool converged = false;
 };
 
 struct CycleAggregate {
     int cases = 0;
     int converged = 0;
+    int slow = 0;
+    int diverged = 0;
     long long cycles = 0;
     int maximum_cycles = 0;
 };
@@ -54,7 +58,8 @@ SolveResult measure_solve(
     const auto solved = tgi::solve_two_grid(
         rhs, cycle, 1.0e-6, maximum_cycles);
     return {
-        solved.cycles, elapsed_ms(begin, Clock::now()), solved.converged};
+        solved.cycles, elapsed_ms(begin, Clock::now()),
+        solved.status, solved.converged};
 }
 
 tgi::AdaptiveGlobalPcgResult build_adaptive(
@@ -74,10 +79,17 @@ tgi::AdaptiveGlobalPcgResult build_adaptive(
 void add_aggregate(
     CycleAggregate& aggregate, const SolveResult& measurement) {
     ++aggregate.cases;
-    aggregate.converged += measurement.converged ? 1 : 0;
-    aggregate.cycles += measurement.cycles;
-    aggregate.maximum_cycles = std::max(
-        aggregate.maximum_cycles, measurement.cycles);
+    if (measurement.converged) {
+        ++aggregate.converged;
+        aggregate.cycles += measurement.cycles;
+        aggregate.maximum_cycles = std::max(
+            aggregate.maximum_cycles, measurement.cycles);
+    } else if (measurement.status ==
+               tgi::TwoGridIterationStatus::Diverged) {
+        ++aggregate.diverged;
+    } else {
+        ++aggregate.slow;
+    }
 }
 
 tgi::Vector normalized(tgi::Vector values) {
@@ -192,7 +204,8 @@ int main(int argc, char** argv) {
             threads = std::stoi(argument.substr(10));
         }
     }
-    constexpr int maximum_cycles = 6000;
+    constexpr int maximum_cycles =
+        experiment_support::maximum_two_grid_cycles;
     constexpr std::array<std::uint64_t, 5> seeds{1, 3, 7, 11, 19};
     const auto& cross = experiment_support::channel_topologies().front();
     experiment_support::BasicConfig config;
@@ -227,7 +240,7 @@ int main(int argc, char** argv) {
                 experiment_support::fixed(
                     experiment_support::interpolation_density_percent(
                         *adaptive.prolongation), 4),
-                solved.converged ? "yes" : "no"});
+                tgi::two_grid_status_name(solved.status)});
         }
         const auto exact = experiment_support::build_global_reference(
             grid, problem.matrix, threads);
@@ -242,7 +255,7 @@ int main(int argc, char** argv) {
             experiment_support::fixed(
                 experiment_support::interpolation_density_percent(
                     exact.prolongation), 4),
-            solved.converged ? "yes" : "no"});
+            tgi::two_grid_status_name(solved.status)});
     }
     experiment_support::Rows seed_summary;
     for (const std::string method : {
@@ -251,12 +264,17 @@ int main(int argc, char** argv) {
         seed_summary.push_back({
             method,
             std::to_string(aggregate.converged) + "/" +
-                std::to_string(aggregate.cases),
+                std::to_string(aggregate.slow) + "/" +
+                std::to_string(aggregate.diverged),
             std::to_string(aggregate.cycles),
-            experiment_support::fixed(
-                static_cast<double>(aggregate.cycles) /
-                static_cast<double>(aggregate.cases), 2),
-            std::to_string(aggregate.maximum_cycles)});
+            aggregate.converged > 0
+                ? experiment_support::fixed(
+                    static_cast<double>(aggregate.cycles) /
+                    static_cast<double>(aggregate.converged), 2)
+                : "--",
+            aggregate.converged > 0
+                ? std::to_string(aggregate.maximum_cycles)
+                : "--"});
     }
 
     experiment_support::progress("submission RHS transfer");
@@ -296,8 +314,8 @@ int main(int argc, char** argv) {
                     : method.first == std::string("adaptive-reuse")
                         ? std::to_string(reuse.report.selected_steps)
                         : "-",
-                solved.converged ? std::to_string(solved.cycles)
-                    : "failed@" + std::to_string(solved.cycles)});
+                std::to_string(solved.cycles),
+                tgi::two_grid_status_name(solved.status)});
         }
     }
     experiment_support::Rows rhs_summary;
@@ -308,12 +326,17 @@ int main(int argc, char** argv) {
         rhs_summary.push_back({
             method,
             std::to_string(aggregate.converged) + "/" +
-                std::to_string(aggregate.cases),
+                std::to_string(aggregate.slow) + "/" +
+                std::to_string(aggregate.diverged),
             std::to_string(aggregate.cycles),
-            experiment_support::fixed(
-                static_cast<double>(aggregate.cycles) /
-                static_cast<double>(aggregate.cases), 2),
-            std::to_string(aggregate.maximum_cycles)});
+            aggregate.converged > 0
+                ? experiment_support::fixed(
+                    static_cast<double>(aggregate.cycles) /
+                    static_cast<double>(aggregate.converged), 2)
+                : "--",
+            aggregate.converged > 0
+                ? std::to_string(aggregate.maximum_cycles)
+                : "--"});
     }
 
     experiment_support::progress("submission repeated timing");
@@ -377,7 +400,8 @@ int main(int argc, char** argv) {
         {"Contrast", "1e4"},
         {"Topology", "cross-channel"},
         {"Threads", std::to_string(threads)},
-        {"Solve tolerance", "1e-6"}});
+        {"Solve tolerance", "1e-6"},
+        {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
         "This single compact experiment adds only the three checks needed "
         "before submission: five coefficient seeds, six right-hand sides "
@@ -386,20 +410,22 @@ int main(int argc, char** argv) {
         "repetition; Q1, median and Q3 are reported instead of a single run.");
     report.add_table(
         "Coefficient-seed stability",
-        {"Seed", "Method", "m", "Cycles", "P density %", "Converged"},
+        {"Seed", "Method", "m", "Cycles", "P density %", "Status"},
         {7, 18, 7, 10, 12, 10}, seed_rows, true);
     report.add_table(
         "Seed aggregate",
-        {"Method", "Converged", "Cycle sum", "Mean cycles", "Worst cycles"},
-        {18, 10, 11, 12, 13}, seed_summary);
+        {"Method", "Conv/slow/div", "Converged cycle sum",
+         "Mean converged", "Worst converged"},
+        {18, 13, 19, 14, 15}, seed_summary);
     report.add_table(
         "Right-hand-side transfer (constant-RHS training)",
-        {"Evaluation RHS", "Method", "m", "Cycles"},
-        {18, 18, 7, 12}, rhs_rows, true);
+        {"Evaluation RHS", "Method", "m", "Cycles", "Status"},
+        {18, 18, 7, 8, 10}, rhs_rows, true);
     report.add_table(
         "RHS aggregate",
-        {"Method", "Converged", "Cycle sum", "Mean cycles", "Worst cycles"},
-        {18, 10, 11, 12, 13}, rhs_summary);
+        {"Method", "Conv/slow/div", "Converged cycle sum",
+         "Mean converged", "Worst converged"},
+        {18, 13, 19, 14, 15}, rhs_summary);
     report.add_table(
         "Repeated wall-clock summary",
         {"Policy", "Runs", "Setup med ms", "Setup Q1", "Setup Q3",

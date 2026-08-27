@@ -39,8 +39,10 @@ experiment_support::Row path_row(
         experiment_support::fixed(
             experiment_support::interpolation_density_percent(
                 prolongation), 4),
-        solved.converged ? std::to_string(solved.cycles)
-            : "failed@" + std::to_string(solved.cycles)};
+        std::to_string(solved.cycles),
+        tgi::two_grid_status_name(solved.status),
+        experiment_support::scientific(solved.relative_residual, 2),
+        experiment_support::fixed(solved.tail_factor, 6)};
 }
 
 }
@@ -60,7 +62,8 @@ int main(int argc, char** argv) {
         PathCase{128, 16, 1.0e6, 1, topologies[0]}};
     constexpr std::array<int, 7> checkpoints{
         12, 20, 28, 36, 44, 52, 60};
-    constexpr int maximum_cycles = 6000;
+    constexpr int maximum_cycles =
+        experiment_support::maximum_two_grid_cycles;
     experiment_support::Rows rows;
 
     for (const auto& item : cases) {
@@ -111,7 +114,8 @@ int main(int argc, char** argv) {
         {"Threads", std::to_string(base.threads)},
         {"Cases", std::to_string(cases.size())},
         {"Checkpoints", "m=0,12,20,...,60 and exact"},
-        {"Solve tolerance", "1e-6"}});
+        {"Solve tolerance", "1e-6"},
+        {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
         "The three cross-channel cases isolate scale and contrast. Only the "
         "energy excess, interpolation density and independently measured "
@@ -119,9 +123,10 @@ int main(int argc, char** argv) {
         "whereas the iteration count can attain a much better finite minimum.");
     report.add_table(
         "Finite path comparison",
-        {"1/h", "1/H", "Topology", "Contrast", "Method", "m", "Energy excess",
-         "P density %", "Cycles"},
-        {5, 5, 20, 10, 14, 7, 13, 11, 12}, rows, true);
+        {"1/h", "1/H", "Topology", "Contrast", "Method", "m",
+         "Energy excess", "P density %", "Cycles", "Status",
+         "Final relres", "Tail factor"},
+        {5, 5, 20, 10, 14, 7, 13, 11, 8, 10, 12, 11}, rows, true);
     report.save("experiment2_finite_path");
     return 0;
 }

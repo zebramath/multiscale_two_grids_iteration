@@ -3,10 +3,12 @@
 #include "core/linear_algebra.hpp"
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <exception>
+#include <limits>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
@@ -64,10 +66,31 @@ private:
     CoarseSetupReport setup_report_;
 };
 
+enum class TwoGridIterationStatus {
+    Converged,
+    SlowAtLimit,
+    Diverged
+};
+
+inline const char* two_grid_status_name(TwoGridIterationStatus status) {
+    switch (status) {
+        case TwoGridIterationStatus::Converged:
+            return "converged";
+        case TwoGridIterationStatus::SlowAtLimit:
+            return "slow-limit";
+        case TwoGridIterationStatus::Diverged:
+            return "diverged";
+    }
+    return "diverged";
+}
+
 struct TwoGridIterationResult {
     Vector solution;
     int cycles = 0;
     double relative_residual = 0.0;
+    double best_relative_residual = 1.0;
+    double tail_factor = 1.0;
+    TwoGridIterationStatus status = TwoGridIterationStatus::SlowAtLimit;
     bool converged = false;
 };
 
@@ -716,24 +739,73 @@ inline double TwoGridCycle::iterate(
 inline TwoGridIterationResult solve_two_grid(const Vector& rhs,
                                       const TwoGridCycle& cycle,
                                       double relative_tolerance, int max_cycles) {
+    constexpr int tail_window = 32;
     TwoGridIterationResult result;
     result.solution.assign(rhs.size(), 0.0);
     Vector residual = rhs;
     TwoGridCycle::Workspace workspace;
+    std::array<double, static_cast<std::size_t>(tail_window + 1)>
+        recent_residuals{};
     const double initial_norm = norm2(residual);
     if (initial_norm == 0.0) {
         result.converged = true;
+        result.relative_residual = 0.0;
+        result.best_relative_residual = 0.0;
+        result.tail_factor = 0.0;
+        result.status = TwoGridIterationStatus::Converged;
         return result;
     }
+    recent_residuals[0] = 1.0;
     for (int iteration = 0; iteration < max_cycles; ++iteration) {
         const double residual_squared =
             cycle.iterate(rhs, result.solution, residual, workspace);
         result.cycles = iteration + 1;
+        if (!(residual_squared >= 0.0) ||
+            !std::isfinite(residual_squared)) {
+            result.relative_residual =
+                std::numeric_limits<double>::infinity();
+            result.status = TwoGridIterationStatus::Diverged;
+            break;
+        }
         result.relative_residual =
             std::sqrt(residual_squared) / initial_norm;
+        result.best_relative_residual = std::min(
+            result.best_relative_residual, result.relative_residual);
+        recent_residuals[static_cast<std::size_t>(
+            result.cycles % (tail_window + 1))] =
+            result.relative_residual;
         if (result.relative_residual <= relative_tolerance) {
             result.converged = true;
+            result.status = TwoGridIterationStatus::Converged;
             break;
+        }
+        if (result.cycles >= tail_window &&
+            result.relative_residual > 1.0e8 &&
+            result.relative_residual >
+                10.0 * result.best_relative_residual) {
+            result.status = TwoGridIterationStatus::Diverged;
+            break;
+        }
+    }
+    if (result.cycles > 0 && std::isfinite(result.relative_residual)) {
+        const int span = std::min(result.cycles, tail_window);
+        const double anchor = recent_residuals[static_cast<std::size_t>(
+            (result.cycles - span) % (tail_window + 1))];
+        if (anchor > 0.0 && result.relative_residual > 0.0) {
+            result.tail_factor = std::exp(
+                std::log(result.relative_residual / anchor) /
+                static_cast<double>(span));
+        }
+    }
+    if (!result.converged &&
+        result.status != TwoGridIterationStatus::Diverged) {
+        if (result.tail_factor > 1.001 &&
+            result.relative_residual >= 1.0 &&
+            result.relative_residual >
+                10.0 * result.best_relative_residual) {
+            result.status = TwoGridIterationStatus::Diverged;
+        } else {
+            result.status = TwoGridIterationStatus::SlowAtLimit;
         }
     }
     return result;

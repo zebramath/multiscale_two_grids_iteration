@@ -20,20 +20,27 @@ struct OracleCase {
     experiment_support::FieldCase field;
 };
 
-int cycles_for(
+struct CycleMeasurement {
+    int cycles = 0;
+    tgi::TwoGridIterationStatus status =
+        tgi::TwoGridIterationStatus::SlowAtLimit;
+    bool converged = false;
+};
+
+CycleMeasurement cycles_for(
     const tgi::SparseMatrix& a, const tgi::Vector& rhs,
     const tgi::SparseMatrix& p, int threads, int maximum) {
     const tgi::TwoGridCycle cycle(a, p, 1, threads);
     const auto solved = tgi::solve_two_grid(
         rhs, cycle, 1.0e-6, maximum);
-    return solved.converged ? solved.cycles : maximum + 1;
+    return {solved.cycles, solved.status, solved.converged};
 }
 
-int cycles_for(
+CycleMeasurement cycles_for(
     const tgi::Vector& rhs, const tgi::TwoGridCycle& cycle, int maximum) {
     const auto solved = tgi::solve_two_grid(
         rhs, cycle, 1.0e-6, maximum);
-    return solved.converged ? solved.cycles : maximum + 1;
+    return {solved.cycles, solved.status, solved.converged};
 }
 
 }
@@ -55,10 +62,12 @@ int main(int argc, char** argv) {
         {128, 16, 1.0e6, 1, topology[0]},
         {128, 16, 1.0e4, 1, topology[5]}
     }};
-    constexpr int maximum_cycles = 6000;
+    constexpr int maximum_cycles =
+        experiment_support::maximum_two_grid_cycles;
     const experiment_support::Row headers{
         "1/h", "1/H", "Contrast", "Topology", "Policy", "R",
-        "Selected m", "Cycles", "Oracle m", "Oracle cycles", "Gap %",
+        "Selected m", "Cycles", "Status", "Oracle m", "Oracle cycles",
+        "Oracle status", "Gap %",
         "Selection ms", "Candidates", "Pilot cap", "Stride", "Max m",
         "Refine"};
     experiment_support::Rows rows;
@@ -81,7 +90,7 @@ int main(int argc, char** argv) {
             experiment_support::geometric_interpolation(grid);
 
         int oracle_steps = 0;
-        int oracle_cycles = cycles_for(
+        CycleMeasurement oracle = cycles_for(
             problem.matrix, problem.rhs, geometric.prolongation,
             threads, maximum_cycles);
         tgi::GlobalEnergyPcgPath path(
@@ -89,11 +98,12 @@ int main(int argc, char** argv) {
         for (int steps = 12; steps <= 60; steps += 2) {
             path.advance_to(steps);
             const tgi::SparseMatrix candidate = path.prolongation(0.0);
-            const int cycles = cycles_for(
+            const CycleMeasurement measured = cycles_for(
                 problem.matrix, problem.rhs, candidate,
                 threads, maximum_cycles);
-            if (cycles < oracle_cycles) {
-                oracle_cycles = cycles;
+            if (measured.converged &&
+                (!oracle.converged || measured.cycles < oracle.cycles)) {
+                oracle = measured;
                 oracle_steps = steps;
             }
         }
@@ -111,12 +121,12 @@ int main(int argc, char** argv) {
                 tgi::build_adaptive_global_pcg_interpolation(
                     grid, problem.matrix, geometric.prolongation,
                     options, problem.rhs);
-            const int adaptive_cycles = cycles_for(
+            const CycleMeasurement adaptive_cycles = cycles_for(
                 problem.rhs, *adaptive.cycle, maximum_cycles);
-            const double gap = oracle_cycles > 0
+            const double gap = adaptive_cycles.converged && oracle.converged
                 ? 100.0 * static_cast<double>(
-                      adaptive_cycles - oracle_cycles) /
-                      static_cast<double>(oracle_cycles)
+                      adaptive_cycles.cycles - oracle.cycles) /
+                      static_cast<double>(oracle.cycles)
                 : 0.0;
             rows.push_back({
                 std::to_string(item.fine), std::to_string(item.coarse),
@@ -124,10 +134,14 @@ int main(int argc, char** argv) {
                 item.field.name, policy.first,
                 experiment_support::fixed(policy.second, 0),
                 std::to_string(adaptive.report.selected_steps),
-                std::to_string(adaptive_cycles),
+                std::to_string(adaptive_cycles.cycles),
+                tgi::two_grid_status_name(adaptive_cycles.status),
                 std::to_string(oracle_steps),
-                std::to_string(oracle_cycles),
-                experiment_support::fixed(gap, 2),
+                std::to_string(oracle.cycles),
+                tgi::two_grid_status_name(oracle.status),
+                adaptive_cycles.converged && oracle.converged
+                    ? experiment_support::fixed(gap, 2)
+                    : "--",
                 experiment_support::fixed(
                     adaptive.report.selection_wall_ms),
                 std::to_string(adaptive.report.candidate_count),
@@ -144,7 +158,8 @@ int main(int argc, char** argv) {
         {"Version", std::string(tgi::version)},
         {"Threads", std::to_string(threads)},
         {"Oracle candidates", "m=0 and m=12,14,...,60"},
-        {"Solve tolerance", "1e-6"}});
+        {"Solve tolerance", "1e-6"},
+        {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
         "The step-two oracle is evaluation-only. Fast samples "
         "m=0,12,32,52 with a 16-cycle pilot cap, a 10% near-optimality slack "
@@ -154,7 +169,7 @@ int main(int argc, char** argv) {
         "Neither policy reads scale, contrast or topology labels.");
     report.add_table(
         "Representative oracle gaps", headers,
-        {5, 5, 10, 20, 7, 4, 10, 8, 9, 14, 8, 13, 10, 9, 7, 7, 7}, rows,
+        {5, 5, 10, 20, 7, 4, 10, 8, 10, 9, 14, 13, 8, 13, 10, 9, 7, 7, 7}, rows,
         true);
     report.save("experiment3_oracle_validation");
     return 0;

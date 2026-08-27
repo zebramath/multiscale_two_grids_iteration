@@ -24,6 +24,8 @@ inline std::vector<ComparisonCase> comparison_cases(bool quick) {
         {"size", 64, 8, 1.0e4, 1, topologies[0]},
         {"size", 64, 16, 1.0e4, 1, topologies[0]},
         {"center", 128, 16, 1.0e4, 1, topologies[0]},
+        {"large-scale", 160, 16, 1.0e4, 1, topologies[0]},
+        {"large-scale", 192, 16, 1.0e4, 1, topologies[0]},
         {"contrast", 128, 16, 1.0e2, 1, topologies[0]},
         {"contrast", 128, 16, 1.0e6, 1, topologies[0]},
         {"topology", 128, 16, 1.0e4, 1, topologies[1]},
@@ -32,7 +34,7 @@ inline std::vector<ComparisonCase> comparison_cases(bool quick) {
         {"topology", 128, 16, 1.0e4, 1, topologies[4]},
         {"topology", 128, 16, 1.0e4, 1, topologies[5]}};
     if (!quick) return cases;
-    return {cases[0], cases[3], cases[10]};
+    return {cases[0], cases[3], cases[12]};
 }
 
 inline BasicConfig comparison_config(

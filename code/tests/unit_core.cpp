@@ -28,8 +28,8 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "4.6.0", "wrong package version");
-    require(tgi::version_major == 4 && tgi::version_minor == 6 &&
+    require(tgi::version == "4.7.0", "wrong package version");
+    require(tgi::version_major == 4 && tgi::version_minor == 7 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
 
@@ -115,5 +115,14 @@ int main() {
         static_cast<std::size_t>(grid.fine_size()), 1.0);
     const auto solved = tgi::solve_two_grid(rhs, cycle, 1.0e-6, 1000);
     require(solved.converged, "two-grid solve did not converge");
+    require(solved.status == tgi::TwoGridIterationStatus::Converged,
+            "converged two-grid solve reported the wrong status");
+    const auto limited = tgi::solve_two_grid(rhs, cycle, 1.0e-30, 1);
+    require(!limited.converged &&
+                limited.status == tgi::TwoGridIterationStatus::SlowAtLimit,
+            "cycle-limited contraction was not classified as slow");
+    require(std::isfinite(limited.tail_factor) &&
+                limited.tail_factor > 0.0,
+            "cycle-limited solve reported an invalid tail factor");
     return 0;
 }

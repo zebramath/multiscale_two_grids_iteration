@@ -3,53 +3,100 @@
 #include "multigrid/global_pcg.hpp"
 #include "version.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace {
+
+struct Measurement {
+    std::string method;
+    std::string parameter;
+    double density = 0.0;
+    std::size_t coarse_nnz = 0;
+    double setup_ms = 0.0;
+    double solve_ms = 0.0;
+    tgi::TwoGridIterationResult solved;
+};
 
 struct Aggregate {
     int cases = 0;
     int converged = 0;
-    long long cycles = 0;
+    int slow = 0;
+    int diverged = 0;
+    long long converged_cycles = 0;
     double density = 0.0;
     double setup_ms = 0.0;
-    double solve_ms = 0.0;
+    int comparable_cases = 0;
+    double comparable_setup_ms = 0.0;
+    double comparable_solve_ms = 0.0;
 };
+
+Measurement measure(
+    const std::string& method, const std::string& parameter,
+    const tgi::SparseMatrix& prolongation, const tgi::TwoGridCycle& cycle,
+    const tgi::Vector& rhs, double setup_ms) {
+    const auto begin = std::chrono::steady_clock::now();
+    auto solved = tgi::solve_two_grid(
+        rhs, cycle, 1.0e-6,
+        experiment_support::maximum_two_grid_cycles);
+    const double solve_ms = std::chrono::duration<double, std::milli>(
+        std::chrono::steady_clock::now() - begin).count();
+    return {
+        method, parameter,
+        experiment_support::interpolation_density_percent(prolongation),
+        cycle.setup_report().coarse_nnz, setup_ms, solve_ms,
+        std::move(solved)};
+}
 
 experiment_support::Row measurement_row(
     const experiment_support::ComparisonCase& item,
-    const std::string& method, const std::string& parameter,
-    const tgi::SparseMatrix& prolongation, const tgi::TwoGridCycle& cycle,
-    const tgi::Vector& rhs, double setup_ms, int maximum_cycles,
-    Aggregate& aggregate) {
-    const auto begin = std::chrono::steady_clock::now();
-    const auto solved = tgi::solve_two_grid(
-        rhs, cycle, 1.0e-6, maximum_cycles);
-    const double solve_ms = std::chrono::duration<double, std::milli>(
-        std::chrono::steady_clock::now() - begin).count();
-    const double density =
-        experiment_support::interpolation_density_percent(prolongation);
-    ++aggregate.cases;
-    aggregate.converged += solved.converged ? 1 : 0;
-    aggregate.cycles += solved.cycles;
-    aggregate.density += density;
-    aggregate.setup_ms += setup_ms;
-    aggregate.solve_ms += solve_ms;
+    const Measurement& measurement) {
+    const bool timing_valid = measurement.solved.converged;
     return {
         item.axis,
         std::to_string(item.fine), std::to_string(item.coarse),
         experiment_support::scientific(item.contrast, 0),
-        std::to_string(item.seed), item.field.name, method, parameter,
-        experiment_support::fixed(density, 4),
-        std::to_string(cycle.setup_report().coarse_nnz),
-        experiment_support::fixed(setup_ms),
-        experiment_support::fixed(solve_ms),
-        experiment_support::fixed(setup_ms + solve_ms),
-        solved.converged ? std::to_string(solved.cycles)
-            : "failed@" + std::to_string(solved.cycles)};
+        std::to_string(item.seed), item.field.name,
+        measurement.method, measurement.parameter,
+        experiment_support::fixed(measurement.density, 4),
+        std::to_string(measurement.coarse_nnz),
+        experiment_support::fixed(measurement.setup_ms),
+        timing_valid ? experiment_support::fixed(measurement.solve_ms) : "--",
+        timing_valid
+            ? experiment_support::fixed(
+                measurement.setup_ms + measurement.solve_ms)
+            : "--",
+        std::to_string(measurement.solved.cycles),
+        tgi::two_grid_status_name(measurement.solved.status),
+        experiment_support::scientific(
+            measurement.solved.relative_residual, 2),
+        experiment_support::fixed(measurement.solved.tail_factor, 6)};
+}
+
+void accumulate(
+    Aggregate& aggregate, const Measurement& measurement,
+    bool jointly_converged) {
+    ++aggregate.cases;
+    aggregate.density += measurement.density;
+    aggregate.setup_ms += measurement.setup_ms;
+    if (measurement.solved.converged) {
+        ++aggregate.converged;
+        aggregate.converged_cycles += measurement.solved.cycles;
+    } else if (measurement.solved.status ==
+               tgi::TwoGridIterationStatus::Diverged) {
+        ++aggregate.diverged;
+    } else {
+        ++aggregate.slow;
+    }
+    if (jointly_converged) {
+        ++aggregate.comparable_cases;
+        aggregate.comparable_setup_ms += measurement.setup_ms;
+        aggregate.comparable_solve_ms += measurement.solve_ms;
+    }
 }
 
 }
@@ -64,12 +111,7 @@ int main(int argc, char** argv) {
             threads = std::stoi(argument.substr(10));
         }
     }
-    constexpr int maximum_cycles = 6000;
     const auto cases = experiment_support::comparison_cases(quick);
-    const experiment_support::Row headers{
-        "Axis", "1/h", "1/H", "Contrast", "Seed", "Topology", "Method",
-        "Parameter", "P density %", "Ac nnz", "Setup ms", "Solve ms",
-        "Total ms", "Cycles"};
     experiment_support::Rows rows;
     std::map<std::string, Aggregate> aggregates;
 
@@ -88,6 +130,7 @@ int main(int argc, char** argv) {
         const auto geometric =
             experiment_support::geometric_interpolation(grid);
         const double geometric_ms = geometric.report.timing.total_ms;
+        std::vector<Measurement> case_measurements;
 
         for (const auto& policy : {
                  std::pair<const char*, double>{"adaptive-fast", 1.0},
@@ -96,59 +139,75 @@ int main(int argc, char** argv) {
             adaptive_options.minimum_steps = 12;
             adaptive_options.maximum_steps = 60;
             adaptive_options.expected_rhs_count = policy.second;
-            adaptive_options.maximum_cycles = maximum_cycles;
+            adaptive_options.maximum_cycles =
+                experiment_support::maximum_two_grid_cycles;
             adaptive_options.thread_count = threads;
             const auto adaptive =
                 tgi::build_adaptive_global_pcg_interpolation(
                     grid, problem.matrix, geometric.prolongation,
                     adaptive_options, problem.rhs);
-            rows.push_back(measurement_row(
-                item, policy.first,
+            case_measurements.push_back(measure(
+                policy.first,
                 "R=" + experiment_support::fixed(policy.second, 0) +
                     ",m=" +
                     std::to_string(adaptive.report.selected_steps),
                 *adaptive.prolongation, *adaptive.cycle, problem.rhs,
-                geometric_ms + adaptive.report.selection_wall_ms,
-                maximum_cycles, aggregates[policy.first]));
+                geometric_ms + adaptive.report.selection_wall_ms));
         }
 
-        const auto exact = experiment_support::build_global_reference(
+        const auto reference = experiment_support::build_global_reference(
             grid, problem.matrix, threads);
-        const tgi::TwoGridCycle exact_cycle(
-            problem.matrix, exact.prolongation, 1, threads);
-        rows.push_back(measurement_row(
-            item, "global-reference", "tol=1e-10", exact.prolongation,
-            exact_cycle, problem.rhs,
-            exact.report.timing.total_ms +
-                exact_cycle.setup_report().total_ms,
-            maximum_cycles, aggregates["global-reference"]));
+        const tgi::TwoGridCycle reference_cycle(
+            problem.matrix, reference.prolongation, 1, threads);
+        case_measurements.push_back(measure(
+            "global-reference", "tol=1e-10", reference.prolongation,
+            reference_cycle, problem.rhs,
+            reference.report.timing.total_ms +
+                reference_cycle.setup_report().total_ms));
 
         const tgi::TwoGridCycle geometric_cycle(
             problem.matrix, geometric.prolongation, 1, threads);
-        rows.push_back(measurement_row(
-            item, "geometric", "P_G", geometric.prolongation,
+        case_measurements.push_back(measure(
+            "geometric", "P_G", geometric.prolongation,
             geometric_cycle, problem.rhs,
-            geometric_ms + geometric_cycle.setup_report().total_ms,
-            maximum_cycles, aggregates["geometric"]));
+            geometric_ms + geometric_cycle.setup_report().total_ms));
+
+        const bool jointly_converged = std::all_of(
+            case_measurements.begin(), case_measurements.end(),
+            [](const Measurement& value) { return value.solved.converged; });
+        for (const auto& measurement : case_measurements) {
+            rows.push_back(measurement_row(item, measurement));
+            accumulate(
+                aggregates[measurement.method], measurement,
+                jointly_converged);
+        }
     }
 
-    experiment_support::Rows summary_rows;
+    experiment_support::Rows convergence_rows;
+    experiment_support::Rows timing_rows;
     for (const std::string method :
          {"adaptive-fast", "adaptive-reuse",
           "global-reference", "geometric"}) {
         const Aggregate& value = aggregates[method];
-        summary_rows.push_back({
+        convergence_rows.push_back({
             method,
             std::to_string(value.converged) + "/" +
-                std::to_string(value.cases),
-            std::to_string(value.cycles),
+                std::to_string(value.slow) + "/" +
+                std::to_string(value.diverged),
+            std::to_string(value.converged_cycles),
             experiment_support::fixed(
                 value.density / static_cast<double>(value.cases), 4),
-            experiment_support::fixed(value.setup_ms),
-            experiment_support::fixed(value.solve_ms),
-            experiment_support::fixed(value.setup_ms + value.solve_ms),
+            experiment_support::fixed(value.setup_ms)});
+        timing_rows.push_back({
+            method,
+            std::to_string(value.comparable_cases),
+            experiment_support::fixed(value.comparable_setup_ms),
+            experiment_support::fixed(value.comparable_solve_ms),
             experiment_support::fixed(
-                value.setup_ms + 256.0 * value.solve_ms)});
+                value.comparable_setup_ms + value.comparable_solve_ms),
+            experiment_support::fixed(
+                value.comparable_setup_ms +
+                256.0 * value.comparable_solve_ms)});
     }
 
     experiment_support::Report report(
@@ -159,25 +218,34 @@ int main(int argc, char** argv) {
         {"Mode", quick ? "quick" : "full"},
         {"Threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"},
-        {"Maximum cycles", std::to_string(maximum_cycles)}});
+        {"Maximum cycles",
+         std::to_string(experiment_support::maximum_two_grid_cycles)}});
     report.add_note(
-        "The v4.6 matrix changes one axis at a time around the 128/16, "
-        "contrast 1e4 cross-channel center: four size pairs, three contrasts "
-        "and all six channel topologies. Adaptive-fast uses R=1; "
-        "it evaluates m=0,12,32,52 with a 16-cycle pilot cap and a 10% "
-        "near-optimality slack. Adaptive-reuse uses R=256; it evaluates "
-        "m=0,12,20,...,60 with a 160-cycle pilot cap, a 2% slack and at most "
-        "two step-two refinements. Every row uses identical coarse nodes, "
-        "right-hand side and smoother across interpolation methods. The "
-        "reuse policy represents a many-right-hand-side workload (R=256).");
+        "The v4.7 matrix varies fine/coarse scale, contrast and six channel "
+        "topologies. Two fixed-H scale extensions, 160/16 and 192/16, test "
+        "larger fine-grid separation. Fast evaluates m=0,12,32,52 with a "
+        "16-cycle pilot cap; reuse evaluates m=0,12,20,...,60 with a "
+        "160-cycle cap and at most two step-two refinements. A slow-limit "
+        "row still contracts at the 12000-cycle cap; a diverged row has "
+        "nonfinite residual or sustained growing tail. Solve and total times "
+        "are shown only for converged rows.");
     report.add_table(
-        "All two-grid cases", headers,
-        {10, 5, 5, 10, 6, 20, 15, 12, 11, 9, 10, 10, 10, 12}, rows, true);
+        "All two-grid cases",
+        {"Axis", "1/h", "1/H", "Contrast", "Seed", "Topology", "Method",
+         "Parameter", "P density %", "Ac nnz", "Setup ms", "Solve ms",
+         "Total ms", "Cycles", "Status", "Final relres", "Tail factor"},
+        {12, 5, 5, 10, 6, 20, 16, 12, 11, 9, 10, 10, 10, 8, 10, 12, 11},
+        rows, true);
     report.add_table(
-        "Aggregate comparison",
-        {"Method", "Converged", "Cycle sum", "Mean density %",
-         "Setup sum ms", "Solve sum ms", "Total R=1 ms", "Total R=256 ms"},
-        {15, 10, 11, 14, 13, 12, 13, 14}, summary_rows);
+        "Convergence and setup summary",
+        {"Method", "Conv/slow/div", "Converged cycle sum",
+         "Mean density %", "Setup sum ms"},
+        {16, 13, 19, 14, 13}, convergence_rows);
+    report.add_table(
+        "Timing on the jointly converged subset",
+        {"Method", "Cases", "Setup sum ms", "Solve sum ms",
+         "Total R=1 ms", "Total R=256 ms"},
+        {16, 7, 13, 12, 13, 14}, timing_rows);
     report.save("experiment1_two_grid_comparison");
     return 0;
 }

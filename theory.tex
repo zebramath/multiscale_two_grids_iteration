@@ -19,7 +19,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与自适应两网格选择：理论分析 v4.6}
+\title{有限 Krylov 能量插值与自适应两网格选择：理论分析 v4.7}
 \author{崔正平}
 \date{}
 
@@ -27,9 +27,9 @@
 \maketitle
 
 \begin{abstract}
-本文研究一个看似反常但具有实际意义的现象：对固定粗点和固定磨光器，逐步逼近全局
-能量极小插值并不保证两网格收敛因子单调改善，有限步 Krylov 插值反而可能更优。
-理论主线只围绕当前实现展开。首先，有限 PCG 对能量极小插值具有精确的正交误差账本。
+本文研究全局能量下降与两网格收敛目标之间的非单调关系：对固定粗点和固定磨光器，
+有限步 Krylov 插值可能比能量极小终点产生更小的两网格收敛因子。
+理论主线与当前实现逐项对应。首先，有限 PCG 对能量极小插值具有精确的正交误差账本。
 其次，引入归一化误差
 \[
  \bm Z=\bm B^{1/2}(\bm W-\bm W^\ast)\Sc^{-1/2},
@@ -38,11 +38,11 @@
 精确投影表达式，以及其对粗空间扰动的全局 Lipschitz 界。再次，在能量终点附近，
 两网格目标的一阶变化分解为“磨光后最坏模态的可见性”和“Krylov 路径的方向对齐”；
 这给出有限步优于精确能量插值的充分条件，并在显式余项控制下导出严格的反单调 PCG
-尾部。最后，本文把实际 v4.6 选择器写成一个由预期右端项数控制的单参数预算族，给出
+尾部。最后，本文把实际 v4.7 选择器写成一个由预期右端项数控制的单参数预算族，给出
 pilot 预测误差到候选选择后悔值的确定性传递界和多右端项盈亏平衡式。
 
-这些结论解释的是“为何应在有限 Krylov 路径上选点”，而不是宣称能量插值在任意 AMG
-环境下失效。数值验证的范围限定为二维规则网格、高对比扩散、固定粗点和两网格结构。
+这些结论构成“为何在有限 Krylov 路径上选点”的理论依据。数值验证采用二维规则网格、
+高对比扩散、固定粗点和两网格结构，以受控方式检验这一机制。
 \end{abstract}
 
 \section{问题设置与研究边界}
@@ -66,20 +66,20 @@ pilot 预测误差到候选选择后悔值的确定性传递界和多右端项�
 或代表右端项上的实际循环数才是最终选择目标。把这三个量混为一谈，正是“能量越小，
 两网格必然越好”这一错误直觉的来源。
 
-\subsection{审校后的假设层级}
+\subsection{结论与假设层级}
 
-为避免把局部或条件性结果写成无条件结论，全文使用下列分层。
+全文按代数恒等式、全局界、局部机制和算法误差界四个层次组织假设。
 \begin{center}
 \begin{tabular}{p{0.20\textwidth}p{0.69\textwidth}}
 \toprule
 结论层级 & 明确假设 \\
 \midrule
-代数恒等式 & $\bm A\succ0$、固定粗点单位注入；不要求规则网格 \\
+代数恒等式 & $\bm A\succ0$、固定粗点单位注入；网格可为一般离散结构 \\
 PCG 能量账本 & 每列方程使用 SPD 预条件的标准 CG，结论按精确算术陈述 \\
 两网格投影公式 & 精确 Galerkin 粗解，后磨光为前磨光的 $\bm A$--伴随 \\
 终点一阶机制 & 能量终点处相关最大奇异值为正且单 \\
 严格反单调尾部 & 另需进入局部邻域，并满足逐步方向条件~\eqref{eq:tailcondition} \\
-选择后悔界 & 另需候选上的循环预测具有统一误差界；该界不是算法自动保证 \\
+选择后悔界 & 候选上的循环预测具有统一误差界 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -117,8 +117,8 @@ $\bm W=\bm W^\ast+\bm\Delta$ 代回，交叉项因
 $\bm B\bm W^\ast+\bm C=0$ 消失，即得两式。
 \end{proof}
 
-能量极小插值的经典算法背景可参见~\cite{WanChanSmith2000}；本文关注的不是重新提出
-式~\eqref{eq:Wstar}，而是有限 Krylov 路径与两网格目标之间的非单调关系。
+能量极小插值的经典算法背景可参见~\cite{WanChanSmith2000}；本文由
+式~\eqref{eq:Wstar} 出发，研究有限 Krylov 路径与两网格目标之间的非单调关系。
 
 第 $j$ 列满足 $\bm B\bm w_j^\ast=-\bm C\bm e_j$。
 设 $\bm w_{j,m}$ 是从给定初值运行 $m$ 步 PCG 的结果，
@@ -147,7 +147,7 @@ $\bm e_{j,m+1}\perp_{\bm B}(\bm w_{j,m+1}-\bm w_{j,m})$。
 对 $\bm e_{j,m}=\bm e_{j,m+1}+\bm s_{j,m}$ 使用勾股恒等式并对列求和。
 \end{proof}
 
-该定理只说明路径朝能量终点前进，并未说明两网格目标沿路径单调。这一区分是后文的
+该定理刻画路径朝能量终点前进；两网格目标还取决于粗空间方向。两者的差异是后文的
 逻辑起点。PCG 的经典最佳逼近和多项式界可参见~\cite{Greenbaum1997,Saad2003}。
 
 \section{归一化误差统一能量、粗矩阵与粗空间}
@@ -242,8 +242,8 @@ $\bm e_{k+1}=\bm E_{TG}\bm e_k$、$\bm r_k=\bm A\bm e_k$。
  \le \sqrt{\cond_2(\bm A)}\,
        \rhoTG(\mathcal U)^k.                           \label{eq:residualcontract}
 \end{equation}
-但给定 RHS 的实际循环数还取决于初始误差在
-$\bm K_{\mathcal U}$ 各特征方向上的分量，因此不由 $\rhoTG$ 单独决定。
+给定 RHS 的实际循环数还取决于初始误差在
+$\bm K_{\mathcal U}$ 各特征方向上的分量；$\rhoTG$ 提供最坏情形控制。
 \end{proposition}
 
 \begin{proof}
@@ -257,8 +257,8 @@ $\sqrt{\lambda_{\min}(\bm A)}\norm{\bm e}_{\bm A}
 作用于分子和分母即可。
 \end{proof}
 
-命题~\ref{prop:rhs} 是理论与实现之间必须保留的界面：谱半径描述最坏情形，而代码用
-代表 RHS 的短残量历史选择候选。二者相关，但不能互相冒充。
+命题~\ref{prop:rhs} 给出理论与实现的接口：谱半径描述最坏情形，代码则用代表 RHS 的
+短残量历史选择候选，分别对应谱目标与给定载荷目标。
 
 \begin{proposition}[由 $\bm Z$ 给出的精确粗投影]\label{prop:projector}
 在基~\eqref{eq:bases} 中，图空间的正交投影为
@@ -291,8 +291,8 @@ $\min_{\operatorname{rank}\bm\Pi=n_C}\norm{(\bm I-\bm\Pi)\bm T}_2
 =\sigma_{n_C+1}(\bm T)$。
 \end{proof}
 
-定理~\ref{thm:globalopt} 不声称算法能直接构造该空间；它指出能量极小粗空间通常并非
-固定磨光器意义下的全局最优空间，因而有限步候选优于能量终点在结构上完全可能。
+定理~\ref{thm:globalopt} 给出固定磨光器下的理论最优空间。能量极小粗空间一般与它
+不同，因而有限步候选优于能量终点在结构上完全可能。
 
 \begin{theorem}[谱半径平方根的全局稳定性]\label{thm:lipschitz}
 对任意两个同维粗空间 $\mathcal U,\mathcal V$，
@@ -322,8 +322,8 @@ $\sqrt{\rhoTG(\bm W^\ast)}-\sqrt{\rhoTG(\bm W)}\ge\gamma>0$，则
 \end{equation}
 \end{corollary}
 
-该下界说明明显的两网格优势不可能在能量终点无限近处保持固定幅度；有限步优势应出现于
-一个非零但不过大的路径区间，而不是被解释为数值舍入噪声。
+该下界把固定幅度的两网格优势与非零粗空间距离联系起来，说明有限步优势对应一段具有
+可分辨距离的路径区间。
 
 \section{有限步优于能量终点的局部机制}
 
@@ -375,12 +375,11 @@ $t^2\norm{\bm H\Sc^{1/2}}_F^2/2>0$。
    {\norm{\bm u_F}_2\norm{\bm H}_F\norm{\bm a}_2}}_{\text{路径对齐}}
   \norm{\bm H}_F.                                     \label{eq:visibility}
 \end{equation}
-式~\eqref{eq:visibility} 仅在
-$\norm{\bm u_F}_2\norm{\bm H}_F\norm{\bm a}_2>0$ 时使用；若任一因子为零，
-式~\eqref{eq:derivative} 的一阶收益为零，必须转向高阶分析，本文不作无条件分类。
+式~\eqref{eq:visibility} 用于
+$\norm{\bm u_F}_2\norm{\bm H}_F\norm{\bm a}_2>0$ 的情形；任一因子为零时，
+式~\eqref{eq:derivative} 的一阶项消失，相应问题由高阶项决定。
 第一项由系数场、粗点与磨光器决定；第二项取决于实际 Krylov 误差方向。
-这解释了为什么仅凭尺度、对比度或拓扑标签不能稳定预测最佳步数：标签可以改变可见性，
-却不能完全决定路径对齐。
+尺度、对比度和拓扑通过可见性影响最佳步数，实际 Krylov 方向则进一步决定路径对齐。
 
 \subsection{严格反单调 PCG 尾部}
 
@@ -420,9 +419,9 @@ $\bm D_m\ne0$，相应 PCG 步非零。第一式于是由定理~\ref{thm:pcgtail
 平方不改变严格不等号。
 \end{proof}
 
-条件~\eqref{eq:tailcondition} 是充分而非必要条件。它把“非单调”从经验描述变成可证命题：
-一阶有利分量必须压过二阶余项。最大奇异值不单、路径对齐变号或尚未进入局部邻域时，
-不能声称存在严格反单调尾部。
+条件~\eqref{eq:tailcondition} 是可检验的充分条件：一阶有利分量压过二阶余项时，
+“能量下降、两网格因子上升”形成严格尾部。最大奇异值的单性、局部邻域和方向一致性
+共同确定该结论的适用区间。
 
 \subsection{高对比通道的可见性来源}
 
@@ -444,12 +443,12 @@ $\bm x=\bm D^{1/2}\bm 1_S$。则
 因此内部强连接而外部弱连接的通道产生低 Jacobi 缩放特征值，难由局部磨光快速消除。
 \end{proposition}
 
-该命题只解释高对比拓扑为何容易提高式~\eqref{eq:visibility} 中的“问题可见性”；它不推出
-某一拓扑必有固定最佳 PCG 步数，后者还取决于粗点覆盖和路径对齐。
+该命题解释高对比拓扑提高式~\eqref{eq:visibility} 中“问题可见性”的来源；最佳 PCG
+步数还由粗点覆盖和路径对齐共同确定。
 
-\section{与 v4.6 实现一致的自适应选择}
+\section{与 v4.7 实现一致的自适应选择}
 
-选择器只暴露预期右端项数 $R\ge1$。令
+选择器以预期右端项数 $R\ge1$ 作为策略参数。令
 \begin{equation}
  d(R)=\min\{1,\max\{0,\log_2(R)/8\}\}.                \label{eq:detail}
 \end{equation}
@@ -468,9 +467,9 @@ $m_{\min},m_{\min}+s(R),\ldots,\bar m(R)$，并总是包含端点 $\bar m(R)$；
 \begin{equation}
  m\in\{0,12,32,52\},\qquad L=16,\quad\delta=10\%,      \label{eq:fast}
 \end{equation}
-且每个候选至多运行 16 次 pilot，不细化；$R=256$ 的复用档检查
+且每个候选至多运行 16 次 pilot；$R=256$ 的复用档检查
 $m=0,12,20,\ldots,60$，每个候选至多运行 160 次 pilot，取 $\delta=2\%$ 并允许局部细化。
-这一族不读取网格尺度、对比度或拓扑标签，故参数变化只通过实际 pilot 收敛历史影响选择。
+这一族由实际 pilot 收敛历史响应网格尺度、对比度和拓扑变化，参数预算保持统一。
 
 \subsection{稳健 pilot 预测与选择规则}
 
@@ -497,15 +496,15 @@ $\tau$ 的总循环数
  \right\},                                             \label{eq:forecast}
 \end{equation}
 并截断到最大循环数；若已在 pilot 内收敛，则直接取
-$\widehat N_m=\ell_m$。MAD 在这里是稳健拟合修正，不是统计置信区间。
+$\widehat N_m=\ell_m$。MAD 在这里承担稳健拟合修正的作用。
 
 设候选集合为 $\mathcal M_R$。算法先求
 $\widehat N_{\min}=\min_{m\in\mathcal M_R}\widehat N_m$，再从
 \begin{equation}
  \{m:\widehat N_m\le(1+\delta(R))\widehat N_{\min}\} \label{eq:nearset}
 \end{equation}
-中选择最小 $m$。这是一个简单的词典序原则：先保持近优预测循环数，再偏向较早路径点，
-从而降低插值路径和粗算子构造成本；它没有复杂的拓扑路由。
+中选择最小 $m$。该词典序原则先保持近优预测循环数，再偏向较早路径点，从而降低插值
+路径和粗算子构造成本，并以统一预算适配不同问题。
 
 \begin{theorem}[预测误差到选择后悔值]\label{thm:regret}
 假设在已评估候选上存在统一误差界
@@ -522,8 +521,8 @@ $\widehat N_{\widehat m}\le(1+\delta)\min_m\widehat N_m
 \le(1+\delta)\widehat N_{m_\ast}$。两端各应用一次统一误差界即可。
 \end{proof}
 
-该结果是条件性的：短 pilot 的主要风险正是 $\varepsilon$ 变大。激进档并不追求与离线
-step--2 oracle 同样的循环数，而是接受适度后悔值来显著压缩 setup。
+该结果把 pilot 精度与选择损失定量联系起来。激进档接受较大的预测误差预算以压缩
+setup；复用档用更长 pilot 和局部细化换取接近离线 step--2 oracle 的循环数。
 
 \subsection{多右端项的盈亏平衡}
 
@@ -536,34 +535,52 @@ step--2 oracle 同样的循环数，而是接受适度后悔值来显著压缩 s
 \begin{equation}
  R>R_{\rm break}=\frac{S_b-S_a}{T_a-T_b}.              \label{eq:breakeven}
 \end{equation}
-这也是 $R$ 作为唯一策略参数的含义：它不是 PDE 标签，而是可解释的复用预算。
-当代表右端项与后续右端项分布不一致时，式~\eqref{eq:breakeven} 仍是成本恒等式，
-但 pilot 循环数的代表性必须由多右端项实验另行检验。v4.6 因此保留一个紧凑的
+这也是 $R$ 作为策略参数的含义：它表示可解释的复用预算。式~\eqref{eq:breakeven}
+给出成本恒等式，代表右端项的迁移能力由多右端项实验检验。v4.7 因此保留一个紧凑的
 RHS 迁移实验：候选仍由常数 RHS 选择，再在六种平滑、局部与振荡 RHS 上独立求解；
-这验证代表性，而不把有限样本结果提升为分布无关定理。
+其结果直接衡量当前测试族上的代表性。
 
-\section{可推广结论、不可推广结论与投稿表述}
+\subsection{截断状态与计时口径}
 
-投稿时应明确区分“背景工具”和“本文主张”。定理~\ref{thm:energy}、
+令 $K$ 为正式循环上限，$s=\min\{32,K\}$。代码用末端残量估计
+\begin{equation}
+ \rho_{\rm tail}=\exp\!\left(
+ \frac{\log r_K-\log r_{K-s}}{s}\right).              \label{eq:tailrate}
+\end{equation}
+达到 $r_k\le10^{-6}$ 的求解记为 \texttt{converged}。达到上限且末端仍保持有限收缩的
+求解记为 \texttt{slow-limit}。若残量变为非有限值，或末端满足
+\begin{equation}
+ \rho_{\rm tail}>1.001,\qquad
+ r_K\ge1,qquad r_K>10\min_{0\le k\le K}r_k,          \label{eq:divergeclass}
+\end{equation}
+则记为 \texttt{diverged}。该分类把截断慢收敛与持续增长分开，并随结果同时报告
+$r_K$ 与 $\rho_{\rm tail}$；计算中若残量超过 $10^8$ 且已高于历史最优值十倍，则提前
+归入同一增长状态。
+
+wall-clock 汇总采用共同收敛子集：逐行 solve/total 时间对 \texttt{converged} 求解
+给出，跨方法总时间在同一算例上所有比较方法均达到容差时累加。由此，循环上限承担
+状态判别作用，端到端速度比较始终对应完整收敛过程。
+
+\section{适用范围与投稿表述}
+
+投稿表述区分“背景工具”和“本文主张”。定理~\ref{thm:energy}、
 定理~\ref{thm:globalopt} 以及标准主角恒等式是已有线性代数与多重网格理论的重组，
-不单独声称原创。本文的核心理论主张是：用同一个 $\bm Z$ 坐标把这些工具闭合到有限
-PCG 路径；由式~\eqref{eq:derivative} 得到可见性--对齐机制；并由
+本文以同一个 $\bm Z$ 坐标把这些工具闭合到有限 PCG 路径；由
+式~\eqref{eq:derivative} 得到可见性--对齐机制；并由
 定理~\ref{thm:antimonotone} 给出能量下降而两网格因子上升的严格局部充分条件。
 
 \begin{enumerate}
  \item 定理~\ref{thm:energy}--\ref{thm:lipschitz} 依赖有限维 SPD、固定粗点和对称
- 两网格结构，不依赖二维规则网格。把 Jacobi 换成固定 SPD 预条件器，不改变 PCG 能量
- 正交账本，只会改变实际 Krylov 路径。
+ 两网格结构，可推广到一般离散结构。固定 SPD 预条件器保持 PCG 能量正交账本，并产生
+ 相应的实际 Krylov 路径。
  \item 定理~\ref{thm:firstorder} 与~\ref{thm:antimonotone} 是局部机制结论，要求最大
- 奇异值的单性及方向条件；它们不保证每个问题都存在明显有限步优势。
- \item 当前代码用代表右端项的残量预测实际循环数，并未计算 $\rhoTG$、主角或
- 式~\eqref{eq:tailcondition}。这些量用于解释和可检验理论诊断，而不应被写成已经实现的
- 在线证书。
- \item 数值部分只支持二维规则网格、高对比扩散、固定粗点和两网格。本文不宣称构造了
- 通用 AMG，也不以 BoomerAMG、GAMG 或多层方法为竞争对象。
- \item 论文的核心贡献应表述为：有限 Krylov 插值的非单调两网格机制、一个简单的
- 单参数预算化选择器，以及跨尺度/对比度/通道拓扑的受控验证；不是精确能量插值本身，
- 也不是软件工程速度竞赛。
+ 奇异值的单性、局部邻域及方向条件，对应可验证的充分条件。
+ \item 当前代码用代表右端项的残量预测实际循环数；$\rhoTG$、主角和
+ 式~\eqref{eq:tailcondition} 构成理论解释与后续诊断指标。
+ \item 数值部分采用二维规则网格、高对比扩散、固定粗点和两网格，集中隔离插值路径
+ 对粗空间质量的影响。
+ \item 论文的核心贡献包括有限 Krylov 插值的非单调两网格机制、单参数预算化选择器，
+ 以及跨尺度、对比度和通道拓扑的受控验证。
 \end{enumerate}
 
 \section{结论}
@@ -579,7 +596,7 @@ PCG 路径；由式~\eqref{eq:derivative} 得到可见性--对齐机制；并由
 能量极小插值仍是重要的变分基准，但固定磨光器关心的是磨光后误差相对粗空间的方向。
 因此有限 PCG 候选可以在保留非零能量误差的同时更好地捕获最坏可见模态。
 全局稳定界限制了这种优势的幅度，一阶公式解释其方向来源，严格尾部定理给出可验证的
-充分条件，而 v4.6 选择器以少右端项和多右端项之间的 setup--solve 权衡将该机制落地。
+充分条件，而 v4.7 选择器以少右端项和多右端项之间的 setup--solve 权衡将该机制落地。
 
 \begin{thebibliography}{99}
 

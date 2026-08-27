@@ -1,31 +1,32 @@
 Adaptive PCG versus an offline step-two oracle
 ==============================================
 
-Version           : 4.6.0
+Version           : 4.7.0
 Threads           : 4
 Oracle candidates : m=0 and m=12,14,...,60
 Solve tolerance   : 1e-6
+Maximum cycles    : 12000
 
 Note: The step-two oracle is evaluation-only. Fast samples m=0,12,32,52 with a 16-cycle pilot cap, a 10% near-optimality slack and no refinement. Reuse samples m=0,12,20,...,60 with a 160-cycle pilot cap, a 2% slack and at most two neighboring step-two refinements. Neither policy reads scale, contrast or topology labels.
 
 Representative oracle gaps
 --------------------------
-1/h      1/H    Contrast              Topology   Policy     R  Selected m    Cycles   Oracle m   Oracle cycles     Gap %   Selection ms  Candidates  Pilot cap   Stride    Max m   Refine
------  -----  ----------  --------------------  -------  ----  ----------  --------  ---------  --------------  --------  -------------  ----------  ---------  -------  -------  -------
-32         8       1e+04         cross-channel     fast     1           0        40          0              40      0.00         16.478           4         16       20       52       no
-32         8       1e+04         cross-channel    reuse   256           0        40          0              40      0.00         73.413           8        160        8       60       no
+1/h      1/H    Contrast              Topology   Policy     R  Selected m    Cycles      Status   Oracle m   Oracle cycles  Oracle status     Gap %   Selection ms  Candidates  Pilot cap   Stride    Max m   Refine
+-----  -----  ----------  --------------------  -------  ----  ----------  --------  ----------  ---------  --------------  -------------  --------  -------------  ----------  ---------  -------  -------  -------
+32         8       1e+04         cross-channel     fast     1           0        40   converged          0              40      converged      0.00         13.715           4         16       20       52       no
+32         8       1e+04         cross-channel    reuse   256           0        40   converged          0              40      converged      0.00         47.508           8        160        8       60       no
 
-64         8       1e+04         cross-channel     fast     1          12       204         12             204      0.00         49.740           4         16       20       52       no
-64         8       1e+04         cross-channel    reuse   256          12       204         12             204      0.00        264.233           9        160        8       60      yes
-64        16       1e+04         cross-channel     fast     1          32       114         18              54    111.11        193.962           4         16       20       52       no
-64        16       1e+04         cross-channel    reuse   256          18        54         18              54      0.00        755.623          10        160        8       60      yes
+64         8       1e+04         cross-channel     fast     1          12       204   converged         12             204      converged      0.00         44.066           4         16       20       52       no
+64         8       1e+04         cross-channel    reuse   256          12       204   converged         12             204      converged      0.00        262.773           9        160        8       60      yes
+64        16       1e+04         cross-channel     fast     1          32       114   converged         18              54      converged    111.11        189.188           4         16       20       52       no
+64        16       1e+04         cross-channel    reuse   256          18        54   converged         18              54      converged      0.00        788.231          10        160        8       60      yes
 
-128       16       1e+04         cross-channel     fast     1          52       276         38             231     19.48        721.275           4         16       20       52       no
-128       16       1e+04         cross-channel    reuse   256          42       238         38             231      3.03       3577.724          10        160        8       60      yes
-128       16       1e+02         cross-channel     fast     1          32       293         26             226     29.65        583.337           4         16       20       52       no
-128       16       1e+02         cross-channel    reuse   256          20       228         26             226      0.88       2136.966          10        160        8       60      yes
-128       16       1e+06         cross-channel     fast     1          52       298         60             279      6.81        514.135           4         16       20       52       no
-128       16       1e+06         cross-channel    reuse   256          52       298         60             279      6.81       2728.811          10        160        8       60      yes
-128       16       1e+04          winding-ring     fast     1          52       228         52             228      0.00        485.873           4         16       20       52       no
-128       16       1e+04          winding-ring    reuse   256          44       233         52             228      2.19       2699.741          10        160        8       60      yes
+128       16       1e+04         cross-channel     fast     1          52       276   converged         38             231      converged     19.48        566.710           4         16       20       52       no
+128       16       1e+04         cross-channel    reuse   256          42       238   converged         38             231      converged      3.03       2611.632          10        160        8       60      yes
+128       16       1e+02         cross-channel     fast     1          32       293   converged         26             226      converged     29.65        479.736           4         16       20       52       no
+128       16       1e+02         cross-channel    reuse   256          20       228   converged         26             226      converged      0.88       2049.111          10        160        8       60      yes
+128       16       1e+06         cross-channel     fast     1          52       298   converged         60             279      converged      6.81        572.044           4         16       20       52       no
+128       16       1e+06         cross-channel    reuse   256          52       298   converged         60             279      converged      6.81       2700.099          10        160        8       60      yes
+128       16       1e+04          winding-ring     fast     1          52       228   converged         52             228      converged      0.00        503.372           4         16       20       52       no
+128       16       1e+04          winding-ring    reuse   256          44       233   converged         52             228      converged      2.19       2463.795          10        160        8       60      yes
 
