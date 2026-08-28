@@ -89,8 +89,9 @@ private:
     std::vector<double> values_;
 };
 
-inline SparseMatrix::SparseMatrix(int rows, int cols, const std::vector<Triplet>& triplets,
-                           double drop_tolerance)
+inline SparseMatrix::SparseMatrix(
+    int rows, int cols, const std::vector<Triplet>& triplets,
+    double drop_tolerance)
     : rows_(rows), cols_(cols) {
     std::vector<int> counts(static_cast<std::size_t>(rows_), 0);
     for (const auto& item : triplets) {
@@ -136,8 +137,9 @@ inline SparseMatrix::SparseMatrix(int rows, int cols, const std::vector<Triplet>
     }
 }
 
-inline SparseMatrix::SparseMatrix(int rows, int cols, std::vector<int> row_ptr,
-                           std::vector<int> col_idx, std::vector<double> values)
+inline SparseMatrix::SparseMatrix(
+    int rows, int cols, std::vector<int> row_ptr,
+    std::vector<int> col_idx, std::vector<double> values)
     : rows_(rows), cols_(cols), row_ptr_(std::move(row_ptr)),
       col_idx_(std::move(col_idx)), values_(std::move(values)) {}
 
@@ -148,7 +150,7 @@ inline Vector SparseMatrix::multiply(const Vector& x) const {
 }
 
 inline void SparseMatrix::multiply(const Vector& x, Vector& result,
-                            int thread_count) const {
+                                   int thread_count) const {
     result.resize(static_cast<std::size_t>(rows_));
     const auto multiply_row = [&](int row) {
         double sum = 0.0;
@@ -176,7 +178,7 @@ inline void SparseMatrix::multiply(const Vector& x, Vector& result,
 }
 
 inline void SparseMatrix::multiply_add(double alpha, const Vector& x,
-                                Vector& result, int thread_count) const {
+                                       Vector& result, int thread_count) const {
     const auto multiply_add_row = [&](int row) {
         double sum = 0.0;
         const int begin = row_ptr_[static_cast<std::size_t>(row)];
@@ -202,9 +204,9 @@ inline void SparseMatrix::multiply_add(double alpha, const Vector& x,
     }
 }
 
-inline double SparseMatrix::residual_squared(const Vector& x, const Vector& rhs,
-                                      Vector& residual,
-                                      int thread_count) const {
+inline double SparseMatrix::residual_squared(
+    const Vector& x, const Vector& rhs, Vector& residual,
+    int thread_count) const {
     residual.resize(static_cast<std::size_t>(rows_));
     double squared_norm = 0.0;
 #if defined(_OPENMP)
@@ -584,7 +586,7 @@ inline void SparseCholesky::factorize(
 }
 
 inline void SparseCholesky::solve(const Vector& rhs, Vector& result,
-                           Vector& work) const {
+                                  Vector& work) const {
     work.resize(static_cast<std::size_t>(n_));
     for (int index = 0; index < n_; ++index) {
         work[static_cast<std::size_t>(index)] =

@@ -1,13 +1,12 @@
 \documentclass[11pt]{ctexart}
 
 \usepackage[a4paper,margin=2.35cm]{geometry}
-\usepackage{amsmath,amssymb,amsthm,bm,mathtools,booktabs}
+\usepackage{amsmath,amssymb,amsthm,bm,booktabs}
 \usepackage[hidelinks]{hyperref}
 
 \newtheorem{theorem}{定理}[section]
 \newtheorem{proposition}[theorem]{命题}
 \newtheorem{corollary}[theorem]{推论}
-\newtheorem{remark}[theorem]{说明}
 
 \DeclareMathOperator{\tr}{tr}
 \DeclareMathOperator{\diag}{diag}
@@ -19,7 +18,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.1}
+\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.2}
 \author{崔正平}
 \date{}
 
@@ -452,7 +451,7 @@ $\bm D_m\ne0$，相应 PCG 步非零。第一式于是由定理~\ref{thm:pcgtail
 \end{equation}
 
 \begin{proposition}[低割比通道产生慢 Jacobi 模态]\label{prop:channel}
-令 $\bm L$ 为加权图拉普拉斯，$\bm D=\diag(d_i)$，并取
+令 $\bm L$ 为加权图拉普拉斯，$\bm D=\diag(d_i)$，其中 $d_i>0$，并取
 $\bm x=\bm D^{1/2}\bm 1_S$。则
 \begin{equation}
  \frac{\bm x^T\bm D^{-1/2}\bm L\bm D^{-1/2}\bm x}
@@ -471,7 +470,7 @@ $\bm 1_S^T\bm D\bm 1_S=\operatorname{vol}_w(S)$。
 该命题解释高对比拓扑提高式~\eqref{eq:visibility} 中“问题可见性”的来源；最佳 PCG
 步数还由粗点覆盖和路径对齐共同确定。
 
-\section{最优步数的尺度窗口与 v5.1 自适应选择}
+\section{最优步数的尺度窗口与自适应选择}
 
 令 $n=1/h$ 为每个坐标方向的细网格区间数，并定义可由矩阵直接取得的对角尺度比
 \begin{equation}
@@ -545,23 +544,14 @@ $\eta_-\le a_+e^{-\gamma_-m_{\rm opt}h}$，从而得到右侧。
 问题族检验，其常数可随对比度范围、拓扑类别和粗化比变化。PCG 的代数终止上界由细点
 系统维数决定，而式~\eqref{eq:optimalwindow} 描述两网格性能最优点的模型尺度。
 
-当前七个离线 step--2 sampled oracle 的归一化点为
-\begin{center}
-\begin{tabular}{cccccccc}
-\toprule
-$1/h$ & 32 & 64 & 64 & 128 & 128 & 128 & 128 \\
-问题 & cross & cross & cross & cross & low contrast & high contrast & ring \\
-$m_{\rm or}/(1/h)$ & .125 & .125 & .281 & .297 & .203 & .484 & .406 \\
-\bottomrule
-\end{tabular}
-\end{center}
-这些离散采样最优点均位于 $[1/8,1/2]$，为固定归一化搜索窗提供当前测试族上的证据；
-它们用于检验尺度假设，不等同于定理~\ref{thm:optimalwindow} 中连续候选路径上的
+当前七个离线 step--2 sampled oracle 满足
+$m_{\rm or}/(1/h)\in[0.125,0.484]$，为固定归一化搜索窗提供当前测试族上的证据。
+它们用于检验尺度假设，不等同于定理~\ref{thm:optimalwindow} 中连续路径上的
 $m_{\rm opt}(h)$，也不参与在线选择。
 
 \subsection{两档实现}
 
-v5.1 只保留 fast 与 reuse 两档。fast 面向单个或少量右端项，不运行 pilot，只构造
+算法保留 fast 与 reuse 两档。fast 面向单个或少量右端项，不运行 pilot，只构造
 \begin{equation}
  m_{\rm fast}=
  \begin{cases}
@@ -569,8 +559,8 @@ v5.1 只保留 fast 与 reuse 两档。fast 面向单个或少量右端项，不
  \operatorname{round}(n/3),&\chi_A<10^5.
  \end{cases}                                           \label{eq:fast}
 \end{equation}
-这条规则把原来的固定 $m\le60$ 改为随分辨率伸缩的路径位置；对角尺度比只负责把强
-异质问题推向同一区间的右端。它只有一次路径推进、一次插值组装和一次粗算子构造。
+该规则使路径位置随分辨率伸缩；对角尺度比只负责把强异质问题推向同一区间的右端。
+它只有一次路径推进、一次插值组装和一次粗算子构造。
 
 reuse 面向插值被多个右端项复用的场景，在归一化区间 $[0,n/2]$ 上取固定五点
 \begin{equation}
@@ -632,63 +622,13 @@ $\widehat N_{\widehat m}\le\widehat N_{m_{\mathcal M}}$，两端各应用一次�
  R>R_{\rm break}=\frac{S_b-S_a}{T_a-T_b}.              \label{eq:breakeven}
 \end{equation}
 式~\eqref{eq:breakeven} 给出两档策略的可解释选择阈值，代表右端项的迁移能力由多
-右端项实验检验。v5.1 因此保留一个紧凑的
-RHS 迁移实验：候选仍由常数 RHS 选择，再在六种平滑、局部与振荡 RHS 上独立求解；
-其结果直接衡量当前测试族上的代表性。
+右端项实验检验。相应的 RHS 迁移实验由常数 RHS 选择候选，再在六种平滑、局部与
+振荡 RHS 上独立求解，其结果直接衡量当前测试族上的代表性。
 
-\subsection{截断状态与计时口径}
+\section{结论与适用范围}
 
-令 $K_{\max}$ 为正式循环上限，$k\le K_{\max}$ 为实际执行循环数，并取
-$s=\min\{32,k\}$。代码用末端残量估计
-\begin{equation}
- \rho_{\rm tail}=\exp\!\left(
- \frac{\log r_k-\log r_{k-s}}{s}\right).              \label{eq:tailrate}
-\end{equation}
-达到 $r_k\le10^{-6}$ 的求解记为 \texttt{converged}。达到上限 $k=K_{\max}$ 且末端仍
-保持有限收缩的求解记为 \texttt{slow-limit}。若残量变为非有限值，或末端满足
-\begin{equation}
- \rho_{\rm tail}>1.001,\qquad
- r_k\ge1,\qquad r_k>10\min_{0\le j\le k}r_j,          \label{eq:divergeclass}
-\end{equation}
-则记为 \texttt{diverged}。该分类把截断慢收敛与持续增长分开，并随结果同时报告
-$r_k$ 与 $\rho_{\rm tail}$；计算中若残量超过 $10^8$ 且已高于历史最优值十倍，则提前
-归入同一增长状态。
-
-另报告全程有效收敛因子
-\begin{equation}
- \rho_{\rm eff}=r_k^{1/k},                             \label{eq:effectiverate}
-\end{equation}
-使不同循环数的完整求解可按统一尺度比较。wall-clock 只在中心 $128/16$ 问题上比较
-fast、reuse 与 global-reference，并以五次预热后重复的中位数和四分位数报告。
-
-\section{适用范围与投稿表述}
-
-投稿表述区分“背景工具”和“本文主张”。定理~\ref{thm:energy}、
-定理~\ref{thm:globalopt} 以及标准主角恒等式是已有线性代数与多重网格理论的重组，
-本文以同一个 $\bm Z$ 坐标把这些工具闭合到有限 PCG 路径；由
-式~\eqref{eq:derivative} 得到可见性--对齐机制；并由
-定理~\ref{thm:antimonotone} 给出能量下降而两网格因子上升的严格局部充分条件。
-
-\begin{enumerate}
- \item 定理~\ref{thm:energy}--\ref{thm:lipschitz} 依赖有限维 SPD、固定粗点和对称
- 两网格结构，可推广到一般离散结构。固定 SPD 预条件器保持 PCG 能量正交账本，并产生
- 相应的实际 Krylov 路径。
- \item 定理~\ref{thm:firstorder} 与~\ref{thm:antimonotone} 是局部机制结论，要求最大
- 奇异值的单性、局部邻域及方向条件，对应可验证的充分条件。
- \item 命题~\ref{prop:fixedreduction} 给出固定能量衰减的 $O(h^{-1})$ 上界；定理
- ~\ref{thm:optimalwindow} 在双侧路径衰减和固定可见误差带下给出最优步数的
- $\Theta(h^{-1})$ 窗口，所需假设可按网格族做数值检验。
- \item 当前代码用代表右端项的残量预测实际循环数；$\rhoTG$、主角和
- 式~\eqref{eq:tailcondition} 构成理论解释与后续诊断指标。
- \item 数值部分采用二维规则网格、高对比扩散、固定粗点和两网格，集中隔离插值路径
- 对粗空间质量的影响。
- \item 论文的核心贡献包括有限 Krylov 插值的非单调两网格机制、尺度自适应两档选择器，
- 以及跨尺度、对比度和通道拓扑的受控验证。
-\end{enumerate}
-
-\section{结论}
-
-本文得到一条紧凑而闭合的理论链：
+本文以同一个 $\bm Z$ 坐标把能量极小插值、粗空间几何和固定磨光器下的两网格目标
+闭合到有限 PCG 路径：
 \[
  \boxed{
  \text{PCG 正交能量尾}
@@ -696,11 +636,10 @@ fast、reuse 与 global-reference，并以五次预热后重复的中位数和�
  \longrightarrow \rhoTG\text{ 的投影目标}
  \longrightarrow \text{有限步非单调性与尺度自适应选择}.}
 \]
-能量极小插值仍是重要的变分基准，但固定磨光器关心的是磨光后误差相对粗空间的方向。
-因此有限 PCG 候选可以在保留非零能量误差的同时更好地捕获最坏可见模态。
-全局稳定界限制了这种优势的幅度，一阶公式解释其方向来源，严格尾部定理给出可验证的
-充分条件，条件性步数窗口解释归一化搜索区间，而 v5.1 的 fast/reuse 两档以少右端项
-和多右端项之间的 setup--solve 权衡将该机制落地。
+代数恒等式和全局稳定界适用于有限维 SPD 系统、固定粗点及对称两网格结构；一阶机制
+和反单调尾部依赖单最大奇异值、局部邻域与方向条件；最优步数的双侧尺度窗口还依赖
+双侧路径衰减和固定可见误差带。数值部分在二维规则网格与高对比通道族上隔离并检验
+这一机制，fast/reuse 两档则体现少右端项与多右端项之间的 setup--solve 权衡。
 
 \begin{thebibliography}{99}
 

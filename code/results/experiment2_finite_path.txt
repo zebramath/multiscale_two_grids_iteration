@@ -1,7 +1,7 @@
 Finite-PCG path evidence for nonmonotone two-grid behavior
 ==========================================================
 
-Version         : 5.1.0
+Version         : 5.2.0
 Threads         : 4
 Cases           : 3
 Checkpoints     : m/(1/h)=0,1/16,...,1/2 and reference

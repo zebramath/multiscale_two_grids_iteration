@@ -67,11 +67,6 @@ inline ExperimentProblem make_problem(
     return {std::move(matrix), std::move(rhs)};
 }
 
-inline tgi::InterpolationResult geometric_interpolation(
-    const tgi::StructuredGrid& grid) {
-    return tgi::build_geometric_interpolation(grid);
-}
-
 inline tgi::InterpolationResult build_global_reference(
     const tgi::StructuredGrid& grid, const tgi::SparseMatrix& matrix,
     int threads) {

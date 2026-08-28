@@ -38,7 +38,7 @@ Measurement measure(
     return {
         method, parameter,
         experiment_support::interpolation_density_percent(prolongation),
-        cycle.setup_report().coarse_nnz,
+        cycle.coarse_matrix().nnz(),
         std::move(solved)};
 }
 
@@ -49,7 +49,7 @@ experiment_support::Row measurement_row(
         item.axis,
         std::to_string(item.fine), std::to_string(item.coarse),
         experiment_support::scientific(item.contrast, 0),
-        std::to_string(item.seed), item.field.name,
+        item.field.name,
         measurement.method, measurement.parameter,
         experiment_support::fixed(measurement.density, 4),
         std::to_string(measurement.coarse_nnz),
@@ -103,10 +103,9 @@ int main(int argc, char** argv) {
             item, threads);
         const tgi::StructuredGrid grid = experiment_support::make_grid(config);
         const auto problem = experiment_support::make_problem(
-            grid, item.field, config, item.seed);
+            grid, item.field, config);
 
-        const auto geometric =
-            experiment_support::geometric_interpolation(grid);
+        const auto geometric = tgi::build_geometric_interpolation(grid);
         std::vector<Measurement> case_measurements;
 
         for (const auto& policy : {
@@ -175,7 +174,7 @@ int main(int argc, char** argv) {
         {"Maximum cycles",
          std::to_string(experiment_support::maximum_two_grid_cycles)}});
     report.add_note(
-        "The v5.1 matrix varies fine/coarse scale, contrast and six channel "
+        "The matrix varies fine/coarse scale, contrast and six channel "
         "topologies. The two 256/16 extensions test cross-channel and "
         "winding-ring coefficients at the largest scale. Fast directly uses "
         "(1/h)/3, moving to (1/h)/2 only when the matrix diagonal ratio is "
@@ -185,10 +184,10 @@ int main(int argc, char** argv) {
         "mean contraction; tail factor uses the last 32 cycles.");
     report.add_table(
         "All two-grid cases",
-        {"Axis", "1/h", "1/H", "Contrast", "Seed", "Topology", "Method",
+        {"Axis", "1/h", "1/H", "Contrast", "Topology", "Method",
          "Parameter", "P density %", "Ac nnz", "Cycles", "Status",
          "Final relres", "Effective factor", "Tail factor"},
-        {12, 5, 5, 10, 6, 20, 16, 12, 11, 9, 8, 10, 12, 16, 11},
+        {12, 5, 5, 10, 20, 16, 12, 11, 9, 8, 10, 12, 16, 11},
         rows, true);
     report.add_table(
         "Convergence and setup summary",

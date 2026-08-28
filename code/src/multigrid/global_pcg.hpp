@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <exception>
@@ -27,7 +26,6 @@ public:
 
     void advance_to(int target_steps);
     SparseMatrix prolongation(double drop_tolerance = 0.0);
-    int steps() const { return steps_; }
 
 private:
     struct ColumnState {
@@ -217,7 +215,6 @@ struct AdaptiveGlobalPcgReport {
     int candidate_count = 0;
     int maximum_sampled_steps = 0;
     int pilot_cycles = 0;
-    double selection_wall_ms = 0.0;
 };
 
 struct AdaptiveGlobalPcgResult {
@@ -227,12 +224,6 @@ struct AdaptiveGlobalPcgResult {
 };
 
 namespace adaptive_global_pcg_detail {
-
-using Clock = std::chrono::steady_clock;
-
-inline double milliseconds(Clock::time_point begin, Clock::time_point end) {
-    return std::chrono::duration<double, std::milli>(end - begin).count();
-}
 
 struct SelectionProfile {
     std::vector<int> checkpoints;
@@ -371,7 +362,6 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
         throw std::invalid_argument(
             "adaptive global PCG received invalid options");
     }
-    const auto begin = Clock::now();
     const SelectionProfile profile = selection_profile(
         grid, a, options.policy);
     GlobalEnergyPcgPath path(
@@ -408,7 +398,6 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
         static_cast<int>(profile.checkpoints.size());
     result.report.maximum_sampled_steps = profile.checkpoints.back();
     result.report.pilot_cycles = profile.pilot_cycles;
-    result.report.selection_wall_ms = milliseconds(begin, Clock::now());
     return result;
 }
 

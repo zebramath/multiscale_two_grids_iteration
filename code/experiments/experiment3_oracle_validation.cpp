@@ -4,7 +4,6 @@
 #include "version.hpp"
 
 #include <array>
-#include <cstdint>
 #include <limits>
 #include <string>
 #include <utility>
@@ -16,7 +15,6 @@ struct OracleCase {
     int fine;
     int coarse;
     double contrast;
-    std::uint64_t seed;
     experiment_support::FieldCase field;
 };
 
@@ -57,13 +55,13 @@ int main(int argc, char** argv) {
     }
     const auto& topology = experiment_support::channel_topologies();
     const std::array<OracleCase, 7> cases{{
-        {32, 8, 1.0e4, 1, topology[0]},
-        {64, 8, 1.0e4, 1, topology[0]},
-        {64, 16, 1.0e4, 1, topology[0]},
-        {128, 16, 1.0e4, 1, topology[0]},
-        {128, 16, 1.0e2, 1, topology[0]},
-        {128, 16, 1.0e6, 1, topology[0]},
-        {128, 16, 1.0e4, 1, topology[5]}
+        {32, 8, 1.0e4, topology[0]},
+        {64, 8, 1.0e4, topology[0]},
+        {64, 16, 1.0e4, topology[0]},
+        {128, 16, 1.0e4, topology[0]},
+        {128, 16, 1.0e2, topology[0]},
+        {128, 16, 1.0e6, topology[0]},
+        {128, 16, 1.0e4, topology[5]}
     }};
     constexpr int maximum_cycles =
         experiment_support::maximum_two_grid_cycles;
@@ -72,7 +70,7 @@ int main(int argc, char** argv) {
         "1/h", "1/H", "Contrast", "Topology", "Policy", "R",
         "Selected m", "m/(1/h)", "Cycles", "Eff factor", "Status",
         "Oracle m", "Oracle m/(1/h)", "Oracle cycles", "Oracle factor",
-        "Oracle status", "Gap %", "Selection ms", "Candidates",
+        "Oracle status", "Gap %", "Candidates",
         "Pilot cycles", "Max m"};
     experiment_support::Rows rows;
 
@@ -89,9 +87,8 @@ int main(int argc, char** argv) {
         config.threads = threads;
         const tgi::StructuredGrid grid = experiment_support::make_grid(config);
         const auto problem = experiment_support::make_problem(
-            grid, item.field, config, item.seed);
-        const auto geometric =
-            experiment_support::geometric_interpolation(grid);
+            grid, item.field, config);
+        const auto geometric = tgi::build_geometric_interpolation(grid);
 
         int oracle_steps = 0;
         CycleMeasurement oracle = cycles_for(
@@ -158,8 +155,6 @@ int main(int argc, char** argv) {
                 adaptive_cycles.converged && oracle.converged
                     ? experiment_support::fixed(gap, 2)
                     : "--",
-                experiment_support::fixed(
-                    adaptive.report.selection_wall_ms),
                 std::to_string(adaptive.report.candidate_count),
                 std::to_string(adaptive.report.pilot_cycles),
                 std::to_string(adaptive.report.maximum_sampled_steps)});
@@ -187,7 +182,7 @@ int main(int argc, char** argv) {
     report.add_table(
         "Representative oracle gaps", headers,
         {5, 5, 10, 20, 7, 6, 10, 9, 8, 11, 10, 9, 16, 14, 13, 13, 8,
-         13, 10, 12, 7}, rows,
+         10, 12, 7}, rows,
         true);
     report.save("experiment3_oracle_validation");
     return 0;

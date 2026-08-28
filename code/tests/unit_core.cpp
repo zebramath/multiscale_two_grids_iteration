@@ -28,8 +28,8 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "5.1.0", "wrong package version");
-    require(tgi::version_major == 5 && tgi::version_minor == 1 &&
+    require(tgi::version == "5.2.0", "wrong package version");
+    require(tgi::version_major == 5 && tgi::version_minor == 2 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
 
@@ -102,7 +102,7 @@ int main() {
             "interpolation energy does not match trace(P^T A P)");
 
     tgi::Vector coarse_rhs(
-        static_cast<std::size_t>(cycle.coarse_size()), 1.0);
+        static_cast<std::size_t>(cycle.coarse_matrix().rows()), 1.0);
     tgi::Vector coarse_solution;
     tgi::Vector coarse_work;
     cycle.solve_coarse_system(coarse_rhs, coarse_solution, coarse_work);

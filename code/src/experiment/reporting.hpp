@@ -46,19 +46,6 @@ inline double interpolation_density_percent(
     return 100.0 * static_cast<double>(prolongation.nnz()) / entries;
 }
 
-inline std::filesystem::path write_result(
-    const std::string& name, const std::string& contents) {
-    const std::filesystem::path directory = TGI_RESULTS_DIR;
-    std::filesystem::create_directories(directory);
-    const std::filesystem::path path = directory / (name + ".txt");
-    std::ofstream stream(path);
-    if (!stream || !(stream << contents)) {
-        throw std::runtime_error(
-            "cannot write result file " + path.string());
-    }
-    return path;
-}
-
 class Report {
 public:
     explicit Report(const std::string& title) {
@@ -107,7 +94,14 @@ public:
     }
 
     void save(const std::string& name) const {
-        const std::filesystem::path path = write_result(name, text_.str());
+        const std::filesystem::path directory = TGI_RESULTS_DIR;
+        std::filesystem::create_directories(directory);
+        const std::filesystem::path path = directory / (name + ".txt");
+        std::ofstream stream(path);
+        if (!stream || !(stream << text_.str())) {
+            throw std::runtime_error(
+                "cannot write result file " + path.string());
+        }
         std::cout << text_.str() << "Saved: " << path.string() << '\n';
     }
 

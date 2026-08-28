@@ -18,7 +18,6 @@ namespace tgi {
 
 struct CoarseSetupReport {
     double interpolation_energy = 0.0;
-    std::size_t coarse_nnz = 0;
 };
 
 class TwoGridCycle {
@@ -40,7 +39,6 @@ public:
     }
     const SparseMatrix& coarse_matrix() const { return coarse_matrix_; }
     const CoarseSetupReport& setup_report() const { return setup_report_; }
-    int coarse_size() const { return p_.cols(); }
 
 private:
     void solve_gauss_seidel_sweep(const Vector& rhs, bool forward,
@@ -93,12 +91,12 @@ inline TwoGridIterationResult solve_two_grid(
     const Vector& rhs, const TwoGridCycle& cycle,
     double relative_tolerance = 1e-8, int max_cycles = 40000);
 
-
 namespace two_grid_solver_detail {
 
 inline void nested_dissection_rectangle(int side, int separator_width,
-                                 int xmin, int xmax, int ymin, int ymax,
-                                 std::vector<int>& permutation) {
+                                        int xmin, int xmax,
+                                        int ymin, int ymax,
+                                        std::vector<int>& permutation) {
     const int width = xmax - xmin;
     const int height = ymax - ymin;
     if (width <= 0 || height <= 0) return;
@@ -243,7 +241,7 @@ inline SparseMatrix multiply_sparse_matrices(
     double drop_tolerance, int thread_count, bool upper_triangle_only);
 
 inline void multiply_parallel(const SparseMatrix& matrix, const Vector& x,
-                       Vector& result, int thread_count) {
+                              Vector& result, int thread_count) {
 #if defined(_OPENMP)
     matrix.multiply(x, result, thread_count);
 #else
@@ -280,8 +278,8 @@ inline void multiply_parallel(const SparseMatrix& matrix, const Vector& x,
 }
 
 inline void multiply_add_parallel(const SparseMatrix& matrix, double alpha,
-                           const Vector& x, Vector& result,
-                           int thread_count) {
+                                  const Vector& x, Vector& result,
+                                  int thread_count) {
 #if defined(_OPENMP)
     matrix.multiply_add(alpha, x, result, thread_count);
 #else
@@ -600,7 +598,6 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
     coarse_matrix_ =
         two_grid_solver_detail::multiply_sparse_matrices(
             p_transpose_, ap, 0.0, setup_threads, true);
-    setup_report_.coarse_nnz = coarse_matrix_.nnz();
     for (double value : coarse_matrix_.diagonal()) {
         setup_report_.interpolation_energy += value;
     }

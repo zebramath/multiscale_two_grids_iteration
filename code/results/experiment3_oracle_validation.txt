@@ -1,7 +1,7 @@
 Adaptive PCG versus an offline step-two oracle
 ==============================================
 
-Version           : 5.1.0
+Version           : 5.2.0
 Threads           : 4
 Oracle candidates : m=0 and (1/h)/8,...,(1/h)/2 by 2
 Solve tolerance   : 1e-6
@@ -11,22 +11,22 @@ Note: The step-two oracle is evaluation-only. Fast directly uses (1/h)/3, or (1/
 
 Representative oracle gaps
 --------------------------
-1/h      1/H    Contrast              Topology   Policy       R  Selected m    m/(1/h)    Cycles   Eff factor      Status   Oracle m    Oracle m/(1/h)   Oracle cycles  Oracle factor  Oracle status     Gap %   Selection ms  Candidates  Pilot cycles    Max m
------  -----  ----------  --------------------  -------  ------  ----------  ---------  --------  -----------  ----------  ---------  ----------------  --------------  -------------  -------------  --------  -------------  ----------  ------------  -------
-32         8       1e+04         cross-channel     fast       1          11      0.344        40     0.702550   converged          4             0.125              37       0.682669      converged      8.11         11.462           1             0       11
-32         8       1e+04         cross-channel    reuse    many           4      0.125        37     0.682669   converged          4             0.125              37       0.682669      converged      0.00        108.685           5            16       16
+1/h      1/H    Contrast              Topology   Policy       R  Selected m    m/(1/h)    Cycles   Eff factor      Status   Oracle m    Oracle m/(1/h)   Oracle cycles  Oracle factor  Oracle status     Gap %  Candidates  Pilot cycles    Max m
+-----  -----  ----------  --------------------  -------  ------  ----------  ---------  --------  -----------  ----------  ---------  ----------------  --------------  -------------  -------------  --------  ----------  ------------  -------
+32         8       1e+04         cross-channel     fast       1          11      0.344        40     0.702550   converged          4             0.125              37       0.682669      converged      8.11           1             0       11
+32         8       1e+04         cross-channel    reuse    many           4      0.125        37     0.682669   converged          4             0.125              37       0.682669      converged      0.00           5            16       16
 
-64         8       1e+04         cross-channel     fast       1          21      0.328       251     0.946341   converged          8             0.125             123       0.893149      converged    104.07         52.896           1             0       21
-64         8       1e+04         cross-channel    reuse    many           8      0.125       123     0.893149   converged          8             0.125             123       0.893149      converged      0.00        119.087           5            32       32
-64        16       1e+04         cross-channel     fast       1          21      0.328        65     0.806080   converged         18             0.281              54       0.772046      converged     20.37        233.288           1             0       21
-64        16       1e+04         cross-channel    reuse    many          16      0.250        60     0.790885   converged         18             0.281              54       0.772046      converged     11.11        564.621           5            32       32
+64         8       1e+04         cross-channel     fast       1          21      0.328       251     0.946341   converged          8             0.125             123       0.893149      converged    104.07           1             0       21
+64         8       1e+04         cross-channel    reuse    many           8      0.125       123     0.893149   converged          8             0.125             123       0.893149      converged      0.00           5            32       32
+64        16       1e+04         cross-channel     fast       1          21      0.328        65     0.806080   converged         18             0.281              54       0.772046      converged     20.37           1             0       21
+64        16       1e+04         cross-channel    reuse    many          16      0.250        60     0.790885   converged         18             0.281              54       0.772046      converged     11.11           5            32       32
 
-128       16       1e+04         cross-channel     fast       1          43      0.336       242     0.944407   converged         38             0.297             231       0.941764      converged      4.76       1173.959           1             0       43
-128       16       1e+04         cross-channel    reuse    many          43      0.336       242     0.944407   converged         38             0.297             231       0.941764      converged      4.76       2920.880           5            64       64
-128       16       1e+02         cross-channel     fast       1          43      0.336       387     0.964918   converged         26             0.203             226       0.940525      converged     71.24       1370.547           1             0       43
-128       16       1e+02         cross-channel    reuse    many          32      0.250       293     0.953841   converged         26             0.203             226       0.940525      converged     29.65       2936.100           5            64       64
-128       16       1e+06         cross-channel     fast       1          64      0.500       273     0.950536   converged         62             0.484             263       0.948628      converged      3.80       1751.492           1             0       64
-128       16       1e+06         cross-channel    reuse    many          64      0.500       273     0.950536   converged         62             0.484             263       0.948628      converged      3.80       2945.190           5            64       64
-128       16       1e+04          winding-ring     fast       1          43      0.336       237     0.943169   converged         52             0.406             228       0.941056      converged      3.95       1262.314           1             0       43
-128       16       1e+04          winding-ring    reuse    many          43      0.336       237     0.943169   converged         52             0.406             228       0.941056      converged      3.95       2791.561           5            64       64
+128       16       1e+04         cross-channel     fast       1          43      0.336       242     0.944407   converged         38             0.297             231       0.941764      converged      4.76           1             0       43
+128       16       1e+04         cross-channel    reuse    many          43      0.336       242     0.944407   converged         38             0.297             231       0.941764      converged      4.76           5            64       64
+128       16       1e+02         cross-channel     fast       1          43      0.336       387     0.964918   converged         26             0.203             226       0.940525      converged     71.24           1             0       43
+128       16       1e+02         cross-channel    reuse    many          32      0.250       293     0.953841   converged         26             0.203             226       0.940525      converged     29.65           5            64       64
+128       16       1e+06         cross-channel     fast       1          64      0.500       273     0.950536   converged         62             0.484             263       0.948628      converged      3.80           1             0       64
+128       16       1e+06         cross-channel    reuse    many          64      0.500       273     0.950536   converged         62             0.484             263       0.948628      converged      3.80           5            64       64
+128       16       1e+04          winding-ring     fast       1          43      0.336       237     0.943169   converged         52             0.406             228       0.941056      converged      3.95           1             0       43
+128       16       1e+04          winding-ring    reuse    many          43      0.336       237     0.943169   converged         52             0.406             228       0.941056      converged      3.95           5            64       64
 

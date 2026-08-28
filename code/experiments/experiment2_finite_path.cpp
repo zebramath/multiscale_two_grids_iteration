@@ -12,7 +12,6 @@ struct PathCase {
     int fine;
     int coarse;
     double contrast;
-    std::uint64_t seed;
     experiment_support::FieldCase field;
 };
 
@@ -58,9 +57,9 @@ int main(int argc, char** argv) {
     }
     const auto& topologies = experiment_support::channel_topologies();
     const std::array<PathCase, 3> cases{
-        PathCase{64, 16, 1.0e4, 1, topologies[0]},
-        PathCase{128, 16, 1.0e4, 1, topologies[0]},
-        PathCase{128, 16, 1.0e6, 1, topologies[0]}};
+        PathCase{64, 16, 1.0e4, topologies[0]},
+        PathCase{128, 16, 1.0e4, topologies[0]},
+        PathCase{128, 16, 1.0e6, topologies[0]}};
     constexpr int maximum_cycles =
         experiment_support::maximum_two_grid_cycles;
     experiment_support::Rows rows;
@@ -72,9 +71,8 @@ int main(int argc, char** argv) {
         config.contrast = item.contrast;
         const tgi::StructuredGrid grid = experiment_support::make_grid(config);
         const auto problem = experiment_support::make_problem(
-            grid, item.field, config, item.seed);
-        const auto geometric =
-            experiment_support::geometric_interpolation(grid);
+            grid, item.field, config);
+        const auto geometric = tgi::build_geometric_interpolation(grid);
         const auto reference = experiment_support::build_global_reference(
             grid, problem.matrix, config.threads);
         const tgi::TwoGridCycle reference_cycle(

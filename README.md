@@ -1,18 +1,18 @@
-# multiscale_two_grids_iteration v5.1
+# multiscale_two_grids_iteration v5.2
 
 二维高对比扩散问题中，有限 Krylov 能量插值与两网格非单调收敛研究。
 
 - `research_report.md`：研究问题、理论主线、算法设计与完整核心结果；
 - `theory.tex`：能量路径、粗空间几何、非单调机制和尺度自适应选择理论；
-- `VALIDATION_v5.1.md`：严格构建、回归、Sanitizer 与完整实验记录；
+- `VALIDATION_v5.2.md`：严格构建、回归、Sanitizer 与完整实验记录；
 - `code/`：C++17 两网格实现、四个整合实验、测试和 TXT 结果。
 
-v5.1 以分辨率归一化的路径位置替代固定步数区间。fast 只构造一个随
+算法使用分辨率归一化的路径位置。fast 只构造一个随
 分辨率伸缩的候选，不运行 pilot；reuse 在 `0` 到 `(1/h)/2` 上检查固定五点，并用
 实际两网格残量收缩率选择。两档分别服务于低 setup 的少 RHS 场景和可摊销 setup 的
 多 RHS 场景。
 
-理论稿新增最优步数尺度分析：Jacobi--PCG 条件数满足标准 $h^{-2}$ 伸缩时，固定能量
+理论稿给出最优步数尺度分析：Jacobi--PCG 条件数满足标准 $h^{-2}$ 伸缩时，固定能量
 衰减所需步数为 $O(h^{-1})$；在相关谱分量非退化和最优点位于固定可见误差带的条件下，
 得到 $c_-h^{-1}\le m_{\mathrm{opt}}(h)\le c_+h^{-1}$。离线 sampled oracle 同时输出
 $m_{\mathrm{or}}/(1/h)$，用于检验该尺度窗口，而不把离散采样点等同于连续最优点。

@@ -172,8 +172,7 @@ TimingSample timing_sample(
             rhs, cycle, maximum_cycles);
         return {setup_ms, solved.milliseconds, solved.cycles};
     }
-    const auto geometric =
-        experiment_support::geometric_interpolation(grid);
+    const auto geometric = tgi::build_geometric_interpolation(grid);
     const auto adaptive = build_adaptive(
         grid, matrix, geometric.prolongation, rhs,
         method == TimingMethod::Fast
@@ -212,7 +211,7 @@ experiment_support::Row timing_row(
         experiment_support::fixed(quantile(cycles, 0.50), 0)};
 }
 
-}  // namespace
+}
 
 int main(int argc, char** argv) {
     int threads = 4;
@@ -240,8 +239,7 @@ int main(int argc, char** argv) {
             "submission seed " + std::to_string(seed));
         const auto problem = experiment_support::make_problem(
             grid, cross, config, seed);
-        const auto geometric =
-            experiment_support::geometric_interpolation(grid);
+        const auto geometric = tgi::build_geometric_interpolation(grid);
         for (const auto& policy : {
                  std::pair<const char*, tgi::AdaptiveGlobalPcgPolicy>{
                      "fast", tgi::AdaptiveGlobalPcgPolicy::Fast},
@@ -301,8 +299,7 @@ int main(int argc, char** argv) {
     experiment_support::progress("submission RHS transfer");
     const auto transfer_problem = experiment_support::make_problem(
         grid, cross, config, 1);
-    const auto transfer_geometric =
-        experiment_support::geometric_interpolation(grid);
+    const auto transfer_geometric = tgi::build_geometric_interpolation(grid);
     const auto fast = build_adaptive(
         grid, transfer_problem.matrix, transfer_geometric.prolongation,
         transfer_problem.rhs, tgi::AdaptiveGlobalPcgPolicy::Fast,
