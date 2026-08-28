@@ -75,7 +75,7 @@ inline const char* two_grid_status_name(TwoGridIterationStatus status) {
         case TwoGridIterationStatus::Diverged:
             return "diverged";
     }
-    return "diverged";
+    return "unknown";
 }
 
 struct TwoGridIterationResult {
@@ -89,10 +89,9 @@ struct TwoGridIterationResult {
     bool converged = false;
 };
 
-inline TwoGridIterationResult solve_two_grid(const Vector& rhs,
-                                      const TwoGridCycle& cycle,
-                                      double relative_tolerance = 1e-8,
-                                      int max_cycles = 40000);
+inline TwoGridIterationResult solve_two_grid(
+    const Vector& rhs, const TwoGridCycle& cycle,
+    double relative_tolerance = 1e-8, int max_cycles = 40000);
 
 
 namespace two_grid_solver_detail {
@@ -713,9 +712,13 @@ inline double TwoGridCycle::iterate(
         solution, rhs, residual, application_threads_);
 }
 
-inline TwoGridIterationResult solve_two_grid(const Vector& rhs,
-                                      const TwoGridCycle& cycle,
-                                      double relative_tolerance, int max_cycles) {
+inline TwoGridIterationResult solve_two_grid(
+    const Vector& rhs, const TwoGridCycle& cycle,
+    double relative_tolerance, int max_cycles) {
+    if (!(relative_tolerance > 0.0) ||
+        !(relative_tolerance < 1.0) || max_cycles <= 0) {
+        throw std::invalid_argument("invalid two-grid stopping criteria");
+    }
     constexpr int tail_window = 32;
     TwoGridIterationResult result;
     result.solution.assign(rhs.size(), 0.0);

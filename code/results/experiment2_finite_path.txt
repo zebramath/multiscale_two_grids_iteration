@@ -1,10 +1,10 @@
 Finite-PCG path evidence for nonmonotone two-grid behavior
 ==========================================================
 
-Version         : 4.9.0
+Version         : 5.1.0
 Threads         : 4
 Cases           : 3
-Checkpoints     : m/(1/h)=0,1/16,...,1/2 and exact
+Checkpoints     : m/(1/h)=0,1/16,...,1/2 and reference
 Solve tolerance : 1e-6
 Maximum cycles  : 20000
 
@@ -23,7 +23,7 @@ Finite path comparison
 64        16         cross-channel       1e+04      finite-PCG       24      1.287e-04      31.5204        77   converged      9.48e-07          0.835176     0.867008
 64        16         cross-channel       1e+04      finite-PCG       28      4.190e-05      38.2884       108   converged      9.32e-07          0.879349     0.889235
 64        16         cross-channel       1e+04      finite-PCG       32      1.047e-05      45.1146       114   converged      8.98e-07          0.885032     0.896010
-64        16         cross-channel       1e+04  global-reference    exact      0.000e+00      92.2549       321   converged      9.69e-07          0.957779     0.962692
+64        16         cross-channel       1e+04  global-reference  tol=1e-10      0.000e+00      92.2549       321   converged      9.69e-07          0.957779     0.962692
 
 128       16         cross-channel       1e+04       geometric        0      1.000e+00       1.3950     20000  slow-limit      4.51e-02          0.999845     0.999789
 128       16         cross-channel       1e+04      finite-PCG        8      1.065e-01       4.7096      9058   converged      9.99e-07          0.998476     0.998191
@@ -34,7 +34,7 @@ Finite path comparison
 128       16         cross-channel       1e+04      finite-PCG       48      1.422e-04      33.8960       256   converged      9.68e-07          0.947343     0.947934
 128       16         cross-channel       1e+04      finite-PCG       56      7.928e-05      40.9881       276   converged      9.96e-07          0.951161     0.959732
 128       16         cross-channel       1e+04      finite-PCG       64      4.520e-05      48.1166       366   converged      9.62e-07          0.962855     0.960083
-128       16         cross-channel       1e+04  global-reference    exact      0.000e+00      97.8420      3227   converged      9.97e-07          0.995727     0.996163
+128       16         cross-channel       1e+04  global-reference  tol=1e-10      0.000e+00      97.8420      3227   converged      9.97e-07          0.995727     0.996163
 128       16         cross-channel       1e+06       geometric        0      1.000e+00       1.3950     20000  slow-limit      5.15e+00          1.000082     0.999997
 128       16         cross-channel       1e+06      finite-PCG        8      1.066e-01       4.7096     20000  slow-limit      9.65e+00          1.000113     0.999979
 128       16         cross-channel       1e+06      finite-PCG       16      2.151e-02       9.1300     20000  slow-limit      6.00e+00          1.000090     0.999925
@@ -44,5 +44,5 @@ Finite path comparison
 128       16         cross-channel       1e+06      finite-PCG       48      1.447e-04      33.8960       755   converged      9.84e-07          0.981847     0.977691
 128       16         cross-channel       1e+06      finite-PCG       56      8.116e-05      40.9881       291   converged      9.95e-07          0.953616     0.943449
 128       16         cross-channel       1e+06      finite-PCG       64      4.656e-05      48.1166       273   converged      9.67e-07          0.950536     0.949075
-128       16         cross-channel       1e+06  global-reference    exact      0.000e+00      96.2311      3471   converged      9.98e-07          0.996027     0.996432
+128       16         cross-channel       1e+06  global-reference  tol=1e-10      0.000e+00      96.2311      3471   converged      9.98e-07          0.996027     0.996432
 

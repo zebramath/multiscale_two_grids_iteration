@@ -24,13 +24,21 @@ build_direct() {
     cxx="${CXX:-c++}"
     mkdir -p "$build_dir"
     common="-std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror -pthread -I src"
+    for warning in -Wshadow -Wconversion -Wsign-conversion \
+                   -Wduplicated-cond -Wduplicated-branches -Wlogical-op \
+                   -Wnull-dereference -Wformat=2; do
+        if "$cxx" "$warning" -x c++ -fsyntax-only /dev/null \
+                >/dev/null 2>&1; then
+            common="$common $warning"
+        fi
+    done
     if "$cxx" -fopenmp -x c++ -E /dev/null >/dev/null 2>&1; then
         common="$common -fopenmp"
     fi
     # shellcheck disable=SC2086
     "$cxx" $common tests/unit_core.cpp -o "$build_dir/unit_core"
     # shellcheck disable=SC2086
-    "$cxx" $common tests/regression_v49.cpp -o "$build_dir/regression_v49"
+    "$cxx" $common tests/regression_v51.cpp -o "$build_dir/regression_v51"
     # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment1_two_grid_comparison.cpp \
@@ -60,7 +68,7 @@ else
     build_direct
     echo "[done]  build-direct"
     run_step unit-core "$build_dir/unit_core"
-    run_step regression-v49 "$build_dir/regression_v49"
+    run_step regression-v51 "$build_dir/regression_v51"
 fi
 
 if [ "$mode" = "quick" ]; then

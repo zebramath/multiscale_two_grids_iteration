@@ -262,20 +262,20 @@ int main(int argc, char** argv) {
                         *adaptive.prolongation), 4),
                 tgi::two_grid_status_name(solved.status)});
         }
-        const auto exact = experiment_support::build_global_reference(
+        const auto reference = experiment_support::build_global_reference(
             grid, problem.matrix, threads);
-        const tgi::TwoGridCycle exact_cycle(
-            problem.matrix, exact.prolongation, 1, threads);
+        const tgi::TwoGridCycle reference_cycle(
+            problem.matrix, reference.prolongation, 1, threads);
         const SolveResult solved = measure_solve(
-            problem.rhs, exact_cycle, maximum_cycles);
+            problem.rhs, reference_cycle, maximum_cycles);
         add_aggregate(seed_aggregates["global-reference"], solved);
         seed_rows.push_back({
-            std::to_string(seed), "global-reference", "exact",
+            std::to_string(seed), "global-reference", "tol=1e-10",
             std::to_string(solved.cycles),
             experiment_support::fixed(solved.effective_factor, 6),
             experiment_support::fixed(
                 experiment_support::interpolation_density_percent(
-                    exact.prolongation), 4),
+                    reference.prolongation), 4),
             tgi::two_grid_status_name(solved.status)});
     }
     experiment_support::Rows seed_summary;
@@ -311,12 +311,12 @@ int main(int argc, char** argv) {
         grid, transfer_problem.matrix, transfer_geometric.prolongation,
         transfer_problem.rhs, tgi::AdaptiveGlobalPcgPolicy::Reuse,
         threads, maximum_cycles);
-    const auto exact = experiment_support::build_global_reference(
+    const auto reference = experiment_support::build_global_reference(
         grid, transfer_problem.matrix, threads);
     const tgi::TwoGridCycle geometric_cycle(
         transfer_problem.matrix, transfer_geometric.prolongation, 1, threads);
-    const tgi::TwoGridCycle exact_cycle(
-        transfer_problem.matrix, exact.prolongation, 1, threads);
+    const tgi::TwoGridCycle reference_cycle(
+        transfer_problem.matrix, reference.prolongation, 1, threads);
     const std::vector<RhsCase> rhs_cases = make_rhs_cases(grid);
     experiment_support::Rows rhs_rows;
     std::map<std::string, CycleAggregate> rhs_aggregates;
@@ -325,7 +325,7 @@ int main(int argc, char** argv) {
                  std::pair<const char*, const tgi::TwoGridCycle*>{
                      "adaptive-fast", fast.cycle.get()},
                  {"adaptive-reuse", reuse.cycle.get()},
-                 {"global-reference", &exact_cycle},
+                 {"global-reference", &reference_cycle},
                  {"geometric", &geometric_cycle}}) {
             const SolveResult solved = measure_solve(
                 rhs_case.values, *method.second, maximum_cycles);
@@ -429,9 +429,9 @@ int main(int argc, char** argv) {
         "median and Q3 replace a single wall-clock observation.");
     report.add_table(
         "Coefficient-seed stability",
-        {"Seed", "Method", "m", "Cycles", "Effective factor",
+        {"Seed", "Method", "Parameter", "Cycles", "Effective factor",
          "P density %", "Status"},
-        {7, 18, 7, 10, 16, 12, 10}, seed_rows, true);
+        {7, 18, 10, 10, 16, 12, 10}, seed_rows, true);
     report.add_table(
         "Seed aggregate",
         {"Method", "Conv/slow/div", "Converged cycle sum",

@@ -28,8 +28,8 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "4.9.0", "wrong package version");
-    require(tgi::version_major == 4 && tgi::version_minor == 9 &&
+    require(tgi::version == "5.1.0", "wrong package version");
+    require(tgi::version_major == 5 && tgi::version_minor == 1 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
 
@@ -124,5 +124,8 @@ int main() {
     require(std::isfinite(limited.tail_factor) &&
                 limited.tail_factor > 0.0,
             "cycle-limited solve reported an invalid tail factor");
+    require(std::string(tgi::two_grid_status_name(
+                static_cast<tgi::TwoGridIterationStatus>(99))) == "unknown",
+            "invalid two-grid status was misclassified");
     return 0;
 }

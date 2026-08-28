@@ -99,13 +99,13 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
 }
 
 inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
-    if (target_steps < steps_) {
-        throw std::invalid_argument(
-            "GlobalEnergyPcgPath checkpoints must be nondecreasing");
-    }
     if (target_steps < 0) {
         throw std::invalid_argument(
             "GlobalEnergyPcgPath target steps must be nonnegative");
+    }
+    if (target_steps < steps_) {
+        throw std::invalid_argument(
+            "GlobalEnergyPcgPath checkpoints must be nondecreasing");
     }
     if (target_steps == steps_) return;
     std::atomic<int> next_column{0};
@@ -265,7 +265,7 @@ inline SelectionProfile selection_profile(
         std::unique(
             profile.checkpoints.begin(), profile.checkpoints.end()),
         profile.checkpoints.end());
-    profile.pilot_cycles = std::max(1, resolution / 2);
+    profile.pilot_cycles = std::max(1, (resolution + 1) / 2);
     return profile;
 }
 

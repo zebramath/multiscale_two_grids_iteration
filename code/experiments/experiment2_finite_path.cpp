@@ -19,13 +19,13 @@ struct PathCase {
 experiment_support::Row path_row(
     const PathCase& item, const std::string& method, int steps,
     const tgi::SparseMatrix& matrix, const tgi::Vector& rhs,
-    const tgi::SparseMatrix& prolongation, double exact_energy,
+    const tgi::SparseMatrix& prolongation, double reference_energy,
     double initial_excess, int threads, int maximum_cycles) {
     const tgi::TwoGridCycle cycle(matrix, prolongation, 1, threads);
     const auto solved = tgi::solve_two_grid(
         rhs, cycle, 1.0e-6, maximum_cycles);
     const double excess = initial_excess > 0.0
-        ? (cycle.setup_report().interpolation_energy - exact_energy) /
+        ? (cycle.setup_report().interpolation_energy - reference_energy) /
             initial_excess
         : 0.0;
     return {
@@ -34,7 +34,7 @@ experiment_support::Row path_row(
         item.field.name,
         experiment_support::scientific(item.contrast, 0),
         method,
-        steps < 0 ? "exact" : std::to_string(steps),
+        steps < 0 ? "tol=1e-10" : std::to_string(steps),
         experiment_support::scientific(excess, 3),
         experiment_support::fixed(
             experiment_support::interpolation_density_percent(
@@ -75,21 +75,21 @@ int main(int argc, char** argv) {
             grid, item.field, config, item.seed);
         const auto geometric =
             experiment_support::geometric_interpolation(grid);
-        const auto exact = experiment_support::build_global_reference(
+        const auto reference = experiment_support::build_global_reference(
             grid, problem.matrix, config.threads);
-        const tgi::TwoGridCycle exact_cycle(
-            problem.matrix, exact.prolongation, 1, config.threads);
+        const tgi::TwoGridCycle reference_cycle(
+            problem.matrix, reference.prolongation, 1, config.threads);
         const tgi::TwoGridCycle geometric_cycle(
             problem.matrix, geometric.prolongation, 1, config.threads);
-        const double exact_energy =
-            exact_cycle.setup_report().interpolation_energy;
+        const double reference_energy =
+            reference_cycle.setup_report().interpolation_energy;
         const double initial_excess =
             geometric_cycle.setup_report().interpolation_energy -
-            exact_energy;
+            reference_energy;
 
         rows.push_back(path_row(
             item, "geometric", 0, problem.matrix, problem.rhs,
-            geometric.prolongation, exact_energy, initial_excess,
+            geometric.prolongation, reference_energy, initial_excess,
             config.threads, maximum_cycles));
         tgi::GlobalEnergyPcgPath path(
             grid, problem.matrix, geometric.prolongation, config.threads);
@@ -99,12 +99,12 @@ int main(int argc, char** argv) {
             path.advance_to(steps);
             rows.push_back(path_row(
                 item, "finite-PCG", steps, problem.matrix, problem.rhs,
-                path.prolongation(0.0), exact_energy, initial_excess,
+                path.prolongation(0.0), reference_energy, initial_excess,
                 config.threads, maximum_cycles));
         }
         rows.push_back(path_row(
             item, "global-reference", -1, problem.matrix, problem.rhs,
-            exact.prolongation, exact_energy, initial_excess,
+            reference.prolongation, reference_energy, initial_excess,
             config.threads, maximum_cycles));
     }
 
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
         {"Version", std::string(tgi::version)},
         {"Threads", std::to_string(base.threads)},
         {"Cases", std::to_string(cases.size())},
-        {"Checkpoints", "m/(1/h)=0,1/16,...,1/2 and exact"},
+        {"Checkpoints", "m/(1/h)=0,1/16,...,1/2 and reference"},
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(

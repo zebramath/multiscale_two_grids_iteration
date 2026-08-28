@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 4.9.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 5.1.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -19,9 +19,17 @@ target_link_libraries(tgi_headers INTERFACE Threads::Threads)
 if(OpenMP_CXX_FOUND)
     target_link_libraries(tgi_headers INTERFACE OpenMP::OpenMP_CXX)
 endif()
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_compile_options(
-        tgi_headers INTERFACE -Wall -Wextra -Wpedantic)
+        tgi_headers INTERFACE
+        -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion
+        -Wduplicated-cond -Wduplicated-branches -Wlogical-op
+        -Wnull-dereference -Wformat=2)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_compile_options(
+        tgi_headers INTERFACE
+        -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion
+        -Wnull-dereference -Wformat=2)
 endif()
 
 function(tgi_add_program target)
@@ -48,7 +56,7 @@ if(BUILD_TESTING)
     add_executable(unit_core tests/unit_core.cpp)
     target_link_libraries(unit_core PRIVATE tgi_headers)
     add_test(NAME unit_core COMMAND unit_core)
-    add_executable(regression_v49 tests/regression_v49.cpp)
-    target_link_libraries(regression_v49 PRIVATE tgi_headers)
-    add_test(NAME regression_v49 COMMAND regression_v49)
+    add_executable(regression_v51 tests/regression_v51.cpp)
+    target_link_libraries(regression_v51 PRIVATE tgi_headers)
+    add_test(NAME regression_v51 COMMAND regression_v51)
 endif()

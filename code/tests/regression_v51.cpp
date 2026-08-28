@@ -47,7 +47,7 @@ int main() {
     coefficient_options.channel_background_block_size = 4;
     const auto coefficient = tgi::make_coefficient(grid, coefficient_options);
     require(coefficient.actual_contrast >= 0.99e4,
-            "new channel topology lost the requested contrast");
+            "channel topology lost the requested contrast");
     const tgi::SparseMatrix a =
         tgi::assemble_diffusion(grid, coefficient.values);
 
@@ -80,6 +80,9 @@ int main() {
     require_throws(
         [&]() { path.advance_to(4); },
         "continued PCG path accepted a decreasing checkpoint");
+    require_throws(
+        [&]() { path.advance_to(-1); },
+        "continued PCG path accepted a negative checkpoint");
 
     tgi::AdaptiveGlobalPcgOptions adaptive_options;
     adaptive_options.policy = tgi::AdaptiveGlobalPcgPolicy::Fast;
@@ -151,6 +154,24 @@ int main() {
         adaptive_rhs, *detailed.cycle, 1.0e-6, 1000);
     require(detailed_solve.converged,
             "reuse-aware adaptive hierarchy did not converge");
+    require_throws(
+        [&]() {
+            (void)tgi::solve_two_grid(
+                adaptive_rhs, *detailed.cycle, 0.0, 1000);
+        },
+        "two-grid solve accepted a nonpositive tolerance");
+    require_throws(
+        [&]() {
+            (void)tgi::solve_two_grid(
+                adaptive_rhs, *detailed.cycle, 1.0, 1000);
+        },
+        "two-grid solve accepted a noncontractive tolerance");
+    require_throws(
+        [&]() {
+            (void)tgi::solve_two_grid(
+                adaptive_rhs, *detailed.cycle, 1.0e-6, 0);
+        },
+        "two-grid solve accepted a nonpositive cycle limit");
 
     tgi::AdaptiveGlobalPcgOptions invalid_options = adaptive_options;
     invalid_options.maximum_cycles = 0;
