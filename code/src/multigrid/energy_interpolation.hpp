@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <exception>
@@ -32,16 +31,8 @@ struct GlobalSolveStats {
     double maximum_relative_residual = 0.0;
 };
 
-struct InterpolationTiming {
-    double assembly_ms = 0.0;
-    double solve_wall_ms = 0.0;
-    double finalize_ms = 0.0;
-    double total_ms = 0.0;
-};
-
 struct InterpolationReport {
     GlobalSolveStats column_solves;
-    InterpolationTiming timing;
     int threads_used = 1;
 };
 
@@ -51,12 +42,6 @@ struct InterpolationResult {
 };
 
 namespace energy_interpolation_detail {
-
-using Clock = std::chrono::steady_clock;
-
-inline double milliseconds(Clock::time_point begin, Clock::time_point end) {
-    return std::chrono::duration<double, std::milli>(end - begin).count();
-}
 
 struct ConjugateGradientStats {
     int iterations = 0;
@@ -180,7 +165,6 @@ struct GlobalFSystem {
     std::vector<int> local_index;
     Vector inverse_diagonal;
     std::vector<std::vector<std::pair<int, double>>> rhs_entries;
-    double assembly_ms = 0.0;
 };
 
 inline int coarse_id_from_fine_node(
@@ -193,7 +177,6 @@ inline int coarse_id_from_fine_node(
 
 inline GlobalFSystem assemble_global_f_system(
     const StructuredGrid& grid, const SparseMatrix& matrix) {
-    const auto begin = Clock::now();
     GlobalFSystem system;
     system.f_nodes = grid.all_f_nodes();
     system.rhs_entries.resize(
@@ -246,7 +229,6 @@ inline GlobalFSystem assemble_global_f_system(
     for (std::size_t index = 0; index < diagonal.size(); ++index) {
         system.inverse_diagonal[index] = 1.0 / diagonal[index];
     }
-    system.assembly_ms = milliseconds(begin, Clock::now());
     return system;
 }
 
@@ -286,7 +268,6 @@ inline InterpolationResult solve_global_energy_columns(
     const StructuredGrid& grid, const SparseMatrix& matrix,
     const GlobalEnergyOptions& options,
     const SparseMatrix* initial_transpose) {
-    const auto total_begin = Clock::now();
     const GlobalFSystem system = assemble_global_f_system(grid, matrix);
     unsigned int requested = options.thread_count > 0
         ? static_cast<unsigned int>(options.thread_count)
@@ -300,8 +281,6 @@ inline InterpolationResult solve_global_energy_columns(
     std::atomic<int> next_coarse{0};
     std::exception_ptr worker_error;
     std::mutex error_mutex;
-    const auto solve_begin = Clock::now();
-
     auto worker = [&]() {
         Vector rhs(system.f_nodes.size(), 0.0);
         Vector initial(system.f_nodes.size(), 0.0);
@@ -373,12 +352,8 @@ inline InterpolationResult solve_global_energy_columns(
         for (auto& thread : workers) thread.join();
     }
     if (worker_error) std::rethrow_exception(worker_error);
-    const auto solve_end = Clock::now();
-
     InterpolationReport report;
     report.threads_used = thread_count;
-    report.timing.assembly_ms = system.assembly_ms;
-    report.timing.solve_wall_ms = milliseconds(solve_begin, solve_end);
     for (const ColumnResult& column : columns) {
         ++report.column_solves.systems;
         report.column_solves.total_iterations += column.solve.iterations;
@@ -398,10 +373,7 @@ inline InterpolationResult solve_global_energy_columns(
             "one or more global energy solves did not converge");
     }
 
-    const auto finalize_begin = Clock::now();
     SparseMatrix prolongation = assemble_prolongation(grid, columns);
-    report.timing.finalize_ms = milliseconds(finalize_begin, Clock::now());
-    report.timing.total_ms = milliseconds(total_begin, Clock::now());
     return {std::move(prolongation), report};
 }
 
@@ -409,8 +381,6 @@ inline InterpolationResult solve_global_energy_columns(
 
 inline InterpolationResult build_geometric_interpolation(
     const StructuredGrid& grid) {
-    using Clock = std::chrono::steady_clock;
-    const auto begin = Clock::now();
     std::vector<int> row_ptr(
         static_cast<std::size_t>(grid.fine_size()) + 1U, 0);
     std::vector<int> col_idx;
@@ -450,17 +420,10 @@ inline InterpolationResult build_geometric_interpolation(
             static_cast<int>(values.size());
     }
 
-    InterpolationReport report;
-    const auto finalize_begin = Clock::now();
     SparseMatrix prolongation(
         grid.fine_size(), grid.coarse_size(), std::move(row_ptr),
         std::move(col_idx), std::move(values));
-    report.timing.finalize_ms =
-        energy_interpolation_detail::milliseconds(
-            finalize_begin, Clock::now());
-    report.timing.total_ms =
-        energy_interpolation_detail::milliseconds(begin, Clock::now());
-    return {std::move(prolongation), report};
+    return {std::move(prolongation), {}};
 }
 
 inline InterpolationResult build_global_energy_interpolation(

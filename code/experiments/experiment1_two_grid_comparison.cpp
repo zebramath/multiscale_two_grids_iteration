@@ -175,7 +175,7 @@ int main(int argc, char** argv) {
         {"Maximum cycles",
          std::to_string(experiment_support::maximum_two_grid_cycles)}});
     report.add_note(
-        "The v4.8 matrix varies fine/coarse scale, contrast and six channel "
+        "The v4.9 matrix varies fine/coarse scale, contrast and six channel "
         "topologies. The two 256/16 extensions test cross-channel and "
         "winding-ring coefficients at the largest scale. Fast directly uses "
         "(1/h)/3, moving to (1/h)/2 only when the matrix diagonal ratio is "

@@ -19,7 +19,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v4.8}
+\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v4.9}
 \author{崔正平}
 \date{}
 
@@ -38,9 +38,10 @@
 精确投影表达式，以及其对粗空间扰动的全局 Lipschitz 界。再次，在能量终点附近，
 两网格目标的一阶变化分解为“磨光后最坏模态的可见性”和“Krylov 路径的方向对齐”；
 这给出有限步优于精确能量插值的充分条件，并在显式余项控制下导出严格的反单调 PCG
-尾部。最后，本文给出与网格分辨率同步伸缩的 fast/reuse 两档选择：fast 只构造一个
-经验路径点，reuse 在归一化区间内检查五个候选，并给出 pilot 预测误差到候选选择
-后悔值的确定性传递界和多右端项盈亏平衡式。
+尾部。最后，在 Jacobi--PCG 条件数按 $h^{-2}$ 伸缩且相关谱分量非退化的模型族上，
+本文给出最优路径步数的条件性 $\Theta(h^{-1})$ 窗口；据此构造与网格分辨率同步伸缩的
+fast/reuse 两档选择，并给出 pilot 预测误差到候选选择后悔值的确定性传递界和多右端项
+盈亏平衡式。
 
 这些结论构成“为何在有限 Krylov 路径上选点”的理论依据。数值验证采用二维规则网格、
 高对比扩散、固定粗点和两网格结构，以受控方式检验这一机制。
@@ -80,6 +81,7 @@ PCG 能量账本 & 每列方程使用 SPD 预条件的标准 CG，结论按精�
 两网格投影公式 & 精确 Galerkin 粗解，后磨光为前磨光的 $\bm A$--伴随 \\
 终点一阶机制 & 能量终点处相关最大奇异值为正且单 \\
 严格反单调尾部 & 另需进入局部邻域，并满足逐步方向条件~\eqref{eq:tailcondition} \\
+最优步数尺度 & $\kappa_h=\Theta(h^{-2})$、相关谱分量非退化、最优点处于固定误差带 \\
 选择后悔界 & 候选上的循环预测具有统一误差界 \\
 \bottomrule
 \end{tabular}
@@ -447,13 +449,95 @@ $\bm x=\bm D^{1/2}\bm 1_S$。则
 该命题解释高对比拓扑提高式~\eqref{eq:visibility} 中“问题可见性”的来源；最佳 PCG
 步数还由粗点覆盖和路径对齐共同确定。
 
-\section{与 v4.8 实现一致的尺度自适应选择}
+\section{最优步数的尺度窗口与 v4.9 自适应选择}
 
 令 $n=1/h$ 为每个坐标方向的细网格区间数，并定义可由矩阵直接取得的对角尺度比
 \begin{equation}
  \chi_A=\frac{\max_i A_{ii}}{\min_i A_{ii}}.           \label{eq:diagratio}
 \end{equation}
-v4.8 只保留 fast 与 reuse 两档。fast 面向单个或少量右端项，不运行 pilot，只构造
+
+\subsection{固定能量衰减所需的步数}
+
+令 $\bm D_h=\diag(\bm B_h)$ 为当前实现使用的 Jacobi 预条件器，并记
+\begin{equation}
+ \kappa_h=\cond_2(\bm D_h^{-1/2}\bm B_h\bm D_h^{-1/2}),\qquad
+ d_{m,h}=\frac{\norm{\bm W_{m,h}-\bm W_h^\ast}_{\bm B_h,F}}
+ {\norm{\bm W_{0,h}-\bm W_h^\ast}_{\bm B_h,F}}.       \label{eq:dh}
+\end{equation}
+标准 PCG 估计给出
+\begin{equation}
+ d_{m,h}\le 2q_h^m,\qquad
+ q_h=\frac{\sqrt{\kappa_h}-1}{\sqrt{\kappa_h}+1}.      \label{eq:cgscale}
+\end{equation}
+
+\begin{proposition}[固定能量衰减的线性分辨率上界]\label{prop:fixedreduction}
+若某个网格族满足 $\kappa_h\le\kappa_+h^{-2}$，则对任意固定
+$\eta\in(0,1)$，只要
+\begin{equation}
+ m\ge \frac12\left(\frac{\sqrt{\kappa_+}}{h}+1\right)
+             \log\frac{2}{\eta},                     \label{eq:fixedreduction}
+\end{equation}
+便有 $d_{m,h}\le\eta$。因此达到固定相对能量误差只需 $O(h^{-1})$ 步。
+\end{proposition}
+
+\begin{proof}
+对 $x\ge1$ 有 $(x-1)/(x+1)\le\exp\{-2/(x+1)\}$。把
+$x=\sqrt{\kappa_h}\le\sqrt{\kappa_+}/h$ 代入式~\eqref{eq:cgscale} 即得。
+\end{proof}
+
+命题~\ref{prop:fixedreduction} 给出可由条件数控制的一侧界。实际步数下界还取决于初始
+误差是否含有端点附近的谱分量；若这些分量随网格细化消失，PCG 可以明显早于最坏情形
+收敛。下面把这一必要的非退化性质显式列入假设。
+
+\begin{theorem}[最优有限步的条件性 $\Theta(h^{-1})$ 窗口]
+\label{thm:optimalwindow}
+考虑一族固定对比度范围、拓扑类别、粗化比和磨光器的问题。设存在与 $h$ 无关的正常数
+$a_-,a_+,\gamma_-,\gamma_+$，使与最优点相关的 PCG 路径段满足
+\begin{equation}
+ a_-e^{-\gamma_+mh}\le d_{m,h}
+ \le a_+e^{-\gamma_-mh}.                              \label{eq:twosideddecay}
+\end{equation}
+再设两网格目标的一个最优有限步 $m_\ast(h)$ 落在固定可见误差带
+\begin{equation}
+ 0<\eta_-\le d_{m_\ast(h),h}\le\eta_+<1,             \label{eq:visibleband}
+\end{equation}
+其中 $a_->\eta_+$ 且 $a_+>\eta_-$。则
+\begin{equation}
+ \frac{1}{\gamma_+}\log\frac{a_-}{\eta_+}\,h^{-1}
+ \le m_\ast(h)\le
+ \frac{1}{\gamma_-}\log\frac{a_+}{\eta_-}\,h^{-1}. \label{eq:optimalwindow}
+\end{equation}
+特别地，$m_\ast(h)=\Theta(h^{-1})$。
+\end{theorem}
+
+\begin{proof}
+把式~\eqref{eq:visibleband} 的上界与式~\eqref{eq:twosideddecay} 的下界组合，得到
+$a_-e^{-\gamma_+m_\ast h}\le\eta_+$，从而得到式~\eqref{eq:optimalwindow} 左侧。
+把可见误差带的下界与路径衰减上界组合，得到
+$\eta_-\le a_+e^{-\gamma_-m_\ast h}$，从而得到右侧。
+\end{proof}
+
+式~\eqref{eq:twosideddecay} 是相关谱分量非退化的定量表达；式~\eqref{eq:visibleband}
+把前述全局距离屏障和局部反单调尾部概括为一个跨网格稳定的有利区间。两者适合按固定
+问题族检验，其常数可随对比度范围、拓扑类别和粗化比变化。PCG 的代数终止上界由细点
+系统维数决定，而式~\eqref{eq:optimalwindow} 描述两网格性能最优点的模型尺度。
+
+当前七个离线 oracle 的归一化最优点为
+\begin{center}
+\begin{tabular}{cccccccc}
+\toprule
+$1/h$ & 32 & 64 & 64 & 128 & 128 & 128 & 128 \\
+问题 & cross & cross & cross & cross & low contrast & high contrast & ring \\
+$m_\ast/(1/h)$ & .125 & .125 & .281 & .297 & .203 & .484 & .406 \\
+\bottomrule
+\end{tabular}
+\end{center}
+这些值均位于 $[1/8,1/2]$，为固定归一化搜索窗提供当前测试族上的证据；它们用于验证
+尺度假设，而不参与在线选择。
+
+\subsection{两档实现}
+
+v4.9 只保留 fast 与 reuse 两档。fast 面向单个或少量右端项，不运行 pilot，只构造
 \begin{equation}
  m_{\rm fast}=
  \begin{cases}
@@ -524,7 +608,7 @@ $\widehat N_{\widehat m}\le\widehat N_{m_\ast}$，两端各应用一次统一误
  R>R_{\rm break}=\frac{S_b-S_a}{T_a-T_b}.              \label{eq:breakeven}
 \end{equation}
 式~\eqref{eq:breakeven} 给出两档策略的可解释选择阈值，代表右端项的迁移能力由多
-右端项实验检验。v4.8 因此保留一个紧凑的
+右端项实验检验。v4.9 因此保留一个紧凑的
 RHS 迁移实验：候选仍由常数 RHS 选择，再在六种平滑、局部与振荡 RHS 上独立求解；
 其结果直接衡量当前测试族上的代表性。
 
@@ -566,6 +650,9 @@ fast、reuse 与 global-reference，并以五次预热后重复的中位数和�
  相应的实际 Krylov 路径。
  \item 定理~\ref{thm:firstorder} 与~\ref{thm:antimonotone} 是局部机制结论，要求最大
  奇异值的单性、局部邻域及方向条件，对应可验证的充分条件。
+ \item 命题~\ref{prop:fixedreduction} 给出固定能量衰减的 $O(h^{-1})$ 上界；定理
+ ~\ref{thm:optimalwindow} 在双侧路径衰减和固定可见误差带下给出最优步数的
+ $\Theta(h^{-1})$ 窗口，所需假设可按网格族做数值检验。
  \item 当前代码用代表右端项的残量预测实际循环数；$\rhoTG$、主角和
  式~\eqref{eq:tailcondition} 构成理论解释与后续诊断指标。
  \item 数值部分采用二维规则网格、高对比扩散、固定粗点和两网格，集中隔离插值路径
@@ -587,8 +674,8 @@ fast、reuse 与 global-reference，并以五次预热后重复的中位数和�
 能量极小插值仍是重要的变分基准，但固定磨光器关心的是磨光后误差相对粗空间的方向。
 因此有限 PCG 候选可以在保留非零能量误差的同时更好地捕获最坏可见模态。
 全局稳定界限制了这种优势的幅度，一阶公式解释其方向来源，严格尾部定理给出可验证的
-充分条件，而 v4.8 的 fast/reuse 两档以少右端项和多右端项之间的 setup--solve 权衡
-将该机制落地。
+充分条件，条件性步数窗口解释归一化搜索区间，而 v4.9 的 fast/reuse 两档以少右端项
+和多右端项之间的 setup--solve 权衡将该机制落地。
 
 \begin{thebibliography}{99}
 

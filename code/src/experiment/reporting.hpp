@@ -3,7 +3,6 @@
 #include "core/linear_algebra.hpp"
 
 #include <algorithm>
-#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -20,14 +19,9 @@
 
 namespace experiment_support {
 
-using Clock = std::chrono::steady_clock;
 using Row = std::vector<std::string>;
 using Rows = std::vector<Row>;
 using Summary = std::vector<std::pair<std::string, std::string>>;
-
-inline double milliseconds(Clock::time_point begin, Clock::time_point end) {
-    return std::chrono::duration<double, std::milli>(end - begin).count();
-}
 
 inline std::string fixed(double value, int precision = 3) {
     std::ostringstream stream;

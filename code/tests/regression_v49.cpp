@@ -1,10 +1,10 @@
-#include "experiment/problem.hpp"
 #include "multigrid/global_pcg.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -114,6 +114,39 @@ int main() {
             "reuse-aware selection reported the wrong path budget");
     require(detailed.report.candidate_count == 5,
             "reuse-aware PCG did not use its fixed candidate budget");
+
+    const tgi::StructuredGrid doubled_grid(31, 4);
+    coefficient_options.contrast = 1.0e4;
+    const auto doubled_field = tgi::make_coefficient(
+        doubled_grid, coefficient_options);
+    const auto doubled_matrix = tgi::assemble_diffusion(
+        doubled_grid, doubled_field.values);
+    const auto doubled_fast =
+        tgi::adaptive_global_pcg_detail::selection_profile(
+            doubled_grid, doubled_matrix,
+            tgi::AdaptiveGlobalPcgPolicy::Fast);
+    const auto doubled_reuse =
+        tgi::adaptive_global_pcg_detail::selection_profile(
+            doubled_grid, doubled_matrix,
+            tgi::AdaptiveGlobalPcgPolicy::Reuse);
+    require(doubled_fast.checkpoints == std::vector<int>{11},
+            "fast checkpoint did not scale with 1/h");
+    require(doubled_reuse.checkpoints ==
+                std::vector<int>({0, 4, 8, 11, 16}) &&
+                doubled_reuse.pilot_cycles == 16,
+            "reuse checkpoints did not preserve normalized positions");
+
+    coefficient_options.contrast = 1.0e6;
+    const auto high_contrast_field = tgi::make_coefficient(
+        doubled_grid, coefficient_options);
+    const auto high_contrast_matrix = tgi::assemble_diffusion(
+        doubled_grid, high_contrast_field.values);
+    const auto high_contrast_fast =
+        tgi::adaptive_global_pcg_detail::selection_profile(
+            doubled_grid, high_contrast_matrix,
+            tgi::AdaptiveGlobalPcgPolicy::Fast);
+    require(high_contrast_fast.checkpoints == std::vector<int>{16},
+            "fast checkpoint ignored the high-contrast branch");
     const auto detailed_solve = tgi::solve_two_grid(
         adaptive_rhs, *detailed.cycle, 1.0e-6, 1000);
     require(detailed_solve.converged,

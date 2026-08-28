@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <exception>
@@ -17,12 +16,7 @@
 
 namespace tgi {
 
-inline SparseMatrix sparse_multiply(
-    const SparseMatrix& lhs, const SparseMatrix& rhs,
-    double drop_tolerance = 0.0, int thread_count = 1);
-
 struct CoarseSetupReport {
-    double total_ms = 0.0;
     double interpolation_energy = 0.0;
     std::size_t coarse_nnz = 0;
 };
@@ -102,12 +96,6 @@ inline TwoGridIterationResult solve_two_grid(const Vector& rhs,
 
 
 namespace two_grid_solver_detail {
-
-using Clock = std::chrono::steady_clock;
-
-inline double milliseconds(Clock::time_point begin, Clock::time_point end) {
-    return std::chrono::duration<double, std::milli>(end - begin).count();
-}
 
 inline void nested_dissection_rectangle(int side, int separator_width,
                                  int xmin, int xmax, int ymin, int ymax,
@@ -579,18 +567,9 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
         : std::move(result);
 }
 
-inline SparseMatrix sparse_multiply(const SparseMatrix& lhs,
-                             const SparseMatrix& rhs,
-                             double drop_tolerance,
-                             int thread_count) {
-    return two_grid_solver_detail::multiply_sparse_matrices(
-        lhs, rhs, drop_tolerance, thread_count, false);
-}
-
 inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
                                   int smoothing_steps, int setup_threads)
     : a_(a), p_(p), smoothing_steps_(smoothing_steps) {
-    const auto setup_begin = two_grid_solver_detail::Clock::now();
     inverse_diagonal_.resize(static_cast<std::size_t>(a_.rows()));
     diagonal_position_.resize(static_cast<std::size_t>(a_.rows()));
     for (int row = 0; row < a_.rows(); ++row) {
@@ -617,7 +596,8 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
 
     p_transpose_ = p_.transpose(setup_threads);
     const SparseMatrix ap =
-        sparse_multiply(a_, p_, 0.0, setup_threads);
+        two_grid_solver_detail::multiply_sparse_matrices(
+            a_, p_, 0.0, setup_threads, false);
     coarse_matrix_ =
         two_grid_solver_detail::multiply_sparse_matrices(
             p_transpose_, ap, 0.0, setup_threads, true);
@@ -629,10 +609,6 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
     const std::vector<int> ordering =
         two_grid_solver_detail::coarse_ordering(coarse_matrix_);
     coarse_solver_.factorize(coarse_matrix_, ordering);
-    setup_report_.total_ms =
-        two_grid_solver_detail::milliseconds(
-            setup_begin, two_grid_solver_detail::Clock::now());
-
     unsigned int requested = setup_threads > 0
         ? static_cast<unsigned int>(setup_threads)
         : std::thread::hardware_concurrency();

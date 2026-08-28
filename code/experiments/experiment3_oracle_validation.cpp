@@ -70,9 +70,10 @@ int main(int argc, char** argv) {
     constexpr int oracle_candidate_limit = 6000;
     const experiment_support::Row headers{
         "1/h", "1/H", "Contrast", "Topology", "Policy", "R",
-        "Selected m", "Cycles", "Eff factor", "Status", "Oracle m",
-        "Oracle cycles", "Oracle factor", "Oracle status", "Gap %",
-        "Selection ms", "Candidates", "Pilot cycles", "Max m"};
+        "Selected m", "m/(1/h)", "Cycles", "Eff factor", "Status",
+        "Oracle m", "Oracle m/(1/h)", "Oracle cycles", "Oracle factor",
+        "Oracle status", "Gap %", "Selection ms", "Candidates",
+        "Pilot cycles", "Max m"};
     experiment_support::Rows rows;
 
     int case_index = 0;
@@ -140,11 +141,17 @@ int main(int argc, char** argv) {
                 policy.second == tgi::AdaptiveGlobalPcgPolicy::Fast
                     ? "1" : "many",
                 std::to_string(adaptive.report.selected_steps),
+                experiment_support::fixed(
+                    static_cast<double>(adaptive.report.selected_steps) /
+                        static_cast<double>(item.fine), 3),
                 std::to_string(adaptive_cycles.cycles),
                 experiment_support::fixed(
                     adaptive_cycles.effective_factor, 6),
                 tgi::two_grid_status_name(adaptive_cycles.status),
                 std::to_string(oracle_steps),
+                experiment_support::fixed(
+                    static_cast<double>(oracle_steps) /
+                        static_cast<double>(item.fine), 3),
                 std::to_string(oracle.cycles),
                 experiment_support::fixed(oracle.effective_factor, 6),
                 tgi::two_grid_status_name(oracle.status),
@@ -179,7 +186,8 @@ int main(int argc, char** argv) {
         "reported oracle minimum.");
     report.add_table(
         "Representative oracle gaps", headers,
-        {5, 5, 10, 20, 7, 6, 10, 8, 11, 10, 9, 14, 13, 13, 8, 13, 10, 12, 7}, rows,
+        {5, 5, 10, 20, 7, 6, 10, 9, 8, 11, 10, 9, 16, 14, 13, 13, 8,
+         13, 10, 12, 7}, rows,
         true);
     report.save("experiment3_oracle_validation");
     return 0;

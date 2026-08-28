@@ -1,4 +1,4 @@
-# two_grids_iteration v4.8.0
+# two_grids_iteration v4.9.0
 
 ## 核心模块
 
@@ -19,6 +19,9 @@ pilot，setup 只有一次 PCG 路径推进、插值组装和粗算子构造。
 reuse 面向多 RHS，取 `0,n/8,n/4,n/3,n/2` 五个归一化候选。每个候选最多运行
 `n/2` 个 pilot 循环，以后半段
 残量的几何平均收缩率预测完整循环数。候选按路径顺序流式处理，只保留当前优胜者。
+
+离线 oracle 额外报告所选步数的归一化位置 `m/(1/h)`，用于检验理论中的尺度窗口；
+该量不进入在线选择。
 
 ```cpp
 tgi::AdaptiveGlobalPcgOptions options;

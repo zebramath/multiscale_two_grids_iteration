@@ -1,7 +1,7 @@
 Submission-focused robustness checks
 ====================================
 
-Version         : 4.8.0
+Version         : 4.9.0
 Grid            : 64/16
 Timing grid     : 128/16
 Contrast        : 1e4
@@ -91,9 +91,9 @@ Central 128/16 repeated wall-clock comparison
 ---------------------------------------------
 Policy              Runs  Setup med ms    Setup Q1    Setup Q3  Solve med ms   Solve Q1   Solve Q3  Total med ms   Total Q1   Total Q3   Cycles med
 ----------------  ------  -----------  ----------  ----------  ----------  ---------  ---------  ----------  ---------  ---------  -----------
-adaptive-fast          5      441.810     439.674     456.060     260.734    256.842    267.170     698.652    652.783    700.408          242
-adaptive-reuse         5     1117.308    1071.153    1379.906     243.888    223.884    390.959    1361.197   1295.037   1770.866          242
-global-reference       5     2044.307    1823.864    2271.630    7256.835   6754.812   9286.458   10173.109   8353.519  11558.088         3227
+adaptive-fast          5      397.682     383.595     403.879     193.479    193.415    203.025     600.707    577.074    605.489          242
+adaptive-reuse         5      959.713     933.204     960.802     199.127    192.228    212.079    1153.030   1145.282   1158.840          242
+global-reference       5     1955.862    1944.437    2009.341    6589.913   6578.210   6679.894    8534.072   8358.236   8599.254         3227
 
 Note: Fast and reuse select the same m=43 interpolation on this center case. Their solve-time difference is timing variation; fast has the lower end-to-end cost because it reaches that interpolation without candidate pilots.
 

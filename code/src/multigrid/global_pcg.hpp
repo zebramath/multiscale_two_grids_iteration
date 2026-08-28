@@ -194,9 +194,8 @@ inline SparseMatrix GlobalEnergyPcgPath::prolongation(
             }
         }
     }
-    SparseMatrix result(
+    return SparseMatrix(
         grid_.fine_size(), grid_.coarse_size(), entries, 0.0);
-    return result;
 }
 
 enum class AdaptiveGlobalPcgPolicy {
@@ -218,8 +217,6 @@ struct AdaptiveGlobalPcgReport {
     int candidate_count = 0;
     int maximum_sampled_steps = 0;
     int pilot_cycles = 0;
-    int predicted_cycles = 0;
-    double pilot_factor = 1.0;
     double selection_wall_ms = 0.0;
 };
 
@@ -375,7 +372,6 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
             "adaptive global PCG received invalid options");
     }
     const auto begin = Clock::now();
-    const Vector& rhs = representative_rhs;
     const SelectionProfile profile = selection_profile(
         grid, a, options.policy);
     GlobalEnergyPcgPath path(
@@ -386,15 +382,18 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
         if (steps > 0) {
             path.advance_to(steps);
             candidate = make_candidate(
-                a, rhs, path.prolongation(options.drop_tolerance),
+                a, representative_rhs,
+                path.prolongation(options.drop_tolerance),
                 steps, options);
         } else {
             candidate = make_candidate(
-                a, rhs, initial_prolongation, steps, options);
+                a, representative_rhs, initial_prolongation,
+                steps, options);
         }
         if (profile.pilot_cycles > 0) {
             probe_candidate(
-                *candidate, rhs, profile.pilot_cycles, options);
+                *candidate, representative_rhs,
+                profile.pilot_cycles, options);
         }
         if (!best || is_better_candidate(*candidate, *best)) {
             best = std::move(candidate);
@@ -409,8 +408,6 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
         static_cast<int>(profile.checkpoints.size());
     result.report.maximum_sampled_steps = profile.checkpoints.back();
     result.report.pilot_cycles = profile.pilot_cycles;
-    result.report.predicted_cycles = best->predicted_cycles;
-    result.report.pilot_factor = fit_tail(best->norms);
     result.report.selection_wall_ms = milliseconds(begin, Clock::now());
     return result;
 }
