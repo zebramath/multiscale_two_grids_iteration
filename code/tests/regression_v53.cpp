@@ -90,12 +90,12 @@ int main() {
         static_cast<std::size_t>(grid.fine_size()), 1.0);
     const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
         grid, a, geometric.prolongation, adaptive_options, adaptive_rhs);
-    require(adaptive.report.selected_steps == 5,
+    require(adaptive.report.selected_steps == 2,
             "fast PCG selected the wrong scaled checkpoint");
     require(adaptive.report.candidate_count == 1 &&
                 adaptive.report.pilot_cycles == 0,
             "fast PCG performed avoidable candidate probes");
-    require(adaptive.report.maximum_sampled_steps == 5,
+    require(adaptive.report.maximum_sampled_steps == 2,
             "fast PCG reported the wrong scale-aware path budget");
     require(adaptive.prolongation->rows() == grid.fine_size(),
             "adaptive PCG returned an invalid prolongation");
@@ -130,10 +130,10 @@ int main() {
         tgi::adaptive_global_pcg_detail::selection_profile(
             doubled_grid, doubled_matrix,
             tgi::AdaptiveGlobalPcgPolicy::Reuse);
-    require(doubled_fast.checkpoints == std::vector<int>{11},
-            "fast checkpoint did not scale with 1/h");
+    require(doubled_fast.checkpoints == std::vector<int>{4},
+            "fast checkpoint ignored the coarse-resolution regime");
     require(doubled_reuse.checkpoints ==
-                std::vector<int>({0, 4, 8, 11, 16}) &&
+                std::vector<int>({4, 6, 8, 11, 16}) &&
                 doubled_reuse.pilot_cycles == 16,
             "reuse checkpoints did not preserve normalized positions");
 
@@ -146,8 +146,35 @@ int main() {
         tgi::adaptive_global_pcg_detail::selection_profile(
             doubled_grid, high_contrast_matrix,
             tgi::AdaptiveGlobalPcgPolicy::Fast);
-    require(high_contrast_fast.checkpoints == std::vector<int>{16},
-            "fast checkpoint ignored the high-contrast branch");
+    require(high_contrast_fast.checkpoints == std::vector<int>{4},
+            "fast coarse-resolution regime depended on contrast");
+
+    const tgi::StructuredGrid banded_grid(35, 3);
+    auto diagonal_matrix = [&](double ratio) {
+        std::vector<tgi::Triplet> entries;
+        entries.reserve(static_cast<std::size_t>(banded_grid.fine_size()));
+        for (int row = 0; row < banded_grid.fine_size(); ++row) {
+            entries.push_back({row, row, row == 0 ? ratio : 1.0});
+        }
+        return tgi::SparseMatrix(
+            banded_grid.fine_size(), banded_grid.fine_size(), entries);
+    };
+    const auto low_profile =
+        tgi::adaptive_global_pcg_detail::selection_profile(
+            banded_grid, diagonal_matrix(1.0e2),
+            tgi::AdaptiveGlobalPcgPolicy::Fast);
+    const auto medium_profile =
+        tgi::adaptive_global_pcg_detail::selection_profile(
+            banded_grid, diagonal_matrix(1.0e4),
+            tgi::AdaptiveGlobalPcgPolicy::Fast);
+    const auto high_profile =
+        tgi::adaptive_global_pcg_detail::selection_profile(
+            banded_grid, diagonal_matrix(1.0e6),
+            tgi::AdaptiveGlobalPcgPolicy::Fast);
+    require(low_profile.checkpoints == std::vector<int>{9} &&
+                medium_profile.checkpoints == std::vector<int>{12} &&
+                high_profile.checkpoints == std::vector<int>{18},
+            "fast stiffness bands selected the wrong normalized checkpoint");
     const auto detailed_solve = tgi::solve_two_grid(
         adaptive_rhs, *detailed.cycle, 1.0e-6, 1000);
     require(detailed_solve.converged,

@@ -18,7 +18,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.2}
+\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.3}
 \author{崔正平}
 \date{}
 
@@ -39,8 +39,8 @@
 这给出有限步优于精确能量插值的充分条件，并在显式余项控制下导出严格的反单调 PCG
 尾部。最后，在 Jacobi--PCG 条件数按 $h^{-2}$ 伸缩且相关谱分量非退化的模型族上，
 本文给出最优路径步数的条件性 $\Theta(h^{-1})$ 窗口；据此构造与网格分辨率同步伸缩的
-fast/reuse 两档选择，并给出 pilot 预测误差到候选选择后悔值的确定性传递界和多右端项
-盈亏平衡式。
+fast/reuse 两档选择，并给出固定归一化候选的网格一致覆盖界、pilot 预测误差到候选
+选择后悔值的加法与乘法界，以及多右端项盈亏平衡式。
 
 这些结论构成“为何在有限 Krylov 路径上选点”的理论依据。数值验证采用二维规则网格、
 高对比扩散、固定粗点和两网格结构，以受控方式检验这一机制。
@@ -81,6 +81,7 @@ PCG 能量账本 & 每列方程使用 SPD 预条件的标准 CG，结论按精�
 终点一阶机制 & 能量终点处相关最大奇异值为正且单 \\
 严格反单调尾部 & 另需进入局部邻域，并满足逐步方向条件~\eqref{eq:tailcondition} \\
 最优步数尺度 & 相关路径具有双侧指数衰减、最优点处于固定误差带；标准条件数伸缩给出一侧上界 \\
+候选覆盖界 & 归一化投影路径一致 Lipschitz，且磨光算子范数一致有界 \\
 选择后悔界 & 候选上的循环预测具有统一误差界 \\
 \bottomrule
 \end{tabular}
@@ -120,9 +121,10 @@ $\bm B\bm W^\ast+\bm C=0$ 消失，即得两式。
 \end{proof}
 
 能量极小插值及局部优化插值的经典算法背景可参见
-\cite{WanChanSmith2000,Dohrmann2007}。这些工作以能量、近核空间再现和局部支撑为
-主要设计准则；本文固定粗点与初始插值，由式~\eqref{eq:Wstar} 出发，研究同一全局
-能量方程的有限 Krylov 路径与两网格目标之间的非单调关系。
+\cite{WanChanSmith2000,Dohrmann2007,OlsonSchroderTuminaro2011,JannaEtAl2023}。
+这些工作以能量、近核空间再现、局部支撑或并行实现为主要设计准则；本文固定粗点与
+初始插值，由式~\eqref{eq:Wstar} 出发，研究同一全局能量方程的有限 Krylov 路径与
+两网格目标之间的非单调关系。
 
 第 $j$ 列满足 $\bm B\bm w_j^\ast=-\bm C\bm e_j$。
 设 $\bm w_{j,m}$ 是从给定初值运行 $m$ 步 PCG 的结果，
@@ -303,7 +305,8 @@ $\min_{\operatorname{rank}\bm\Pi=n_C}\norm{(\bm I-\bm\Pi)\bm T}_2
 =\sigma_{n_C+1}(\bm T)$。
 \end{proof}
 
-定理~\ref{thm:globalopt} 给出固定磨光器下的理论最优空间。能量极小粗空间一般与它
+定理~\ref{thm:globalopt} 给出固定磨光器下的理论最优空间。直接以两网格收敛率定义
+最优插值的相关研究可参见~\cite{BrannickEtAl2018}。能量极小粗空间一般与该最优空间
 不同，因而有限步候选优于能量终点在结构上完全可能。
 
 \begin{theorem}[谱半径平方根的全局稳定性]\label{thm:lipschitz}
@@ -544,32 +547,79 @@ $\eta_-\le a_+e^{-\gamma_-m_{\rm opt}h}$，从而得到右侧。
 问题族检验，其常数可随对比度范围、拓扑类别和粗化比变化。PCG 的代数终止上界由细点
 系统维数决定，而式~\eqref{eq:optimalwindow} 描述两网格性能最优点的模型尺度。
 
-当前七个离线 step--2 sampled oracle 满足
+当前七个设计组 step--2 sampled oracle 满足
 $m_{\rm or}/(1/h)\in[0.125,0.484]$，为固定归一化搜索窗提供当前测试族上的证据。
 它们用于检验尺度假设，不等同于定理~\ref{thm:optimalwindow} 中连续路径上的
 $m_{\rm opt}(h)$，也不参与在线选择。
 
+下面把“候选数固定而步数随 $h^{-1}$ 伸缩”写成网格一致结论。令
+$\bm\Pi_h(s)$ 表示归一化位置 $s=mh$ 上粗空间投影的连续插值，并记
+\begin{equation}
+ \phi_h(s)=\norm{(\bm I-\bm\Pi_h(s))\bm T_h}_2,
+ \qquad \rho_h(s)=\phi_h(s)^2.                       \label{eq:normalizedprofile}
+\end{equation}
+
+\begin{theorem}[固定归一化候选的网格一致覆盖界]
+\label{thm:normalizedcover}
+设在固定区间 $[\alpha,\beta]$ 上存在与 $h$ 无关的 $L_\Pi,M_T>0$，使
+\begin{equation}
+ \norm{\bm\Pi_h(s)-\bm\Pi_h(t)}_2\le L_\Pi\abs{s-t},
+ \qquad \norm{\bm T_h}_2\le M_T.                   \label{eq:pathlipschitz}
+\end{equation}
+令 $s_h^*$ 最小化 $\phi_h$，固定有限集合
+$\mathcal S\subset[\alpha,\beta]$ 的覆盖半径为
+\begin{equation}
+ \delta_{\mathcal S}=
+ \max_{s\in[\alpha,\beta]}\min_{\xi\in\mathcal S}\abs{s-\xi}.
+\end{equation}
+对整数候选 $m_\xi=\operatorname{round}(\xi/h)$，假定相应归一化位置仍在
+$[\alpha,\beta]$，并令 $\widehat m_h$ 最小化候选上的 $\phi_h(hm)$。则
+\begin{align}
+ 0&\le \phi_h(h\widehat m_h)-\phi_h(s_h^*)
+ \le M_TL_\Pi(\delta_{\mathcal S}+h/2),             \label{eq:coverphi}\\
+ 0&\le \rho_h(h\widehat m_h)-\rho_h(s_h^*)
+ \le 2M_T^2L_\Pi(\delta_{\mathcal S}+h/2).          \label{eq:coverrho}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+取 $\xi\in\mathcal S$ 使 $\abs{\xi-s_h^*}\le\delta_{\mathcal S}$。整数舍入给出
+$\abs{hm_\xi-\xi}\le h/2$。定理~\ref{thm:lipschitz} 与
+式~\eqref{eq:pathlipschitz} 因而给出
+$\abs{\phi_h(hm_\xi)-\phi_h(s_h^*)}
+\le M_TL_\Pi(\delta_{\mathcal S}+h/2)$；候选最优性得到式~\eqref{eq:coverphi}。
+又因 $0\le\phi_h\le M_T$，对平方差分解即得式~\eqref{eq:coverrho}。
+\end{proof}
+
+该定理说明固定候选预算的离散损失由归一化覆盖半径而非网格规模控制；它不假设实际
+循环数关于 $m$ 单调。当前 reuse 集合的区间为 $[1/8,1/2]$，覆盖半径为 $1/12$。
+
 \subsection{两档实现}
 
-算法保留 fast 与 reuse 两档。fast 面向单个或少量右端项，不运行 pilot，只构造
+令 $n_H=1/H=n/r$ 为每方向粗网格区间数。算法保留 fast 与 reuse 两档。fast 面向
+单个或少量右端项，不运行 pilot，只构造
 \begin{equation}
  m_{\rm fast}=
  \begin{cases}
- \operatorname{round}(n/2),&\chi_A\ge10^5,\\
- \operatorname{round}(n/3),&\chi_A<10^5.
+ \operatorname{round}(n/8),&n_H\le8,\\
+ \operatorname{round}(n/4),&n_H>8,\ \chi_A<10^3,\\
+ \operatorname{round}(n/3),&n_H>8,\ 10^3\le\chi_A<10^5,\\
+ \operatorname{round}(n/2),&n_H>8,\ \chi_A\ge10^5.
  \end{cases}                                           \label{eq:fast}
 \end{equation}
-该规则使路径位置随分辨率伸缩；对角尺度比只负责把强异质问题推向同一区间的右端。
-它只有一次路径推进、一次插值组装和一次粗算子构造。
+该规则只使用粗空间分辨率和矩阵对角尺度比：小粗空间采用短路径，其余问题按尺度比的
+三个对数区间选取归一化位置。阈值 $10^3,10^5$ 是测试对比度 $10^2,10^4,10^6$ 的
+对数中点。fast 始终只有一次路径推进、一次插值组装和一次粗算子构造。
 
-reuse 面向插值被多个右端项复用的场景，在归一化区间 $[0,n/2]$ 上取固定五点
+reuse 面向插值被多个右端项复用的场景，在归一化区间 $[n/8,n/2]$ 上取固定五点
 \begin{equation}
 \mathcal M_{\rm reuse}
- =\operatorname{round}\left\{0,n/8,n/4,n/3,n/2\right\},
+ =\operatorname{round}\left\{n/8,3n/16,n/4,n/3,n/2\right\},
  \qquad L=\operatorname{round}(n/2).                  \label{eq:reuse}
 \end{equation}
 重复候选在小网格上合并。候选数不随 $n$ 增长，而搜索区间和 pilot 长度随 $n$ 同步
-伸缩；实现按 $m$ 递增地延续同一条 PCG 路径，并流式保留当前优胜者。
+伸缩；几何端点被移出在线选择，新增 $3n/16$ 以细化 oracle 较集中的左半区间。实现按
+$m$ 递增地延续同一条 PCG 路径，并流式保留当前优胜者。
 
 \subsection{收敛预测与选择规则}
 
@@ -601,14 +651,25 @@ $m_{\mathcal M}$ 为候选集内真实循环数最少者，则
  N_{\widehat m}
  \le N_{m_{\mathcal M}}+2\varepsilon.                \label{eq:regret}
 \end{equation}
+若改为相对误差界
+$(1-\delta)N_m\le\widehat N_m\le(1+\delta)N_m$，其中 $0\le\delta<1$，则还有
+\begin{equation}
+ \frac{N_{\widehat m}}{N_{m_{\mathcal M}}}
+ \le\frac{1+\delta}{1-\delta}.                       \label{eq:relregret}
+\end{equation}
 \end{theorem}
 
 \begin{proof}
-$\widehat N_{\widehat m}\le\widehat N_{m_{\mathcal M}}$，两端各应用一次统一误差界即可。
+$\widehat N_{\widehat m}\le\widehat N_{m_{\mathcal M}}$。两端各应用一次加法误差界得到
+式~\eqref{eq:regret}；改用相对误差界则有
+$(1-\delta)N_{\widehat m}\le(1+\delta)N_{m_{\mathcal M}}$，即得
+式~\eqref{eq:relregret}。
 \end{proof}
 
-该结果把 reuse 的 pilot 精度与选择损失定量联系起来。fast 以单点经验规则消除选择
-开销；reuse 支付五个候选的预测成本，以提高多右端项下的摊销收益。
+该结果把 reuse 的 pilot 精度与候选集内选择损失同时按绝对量和比例定量联系起来，
+对应参数选择中“廉价代理--真实目标--额外开销”的标准结构~\cite{FrascaCacciaSingh2023}。
+fast 以单点规则消除选择开销；reuse 支付五个候选的预测成本，以提高多右端项下的
+摊销收益。
 
 \subsection{多右端项的盈亏平衡}
 
@@ -638,8 +699,9 @@ $\widehat N_{\widehat m}\le\widehat N_{m_{\mathcal M}}$，两端各应用一次�
 \]
 代数恒等式和全局稳定界适用于有限维 SPD 系统、固定粗点及对称两网格结构；一阶机制
 和反单调尾部依赖单最大奇异值、局部邻域与方向条件；最优步数的双侧尺度窗口还依赖
-双侧路径衰减和固定可见误差带。数值部分在二维规则网格与高对比通道族上隔离并检验
-这一机制，fast/reuse 两档则体现少右端项与多右端项之间的 setup--solve 权衡。
+双侧路径衰减和固定可见误差带。归一化覆盖界把固定候选预算与网格规模解耦，预测
+后悔界则把在线代理误差传递到真实循环数。数值部分在二维规则网格与高对比通道族上
+隔离并检验这一机制，fast/reuse 两档体现少右端项与多右端项之间的 setup--solve 权衡。
 
 \begin{thebibliography}{99}
 
@@ -654,6 +716,31 @@ C. R. Dohrmann,
 Interpolation operators for algebraic multigrid by local optimization,
 \emph{SIAM Journal on Scientific Computing}, 29(5):2045--2058, 2007,
 \href{https://doi.org/10.1137/06066103X}{doi:10.1137/06066103X}.
+
+\bibitem{OlsonSchroderTuminaro2011}
+L. N. Olson, J. B. Schroder, and R. S. Tuminaro,
+A general interpolation strategy for algebraic multigrid using energy minimization,
+\emph{SIAM Journal on Scientific Computing}, 33(2):966--991, 2011,
+\href{https://doi.org/10.1137/100803031}{doi:10.1137/100803031}.
+
+\bibitem{JannaEtAl2023}
+C. Janna, A. Franceschini, J. B. Schroder, and L. Olson,
+Parallel energy-minimization prolongation for algebraic multigrid,
+\emph{SIAM Journal on Scientific Computing}, 45(5):A2561--A2584, 2023,
+\href{https://doi.org/10.1137/22M1513794}{doi:10.1137/22M1513794}.
+
+\bibitem{BrannickEtAl2018}
+J. Brannick, F. Cao, K. Kahl, R. D. Falgout, and X. Hu,
+Optimal interpolation and compatible relaxation in classical algebraic multigrid,
+\emph{SIAM Journal on Scientific Computing}, 40(3):A1473--A1493, 2018,
+\href{https://doi.org/10.1137/17M1123456}{doi:10.1137/17M1123456}.
+
+\bibitem{FrascaCacciaSingh2023}
+G. Frasca-Caccia and P. Singh,
+Optimal parameters for numerical solvers of PDEs,
+\emph{Journal of Scientific Computing}, 97:11, 2023,
+\href{https://doi.org/10.1007/s10915-023-02324-0}
+{doi:10.1007/s10915-023-02324-0}.
 
 \bibitem{Greenbaum1997}
 A. Greenbaum,

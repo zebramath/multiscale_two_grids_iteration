@@ -12,6 +12,7 @@
 namespace {
 
 struct OracleCase {
+    const char* split;
     int fine;
     int coarse;
     double contrast;
@@ -54,20 +55,23 @@ int main(int argc, char** argv) {
             threads = std::stoi(argument.substr(10));
     }
     const auto& topology = experiment_support::channel_topologies();
-    const std::array<OracleCase, 7> cases{{
-        {32, 8, 1.0e4, topology[0]},
-        {64, 8, 1.0e4, topology[0]},
-        {64, 16, 1.0e4, topology[0]},
-        {128, 16, 1.0e4, topology[0]},
-        {128, 16, 1.0e2, topology[0]},
-        {128, 16, 1.0e6, topology[0]},
-        {128, 16, 1.0e4, topology[5]}
+    const std::array<OracleCase, 10> cases{{
+        {"design", 32, 8, 1.0e4, topology[0]},
+        {"design", 64, 8, 1.0e4, topology[0]},
+        {"design", 64, 16, 1.0e4, topology[0]},
+        {"design", 128, 16, 1.0e4, topology[0]},
+        {"design", 128, 16, 1.0e2, topology[0]},
+        {"design", 128, 16, 1.0e6, topology[0]},
+        {"design", 128, 16, 1.0e4, topology[5]},
+        {"validation", 88, 11, 1.0e4, topology[2]},
+        {"validation", 120, 15, 1.0e2, topology[4]},
+        {"validation", 152, 19, 1.0e6, topology[3]}
     }};
     constexpr int maximum_cycles =
         experiment_support::maximum_two_grid_cycles;
     constexpr int oracle_candidate_limit = 6000;
     const experiment_support::Row headers{
-        "1/h", "1/H", "Contrast", "Topology", "Policy", "R",
+        "Split", "1/h", "1/H", "Contrast", "Topology", "Policy", "R",
         "Selected m", "m/(1/h)", "Cycles", "Eff factor", "Status",
         "Oracle m", "Oracle m/(1/h)", "Oracle cycles", "Oracle factor",
         "Oracle status", "Gap %", "Candidates",
@@ -132,7 +136,8 @@ int main(int argc, char** argv) {
                       static_cast<double>(oracle.cycles)
                 : 0.0;
             rows.push_back({
-                std::to_string(item.fine), std::to_string(item.coarse),
+                item.split, std::to_string(item.fine),
+                std::to_string(item.coarse),
                 experiment_support::scientific(item.contrast, 0),
                 item.field.name, policy.first,
                 policy.second == tgi::AdaptiveGlobalPcgPolicy::Fast
@@ -170,18 +175,21 @@ int main(int argc, char** argv) {
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
-        "The step-two oracle is evaluation-only. Fast directly uses (1/h)/3, "
-        "or (1/h)/2 when the matrix diagonal ratio is at least 1e5, without "
-        "pilot solves. Reuse evaluates "
-        "0,(1/h)/8,(1/h)/4,(1/h)/3,(1/h)/2 with a (1/h)/2-cycle "
-        "pilot. It selects the smallest forecasted cycle count, breaking ties "
-        "toward the cheaper checkpoint. Neither policy uses contrast or "
-        "topology labels. Oracle candidates are screened to 6000 cycles; a "
+        "The step-two oracle is evaluation-only. Fast uses (1/h)/8 when "
+        "1/H<=8; otherwise it maps the matrix diagonal ratio to (1/h)/4, "
+        "(1/h)/3 or (1/h)/2, without pilot solves. Reuse evaluates "
+        "(1/h)/8,3(1/h)/16,(1/h)/4,(1/h)/3,(1/h)/2 with a "
+        "(1/h)/2-cycle pilot and "
+        "selects the smallest forecasted cycle count, breaking ties toward "
+        "the cheaper checkpoint. Neither policy uses contrast or topology "
+        "labels. Oracle candidates are screened to 6000 cycles; a "
         "candidate still above tolerance at that point cannot beat any "
-        "reported oracle minimum.");
+        "reported oracle minimum. The final three cases are a post-freeze "
+        "validation split with unseen resolutions and topology/contrast "
+        "combinations.");
     report.add_table(
         "Representative oracle gaps", headers,
-        {5, 5, 10, 20, 7, 6, 10, 9, 8, 11, 10, 9, 16, 14, 13, 13, 8,
+        {10, 5, 5, 10, 20, 7, 6, 10, 9, 8, 11, 10, 9, 16, 14, 13, 13, 8,
          10, 12, 7}, rows,
         true);
     report.save("experiment3_oracle_validation");

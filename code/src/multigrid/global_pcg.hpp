@@ -230,33 +230,51 @@ struct SelectionProfile {
     int pilot_cycles = 0;
 };
 
+inline int scaled_checkpoint(
+    int resolution, int numerator, int denominator) {
+    return (numerator * resolution + denominator / 2) / denominator;
+}
+
 inline SelectionProfile selection_profile(
     const StructuredGrid& grid, const SparseMatrix& a,
     AdaptiveGlobalPcgPolicy policy) {
     const int resolution = grid.intervals();
     SelectionProfile profile;
     if (policy == AdaptiveGlobalPcgPolicy::Fast) {
+        const int coarse_resolution = resolution / grid.ratio();
+        if (coarse_resolution <= 8) {
+            profile.checkpoints.push_back(
+                scaled_checkpoint(resolution, 1, 8));
+            return profile;
+        }
         const Vector diagonal = a.diagonal();
         const auto extrema = std::minmax_element(
             diagonal.begin(), diagonal.end());
         const double stiffness_ratio = *extrema.second / *extrema.first;
-        profile.checkpoints.push_back(
-            stiffness_ratio >= 1.0e5
-                ? (resolution + 1) / 2
-                : (resolution + 1) / 3);
+        if (stiffness_ratio < 1.0e3) {
+            profile.checkpoints.push_back(
+                scaled_checkpoint(resolution, 1, 4));
+        } else if (stiffness_ratio >= 1.0e5) {
+            profile.checkpoints.push_back(
+                scaled_checkpoint(resolution, 1, 2));
+        } else {
+            profile.checkpoints.push_back(
+                scaled_checkpoint(resolution, 1, 3));
+        }
         return profile;
     }
     profile.checkpoints = {
-        0,
-        (resolution + 4) / 8,
-        (resolution + 2) / 4,
-        (resolution + 1) / 3,
-        (resolution + 1) / 2};
+        scaled_checkpoint(resolution, 1, 8),
+        scaled_checkpoint(resolution, 3, 16),
+        scaled_checkpoint(resolution, 1, 4),
+        scaled_checkpoint(resolution, 1, 3),
+        scaled_checkpoint(resolution, 1, 2)};
     profile.checkpoints.erase(
         std::unique(
             profile.checkpoints.begin(), profile.checkpoints.end()),
         profile.checkpoints.end());
-    profile.pilot_cycles = std::max(1, (resolution + 1) / 2);
+    profile.pilot_cycles = std::max(
+        1, scaled_checkpoint(resolution, 1, 2));
     return profile;
 }
 

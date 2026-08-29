@@ -176,11 +176,11 @@ int main(int argc, char** argv) {
     report.add_note(
         "The matrix varies fine/coarse scale, contrast and six channel "
         "topologies. The two 256/16 extensions test cross-channel and "
-        "winding-ring coefficients at the largest scale. Fast directly uses "
-        "(1/h)/3, moving to (1/h)/2 only when the matrix diagonal ratio is "
-        "at least 1e5. Reuse tests the five normalized checkpoints "
-        "0,(1/h)/8,(1/h)/4,(1/h)/3,(1/h)/2 and selects by a residual "
-        "contraction forecast. Effective factor is the whole-solve geometric "
+        "winding-ring coefficients at the largest scale. Fast uses (1/h)/8 "
+        "when 1/H<=8; otherwise it uses (1/h)/4, (1/h)/3 or (1/h)/2 in "
+        "the low, intermediate or high diagonal-ratio band. Reuse tests five "
+        "normalized checkpoints (1/h)/8,3(1/h)/16,(1/h)/4,(1/h)/3,(1/h)/2 "
+        "with a (1/h)/2-cycle pilot. Effective factor is the whole-solve geometric "
         "mean contraction; tail factor uses the last 32 cycles.");
     report.add_table(
         "All two-grid cases",

@@ -1,24 +1,24 @@
 Cross-problem two-grid interpolation comparison
 ===============================================
 
-Version         : 5.2.0
+Version         : 5.3.0
 Cases           : 13
 Mode            : full
 Threads         : 4
 Solve tolerance : 1e-6
 Maximum cycles  : 20000
 
-Note: The matrix varies fine/coarse scale, contrast and six channel topologies. The two 256/16 extensions test cross-channel and winding-ring coefficients at the largest scale. Fast directly uses (1/h)/3, moving to (1/h)/2 only when the matrix diagonal ratio is at least 1e5. Reuse tests the five normalized checkpoints 0,(1/h)/8,(1/h)/4,(1/h)/3,(1/h)/2 and selects by a residual contraction forecast. Effective factor is the whole-solve geometric mean contraction; tail factor uses the last 32 cycles.
+Note: The matrix varies fine/coarse scale, contrast and six channel topologies. The two 256/16 extensions test cross-channel and winding-ring coefficients at the largest scale. Fast uses (1/h)/8 when 1/H<=8; otherwise it uses (1/h)/4, (1/h)/3 or (1/h)/2 in the low, intermediate or high diagonal-ratio band. Reuse tests five normalized checkpoints (1/h)/8,3(1/h)/16,(1/h)/4,(1/h)/3,(1/h)/2 with a (1/h)/2-cycle pilot. Effective factor is the whole-solve geometric mean contraction; tail factor uses the last 32 cycles.
 
 All two-grid cases
 ------------------
 Axis            1/h    1/H    Contrast              Topology            Method     Parameter  P density %     Ac nnz    Cycles      Status  Final relres  Effective factor  Tail factor
 ------------  -----  -----  ----------  --------------------  ----------------  ------------  -----------  ---------  --------  ----------  ------------  ----------------  -----------
-size             32      8       1e+04         cross-channel     adaptive-fast          m=11      40.2408       2261        40   converged      7.36e-07          0.702550     0.665400
+size             32      8       1e+04         cross-channel     adaptive-fast           m=4      15.9039       1305        37   converged      7.34e-07          0.682669     0.664730
 size             32      8       1e+04         cross-channel    adaptive-reuse           m=4      15.9039       1305        37   converged      7.34e-07          0.682669     0.664730
 size             32      8       1e+04         cross-channel  global-reference     tol=1e-10      95.0052       2401        54   converged      8.75e-07          0.772358     0.787326
 size             32      8       1e+04         cross-channel         geometric           P_G       5.0989        361        40   converged      8.38e-07          0.704815     0.697533
-size             64      8       1e+04         cross-channel     adaptive-fast          m=21      41.7691       2261       251   converged      9.73e-07          0.946341     0.947535
+size             64      8       1e+04         cross-channel     adaptive-fast           m=8      17.8614       1305       123   converged      9.20e-07          0.893149     0.887225
 size             64      8       1e+04         cross-channel    adaptive-reuse           m=8      17.8614       1305       123   converged      9.20e-07          0.893149     0.887225
 size             64      8       1e+04         cross-channel  global-reference     tol=1e-10      98.7906       2401       264   converged      9.69e-07          0.948901     0.954615
 size             64      8       1e+04         cross-channel         geometric           P_G       5.6689        361       302   converged      9.73e-07          0.955198     0.959655
@@ -41,8 +41,8 @@ large-scale     256     16       1e+04          winding-ring    adaptive-reuse  
 large-scale     256     16       1e+04          winding-ring  global-reference     tol=1e-10      99.2124      50625      3950   converged      9.97e-07          0.996508     0.996801
 large-scale     256     16       1e+04          winding-ring         geometric           P_G       1.4779       1849     20000  slow-limit      4.50e-01          0.999960     0.999940
 
-contrast        128     16       1e+02         cross-channel     adaptive-fast          m=43      29.4678      40701       387   converged      9.95e-07          0.964918     0.969992
-contrast        128     16       1e+02         cross-channel    adaptive-reuse          m=32      20.4547      31025       293   converged      9.69e-07          0.953841     0.965704
+contrast        128     16       1e+02         cross-channel     adaptive-fast          m=32      20.4547      31025       293   converged      9.69e-07          0.953841     0.965704
+contrast        128     16       1e+02         cross-channel    adaptive-reuse          m=24      14.4398      23381       237   converged      9.89e-07          0.943331     0.951026
 contrast        128     16       1e+02         cross-channel  global-reference     tol=1e-10      98.4106      50625       756   converged      9.96e-07          0.981886     0.983815
 contrast        128     16       1e+02         cross-channel         geometric           P_G       1.3950       1849      1501   converged      9.94e-07          0.990834     0.991632
 contrast        128     16       1e+06         cross-channel     adaptive-fast          m=64      48.1166      48645       273   converged      9.67e-07          0.950536     0.949075
@@ -75,8 +75,8 @@ Convergence and setup summary
 -----------------------------
 Method            Conv/slow/div  Converged cycle sum  Mean density %
 ----------------  -------------  -------------------  --------------
-adaptive-fast            13/0/0                 4684         32.5173
-adaptive-reuse           13/0/0                 4402         28.9865
+adaptive-fast            13/0/0                 4459         28.1129
+adaptive-reuse           13/0/0                 4346         28.5238
 global-reference         13/0/0                28972         97.2386
 geometric                3/10/0                 1843          2.0091
 
