@@ -1,10 +1,10 @@
-# multiscale_two_grids_iteration v5.4
+# multiscale_two_grids_iteration v5.5
 
 二维高对比扩散问题中，有限 Krylov 能量插值与两网格非单调收敛研究。
 
 - `research_report.md`：研究问题、理论主线、算法设计与完整核心结果；
 - `theory.tex`：能量路径、粗空间几何、非单调机制和尺度自适应选择理论；
-- `VALIDATION_v5.4.md`：严格构建、回归、Sanitizer 与完整实验记录；
+- `VALIDATION_v5.5.md`：严格构建、回归、Sanitizer 与完整实验记录；
 - `code/`：C++17 两网格实现、四个整合实验、测试和 TXT 结果。
 
 算法使用分辨率归一化的路径位置。fast 根据粗空间分辨率和矩阵对角尺度比只构造一个

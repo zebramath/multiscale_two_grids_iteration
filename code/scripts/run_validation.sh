@@ -5,6 +5,13 @@ mode="${1:-quick}"
 threads="${TGI_THREADS:-4}"
 build_dir="${TGI_BUILD_DIR:-build}"
 step_timeout="${TGI_STEP_TIMEOUT_SECONDS:-900}"
+case "$mode" in
+    quick|full) ;;
+    *)
+        echo "usage: $0 [quick|full]" >&2
+        exit 2
+        ;;
+esac
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$script_dir/.."
 
@@ -38,7 +45,7 @@ build_direct() {
     # shellcheck disable=SC2086
     "$cxx" $common tests/unit_core.cpp -o "$build_dir/unit_core"
     # shellcheck disable=SC2086
-    "$cxx" $common tests/regression_v54.cpp -o "$build_dir/regression_v54"
+    "$cxx" $common tests/regression_v55.cpp -o "$build_dir/regression_v55"
     # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment1_two_grid_comparison.cpp \
@@ -68,14 +75,14 @@ else
     build_direct
     echo "[done]  build-direct"
     run_step unit-core "$build_dir/unit_core"
-    run_step regression-v54 "$build_dir/regression_v54"
+    run_step regression-v55 "$build_dir/regression_v55"
 fi
 
 if [ "$mode" = "quick" ]; then
     run_step experiment1-two-grid \
         "$build_dir/experiment1_two_grid_comparison" \
         --quick --threads="$threads"
-elif [ "$mode" = "full" ]; then
+else
     run_step experiment1-two-grid \
         "$build_dir/experiment1_two_grid_comparison" --threads="$threads"
     run_step experiment2-finite-path \
@@ -84,7 +91,4 @@ elif [ "$mode" = "full" ]; then
         "$build_dir/experiment3_oracle_validation" --threads="$threads"
     run_step experiment4-submission \
         "$build_dir/experiment4_submission_robustness" --threads="$threads"
-else
-    echo "usage: $0 [quick|full]" >&2
-    exit 2
 fi

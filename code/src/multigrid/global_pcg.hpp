@@ -293,14 +293,25 @@ inline double fit_tail(const std::vector<double>& norms) {
 inline int forecast_cycles(
     int completed, double relative_residual, double rho,
     double tolerance, int maximum) {
-    if (relative_residual <= tolerance) return completed;
-    if (rho >= 1.0) return maximum;
+    if (completed >= maximum) return maximum;
+    if (std::isfinite(relative_residual) &&
+        relative_residual >= 0.0 &&
+        relative_residual <= tolerance) {
+        return completed;
+    }
+    if (!(relative_residual > 0.0) ||
+        !std::isfinite(relative_residual) ||
+        !(rho > 0.0) || rho >= 1.0 || !std::isfinite(rho)) {
+        return maximum;
+    }
     const double remaining = std::ceil(
         std::log(tolerance / relative_residual) / std::log(rho));
-    const long long forecast = static_cast<long long>(completed) +
-        std::max(0LL, static_cast<long long>(remaining));
-    return static_cast<int>(std::min(
-        static_cast<long long>(maximum), forecast));
+    const int budget = maximum - completed;
+    if (!std::isfinite(remaining) ||
+        remaining >= static_cast<double>(budget)) {
+        return maximum;
+    }
+    return completed + std::max(0, static_cast<int>(remaining));
 }
 
 struct Candidate {

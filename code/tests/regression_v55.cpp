@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -38,6 +39,25 @@ double relative_action_difference(
 }
 
 int main() {
+    using tgi::adaptive_global_pcg_detail::forecast_cycles;
+    require(forecast_cycles(10, 1.0e-2, 0.5, 1.0e-6, 1000) == 24,
+            "contractive pilot produced the wrong cycle forecast");
+    require(forecast_cycles(10, 1.0e-7, 0.5, 1.0e-6, 1000) == 10,
+            "converged pilot did not preserve its cycle count");
+    require(forecast_cycles(
+                10, std::numeric_limits<double>::infinity(),
+                0.9, 1.0e-6, 1000) == 1000 &&
+                forecast_cycles(
+                    10, 1.0e-2,
+                    std::numeric_limits<double>::quiet_NaN(),
+                    1.0e-6, 1000) == 1000 &&
+                forecast_cycles(
+                    10, 1.0e-2, std::nextafter(1.0, 0.0),
+                    1.0e-300, 1000) == 1000 &&
+                forecast_cycles(1000, 1.0e-2, 0.5,
+                                1.0e-6, 1000) == 1000,
+            "invalid or unbounded pilot forecast escaped the cycle cap");
+
     const tgi::StructuredGrid grid(15, 4);
     tgi::CoefficientOptions coefficient_options;
     coefficient_options.distribution =

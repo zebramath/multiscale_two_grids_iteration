@@ -18,7 +18,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.4}
+\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.5}
 \author{崔正平}
 \date{}
 
@@ -634,7 +634,8 @@ $\omega_\Pi(t)\to0$ 当 $t\downarrow0$，使对任意 $s,t\in I_h$，
  \le\omega_\Pi(\abs{s-t}),
  \qquad \norm{\bm T_h}_2\le M_T.                   \label{eq:pathmodulus}
 \end{equation}
-令 $s_h^*$ 最小化 $\phi_h$，连续候选集和舍入后候选集的覆盖半径分别为
+令 $s_h^*$ 在 $[\alpha,\beta]$ 上最小化 $\phi_h$，连续候选集和舍入后候选集的
+覆盖半径分别为
 \begin{equation}
  \delta_{\mathcal S}=
  \max_{s\in[\alpha,\beta]}\min_{\xi\in\mathcal S}\abs{s-\xi},
@@ -728,7 +729,8 @@ $k_0=\lfloor\ell_m/2\rfloor$，并用后半段几何平均收缩率
  \left(\frac{r_{m,\ell_m}}{r_{m,k_0}}\right)^{1/(\ell_m-k_0)}.
                                                                \label{eq:pilotfactor}
 \end{equation}
-若 pilot 尚未收敛，由此预测达到容差 $\tau$ 的总循环数
+若 pilot 尚未收敛、轨迹有限且 $0<\widehat\rho_m<1$，由此预测达到容差 $\tau$ 的
+总循环数
 \begin{equation}
  \widehat N_m=\ell_m+
  \max\left\{0,
@@ -736,7 +738,9 @@ $k_0=\lfloor\ell_m/2\rfloor$，并用后半段几何平均收缩率
  {\log\widehat\rho_m}\right\rceil
  \right\},                                             \label{eq:forecast}
 \end{equation}
-并截断到正式循环上限；若已在 pilot 内收敛，则取 $\widehat N_m=\ell_m$。reuse 选择
+并截断到正式循环上限。若 pilot 残量或收缩率非有限，或者
+$\widehat\rho_m\notin(0,1)$，则取 $\widehat N_m=N_{\max}$；若已在 pilot 内收敛，
+则取 $\widehat N_m=\ell_m$。reuse 选择
 $\widehat N_m$ 最小者，预测相同时取较小的 $m$。式~\eqref{eq:pilotfactor} 直接估计
 实际使用的两网格残量收缩，与投影目标 $\rhoTG$ 具有一致的“越小越好”方向。
 
@@ -807,7 +811,7 @@ fast 以单点规则消除选择开销；reuse 支付五个候选的预测成本
 设策略 $a,b$ 的一次 setup 为 $S_a,S_b$，单右端项平均求解时间为 $T_a,T_b$。
 对 $R$ 个右端项，总成本为
 \begin{equation}
- C_a(R)=S_a+RT_a.                                       \label{eq:cost}
+ C_j(R)=S_j+RT_j,\qquad j\in\{a,b\}.                  \label{eq:cost}
 \end{equation}
 若 $S_b>S_a$ 且 $T_b<T_a$，细致策略胜出的充分必要条件是
 \begin{equation}
