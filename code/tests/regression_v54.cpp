@@ -135,7 +135,28 @@ int main() {
     require(doubled_reuse.checkpoints ==
                 std::vector<int>({4, 6, 8, 11, 16}) &&
                 doubled_reuse.pilot_cycles == 16,
-            "reuse checkpoints did not preserve normalized positions");
+            "reuse checkpoint set did not preserve normalized positions");
+
+    for (int resolution = 8; resolution <= 257; ++resolution) {
+        auto within_rounding_bound = [resolution](
+                                         int numerator, int denominator) {
+            const int checkpoint =
+                tgi::adaptive_global_pcg_detail::scaled_checkpoint(
+                    resolution, numerator, denominator);
+            const double realized = static_cast<double>(checkpoint) /
+                static_cast<double>(resolution);
+            const double requested = static_cast<double>(numerator) /
+                static_cast<double>(denominator);
+            return std::abs(realized - requested) <=
+                0.5 / static_cast<double>(resolution) + 1.0e-15;
+        };
+        require(within_rounding_bound(1, 8) &&
+                    within_rounding_bound(3, 16) &&
+                    within_rounding_bound(1, 4) &&
+                    within_rounding_bound(1, 3) &&
+                    within_rounding_bound(1, 2),
+                "normalized checkpoint exceeded the h/2 rounding bound");
+    }
 
     coefficient_options.contrast = 1.0e6;
     const auto high_contrast_field = tgi::make_coefficient(

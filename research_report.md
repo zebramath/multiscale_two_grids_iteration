@@ -1,4 +1,4 @@
-# 多尺度有限 Krylov 能量插值研究方案 v5.3
+# 多尺度有限 Krylov 能量插值研究方案 v5.4
 
 ## 1. 研究定位
 
@@ -125,7 +125,28 @@ $$
 $$
 
 因此 $Z$ 同时连接 PCG 能量尾、Galerkin 粗矩阵、粗空间主角和两网格投影目标。终点
-附近的一阶展开进一步把性能变化分成磨光后最坏模态的可见性与 Krylov 误差方向的对齐。
+附近的一阶结论允许主导奇异值具有任意有限重数：若 $U,V$ 是主导左右奇异子空间，
+$U_F$ 和 $Y$ 是其细空间可见性与粗空间响应坐标，则方向 $H$ 上有
+
+$$
+\left.\frac{d}{dt}\sqrt{\rho_{TG}(tH)}\right|_{t=0^+}
+=-\lambda_{\min}\!\left(\operatorname{sym}(U_F^THY)\right).
+$$
+
+因此有限步改善条件不依赖一对任意选取的单奇异向量，而要求 Krylov 方向在整个主导
+子空间上产生正定对齐；标量公式是重数为一时的特例。
+
+全局稳定界还能把固定性能优势变成定量能量屏障。若候选相对能量终点的
+$\sqrt{\rho_{TG}}$ 改善至少为 $\gamma$，则
+
+$$
+J(W)-J(W_*)\ge
+\frac{\lambda_{\min}(S)}2
+\frac{\gamma^2}{\lVert T\rVert_2^2-\gamma^2}.
+$$
+
+因此具有固定幅度优势的有限步候选不能无限逼近能量终点，这把非单调现象从方向性条件
+加强为可分辨的能量距离结论。
 
 ## 4. 尺度自适应选择
 
@@ -161,10 +182,10 @@ m\ge \frac12\left(\frac{\sqrt{\kappa_+}}h+1\right)
 \log\frac2\eta=O(h^{-1}).
 $$
 
-进一步，若相关 PCG 谱分量随细化保持非退化，使最优点附近存在双侧衰减
+进一步，只假设相关 PCG 谱分量不发生随细化消失的超快衰减，即在最优点以前
 
 $$
-a_-e^{-\gamma_+mh}\le d_{m,h}\le a_+e^{-\gamma_-mh},
+d_{m,h}\ge a_-e^{-\gamma_+mh},
 $$
 
 并且两网格最优点处于与 $h$ 无关的可见误差带
@@ -173,27 +194,39 @@ $\eta_-\le d_{m_{\mathrm{opt}}(h),h}\le\eta_+$，则
 $$
 \frac1{\gamma_+}\log\frac{a_-}{\eta_+}\,h^{-1}
 \le m_{\mathrm{opt}}(h)\le
-\frac1{\gamma_-}\log\frac{a_+}{\eta_-}\,h^{-1}.
+\frac12\left(\frac{\sqrt{\kappa_+}}h+1\right)
+\log\frac2{\eta_-}.
 $$
 
-这给出 $m_{\mathrm{opt}}(h)=\Theta(h^{-1})$ 的条件性估计。常数允许随固定的对比度范围、拓扑类别
-和粗化比变化；该结论描述两网格性能最优点，而 PCG 的代数终止上界仍由细点系统维数
-决定。七个离线 step--2 sampled oracle 的 $m_{\mathrm{or}}/(1/h)$ 位于
+这给出 $m_{\mathrm{opt}}(h)=\Theta(h^{-1})$ 的条件性估计。上界直接来自标准 PCG
+条件数界，不再另设路径指数上包络；额外路径条件只负责必要的下界。常数允许随固定的
+对比度范围、拓扑类别和粗化比变化；该结论描述两网格性能最优点，而 PCG 的代数终止
+上界仍由细点系统维数决定。七个离线 step--2 sampled oracle 的
+$m_{\mathrm{or}}/(1/h)$ 位于
 $0.125$--$0.484$，支持当前 $[1/8,1/2]$ 归一化窗口；这些离散采样点是尺度证据，
 不等同于连续候选路径上的 $m_{\mathrm{opt}}(h)$。
 
-若归一化路径投影满足
-$\lVert\Pi_h(s)-\Pi_h(t)\rVert_2\le L_\Pi|s-t|$ 且
-$\lVert T_h\rVert_2\le M_T$，固定候选集合 $\mathcal S$ 的覆盖半径为
-$\delta_\mathcal S$，则候选最优点与连续路径最优点满足
+若归一化路径投影具有与网格无关的连续模 $\omega_\Pi$，且
+$\lVert T_h\rVert_2\le M_T$，记舍入后候选的真实覆盖半径为
+$\delta_{\mathcal S,h}\le\delta_\mathcal S+h/2$，则令
+$\varepsilon_h=M_T\omega_\Pi(\delta_{\mathcal S,h})$ 后有
 
 $$
 \sqrt{\rho_{TG}(\widehat m_h)}-\sqrt{\rho_{TG}(m_{\mathrm{opt}})}
-\le M_TL_\Pi(\delta_\mathcal S+h/2).
+\le\varepsilon_h,
 $$
 
-因此固定候选数的离散损失由归一化覆盖半径而不是网格规模控制。当前 reuse 集合在
-$[1/8,1/2]$ 上的覆盖半径为 $1/12$。
+以及更紧的平方目标界
+
+$$
+\rho_{TG}(\widehat m_h)-\rho_{TG}(m_{\mathrm{opt}})
+\le\varepsilon_h\min\left\{2M_T,
+2\sqrt{\rho_{TG}(m_{\mathrm{opt}})}+\varepsilon_h\right\}.
+$$
+
+该结论无需 Lipschitz 正则性，也无需舍入点仍位于原区间。固定候选数的离散损失由
+归一化覆盖半径而不是网格规模控制。当前 reuse 集合在 $[1/8,1/2]$ 上的连续覆盖
+半径为 $1/12$。
 
 ### 4.2 Fast：低 setup 单候选
 
@@ -235,22 +268,25 @@ $$
 $$
 
 并外推达到正式容差所需的循环数 $\widehat N_m$。reuse 选择预测循环数最小者，预测
-相同时取较小 $m$。令 $m_{\mathcal M}$ 为候选集内真实循环数最少者。若所有候选满足
-$|\widehat N_m-N_m|\le\varepsilon$，则
+相同时取较小 $m$。令 $e_m=\widehat N_m-N_m$，$m_{\mathcal M}$ 为候选集内真实
+循环数最少者，则无需控制其他候选便有精确的后悔上界
 
 $$
-N_{\widehat m}\le N_{m_{\mathcal M}}+2\varepsilon.
+0\le N_{\widehat m}-N_{m_{\mathcal M}}
+\le e_{m_{\mathcal M}}-e_{\widehat m}.
 $$
 
-若预测还满足相对误差界
-$(1-\delta)N_m\le\widehat N_m\le(1+\delta)N_m$，则
+若真实最优候选至多被高估 $\varepsilon_+^{\mathrm{opt}}$，实际所选候选至多被低估
+$\varepsilon_-^{\mathrm{sel}}$，则加性损失至多为二者之和。相应的单侧相对误差给出
 
 $$
 \frac{N_{\widehat m}}{N_{m_{\mathcal M}}}
-\le\frac{1+\delta}{1-\delta}.
+\le\frac{1+\delta_+^{\mathrm{opt}}}
+{1-\delta_-^{\mathrm{sel}}}.
 $$
 
-两条界分别从绝对量和比例上把代表 RHS 的预测误差传递到候选集内选择损失。
+统一双侧误差界只是上述结论的特例；新形式减弱了条件，并准确指出 pilot 误差中真正
+决定选择损失的两部分。
 
 ### 4.4 多 RHS 成本
 
@@ -377,9 +413,9 @@ $10^4$ diagonal 上 fast/reuse/oracle 为 278/349/243 次，120/15、$10^2$ bran
 
 | 方法 | setup 中位数 ms（Q1--Q3） | solve 中位数 ms（Q1--Q3） | total 中位数 ms（Q1--Q3） | 循环 |
 |---|---:|---:|---:|---:|
-| adaptive-fast | 1898.053（1757.015--2049.257） | 708.540（569.924--854.220） | 2574.853（2446.494--2606.593） | 242 |
-| adaptive-reuse | 4434.132（4024.376--5179.689） | 509.786（496.042--546.056） | 4980.188（4623.486--5675.730） | 242 |
-| global-reference | 6671.975（6444.632--6710.306） | 17118.160（16239.287--17426.640） | 23828.465（23070.245--24039.942） | 3227 |
+| adaptive-fast | 349.049（342.178--355.661） | 211.420（198.172--216.587） | 552.731（547.221--562.297） | 242 |
+| adaptive-reuse | 846.899（844.134--869.044） | 209.807（205.318--212.680） | 1056.813（1056.706--1071.007） | 242 |
+| global-reference | 1819.059（1759.163--1839.425） | 6770.640（6752.234--6907.390） | 8608.713（8589.699--8666.554） | 3227 |
 
 fast 与 reuse 在中心问题选出相同的 $m=43$ 插值，两者求解时间差属于重复计时波动；
 fast 省去候选 pilot，因此具有更低的 setup 和端到端时间。global-reference 的 setup、
