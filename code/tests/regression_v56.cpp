@@ -52,6 +52,10 @@ int main() {
                     std::numeric_limits<double>::quiet_NaN(),
                     1.0e-6, 1000) == 1000 &&
                 forecast_cycles(
+                    10, -1.0, 0.5, 1.0e-6, 1000) == 1000 &&
+                forecast_cycles(
+                    10, 1.0e-2, 0.0, 1.0e-6, 1000) == 1000 &&
+                forecast_cycles(
                     10, 1.0e-2, std::nextafter(1.0, 0.0),
                     1.0e-300, 1000) == 1000 &&
                 forecast_cycles(1000, 1.0e-2, 0.5,

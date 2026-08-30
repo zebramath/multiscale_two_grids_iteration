@@ -1,4 +1,4 @@
-# two_grids_iteration v5.5.0
+# two_grids_iteration v5.6.0
 
 ## 核心模块
 
@@ -52,4 +52,5 @@ options.policy = tgi::AdaptiveGlobalPcgPolicy::Fast;
 
 正式求解从零初值运行到相对残量 `1e-6`，循环上限为 20000。结果同时报告
 `converged`、`slow-limit`、`diverged`、全程有效收敛因子和末端收敛因子。
+中心计时表仅在三种被比较方法均达到正式容差后生成。
 公开求解接口拒绝非正容差和非正循环上限；未知状态字符串显式报告为 `unknown`。

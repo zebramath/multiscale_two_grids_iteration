@@ -1,7 +1,7 @@
 Submission-focused robustness checks
 ====================================
 
-Version         : 5.5.0
+Version         : 5.6.0
 Grid            : 64/16
 Timing grid     : 128/16
 Contrast        : 1e4
@@ -10,7 +10,7 @@ Threads         : 4
 Solve tolerance : 1e-6
 Maximum cycles  : 20000
 
-Note: This single compact experiment adds only the three checks needed before submission: five coefficient seeds, six right-hand sides evaluated with interpolation trained only on the constant RHS. The single timing question is the central 128/16 cross-channel case: adaptive-fast, adaptive-reuse and the global energy reference are measured in five post-warmup repetitions with rotating order. Q1, median and Q3 replace a single wall-clock observation.
+Note: This single compact experiment adds only the three checks needed before submission: five coefficient seeds, six right-hand sides evaluated with interpolation trained only on the constant RHS. The single timing question is the central 128/16 cross-channel case: adaptive-fast, adaptive-reuse and the global energy reference are measured in five post-warmup repetitions with rotating order after all three pass the formal convergence criterion. Q1, median and Q3 replace a single wall-clock observation.
 
 Coefficient-seed stability
 --------------------------
@@ -91,9 +91,9 @@ Central 128/16 repeated wall-clock comparison
 ---------------------------------------------
 Policy              Runs  Setup med ms    Setup Q1    Setup Q3  Solve med ms   Solve Q1   Solve Q3  Total med ms   Total Q1   Total Q3   Cycles med
 ----------------  ------  -----------  ----------  ----------  ----------  ---------  ---------  ----------  ---------  ---------  -----------
-adaptive-fast          5      400.812     382.112     439.143     233.167    224.368    247.831     633.979    606.480    702.406          242
-adaptive-reuse         5     1010.077     984.904    1013.274     240.609    233.076    241.720    1232.648   1217.980   1251.797          242
-global-reference       5     1945.493    1941.626    2090.838    8640.724   8555.886   9798.311   10586.217  10417.924  11889.149         3227
+adaptive-fast          5      420.595     410.699     423.453     263.920    261.120    265.443     671.819    666.398    686.037          242
+adaptive-reuse         5     1096.344    1095.097    1151.130     243.882    226.151    262.485    1338.979   1322.496   1413.614          242
+global-reference       5     1783.948    1713.455    1943.887    7102.825   6803.592   7421.974    8816.280   8587.541   9552.169         3227
 
 Note: Fast and reuse select the same m=43 interpolation on this center case. Their solve-time difference is timing variation; fast has the lower end-to-end cost because it reaches that interpolation without candidate pilots.
 

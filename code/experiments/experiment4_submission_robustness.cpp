@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdint>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -170,6 +171,10 @@ TimingSample timing_sample(
         const double setup_ms = elapsed_ms(setup_begin, Clock::now());
         const SolveResult solved = measure_solve(
             rhs, cycle, maximum_cycles);
+        if (!solved.converged) {
+            throw std::runtime_error(
+                "timing comparison requires a converged global reference");
+        }
         return {setup_ms, solved.milliseconds, solved.cycles};
     }
     const auto geometric = tgi::build_geometric_interpolation(grid);
@@ -182,6 +187,10 @@ TimingSample timing_sample(
     const double setup_ms = elapsed_ms(setup_begin, Clock::now());
     const SolveResult solved = measure_solve(
         rhs, *adaptive.cycle, maximum_cycles);
+    if (!solved.converged) {
+        throw std::runtime_error(
+            "timing comparison requires a converged adaptive solve");
+    }
     return {setup_ms, solved.milliseconds, solved.cycles};
 }
 
@@ -422,8 +431,9 @@ int main(int argc, char** argv) {
         "evaluated with interpolation trained only on the constant RHS. The "
         "single timing question is the central 128/16 cross-channel case: "
         "adaptive-fast, adaptive-reuse and the global energy reference are "
-        "measured in five post-warmup repetitions with rotating order. Q1, "
-        "median and Q3 replace a single wall-clock observation.");
+        "measured in five post-warmup repetitions with rotating order after "
+        "all three pass the formal convergence criterion. Q1, median and Q3 "
+        "replace a single wall-clock observation.");
     report.add_table(
         "Coefficient-seed stability",
         {"Seed", "Method", "Parameter", "Cycles", "Effective factor",
