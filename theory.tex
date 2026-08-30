@@ -18,7 +18,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.6}
+\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.7}
 \author{崔正平}
 \date{}
 
@@ -87,8 +87,8 @@ PCG 能量账本 & 每列方程使用 SPD 预条件的标准 CG，结论按精�
 \end{tabular}
 \end{center}
 
-当前数值实现中的“global-reference”基线用 $10^{-10}$ 有限容差构造，它是高精度
-数值参考；数学符号 $\bm W^\ast$ 才表示精确能量极小点。两者在论文表述中应始终区分。
+下文 $\bm W^\ast$ 表示精确能量极小点；数值实验中的 global-reference 是有限容差
+$10^{-10}$ 下的高精度参考。
 
 \section{能量终点与有限 PCG 的精确账本}
 
@@ -587,8 +587,7 @@ $\kappa_+,a_-,\gamma_+$，使
 \begin{proof}
 把式~\eqref{eq:visibleband} 的上界与式~\eqref{eq:onesideddecay} 的路径下界组合，得到
 $a_-e^{-\gamma_+m_{\rm opt}h}\le\eta_+$，从而得到式~\eqref{eq:optimalwindow} 左侧。
-对于另一侧，不再假设路径具有人为给定的指数上包络。由标准 PCG 界
-式~\eqref{eq:cgscale}、不等式
+另一侧由标准 PCG 界式~\eqref{eq:cgscale}、不等式
 $q_h\le\exp\{-2/(\sqrt{\kappa_h}+1)\}$ 和条件数假设直接得到
 \[
  d_{m,h}\le
@@ -601,16 +600,14 @@ $q_h\le\exp\{-2/(\sqrt{\kappa_h}+1)\}$ 和条件数假设直接得到
 $O(h^{-1})$，故双侧合起来给出 $\Theta(h^{-1})$。
 \end{proof}
 
-式~\eqref{eq:onesideddecay} 的第二部分只排除相关谱质量随细化消失而导致的超快路径；
-另一侧完全由标准条件数界推出，因而只需一侧路径非退化假设。式~\eqref{eq:visibleband}
-把全局距离屏障和局部反单调尾部概括为跨网格稳定的
-有利区间。常数可随固定的对比度范围、拓扑类别和粗化比变化。PCG 的代数终止上界由
-细点系统维数决定，而式~\eqref{eq:optimalwindow} 描述两网格性能最优点的模型尺度。
+路径下界排除相关谱质量随细化消失导致的超快衰减，标准条件数界给出另一侧。
+式~\eqref{eq:visibleband} 概括跨网格稳定的有利误差区间；常数可随固定的对比度范围、
+拓扑类别和粗化比变化。式~\eqref{eq:optimalwindow} 描述两网格最优点的模型尺度，PCG
+的代数终止上界仍由细点系统维数决定。
 
-当前七个设计组 step--2 sampled oracle 满足
-$m_{\rm or}/(1/h)\in[0.125,0.484]$，为固定归一化搜索窗提供当前测试族上的证据。
-它们用于检验尺度假设，不等同于定理~\ref{thm:optimalwindow} 中连续路径上的
-$m_{\rm opt}(h)$，也不参与在线选择。
+七个设计组的 step--2 sampled oracle 满足
+$m_{\rm or}/(1/h)\in[0.125,0.484]$，为归一化搜索窗提供数值证据；这些离散采样点
+不等同于定理~\ref{thm:optimalwindow} 中连续路径上的 $m_{\rm opt}(h)$。
 
 下面把“候选数固定而步数随 $h^{-1}$ 伸缩”写成网格一致结论。令
 $\bm\Pi_h(s)$ 表示归一化位置 $s=mh$ 上粗空间投影的连续插值，并记
@@ -687,10 +684,9 @@ $0\le\Delta_h\le\varepsilon_h$，并且 $0\le\phi_h\le M_T$。于是
 即得式~\eqref{eq:coverrho}。
 \end{proof}
 
-该定理只要求网格一致连续性，不再要求 Lipschitz 正则性，也不再假定舍入候选仍落在
-原区间内；平方目标的结论还保留真实最优因子。固定候选预算的离散损失由归一化覆盖
-半径而非网格规模控制，并且不要求实际循环数关于 $m$ 单调。当前 reuse 集合的区间为
-$[1/8,1/2]$，连续覆盖半径为 $1/12$。
+该定理仅要求网格一致连续模，并显式计入舍入后的覆盖半径。固定候选预算的离散损失
+由归一化覆盖控制，与循环数关于 $m$ 的单调性无关。当前 reuse 集合在 $[1/8,1/2]$
+上的连续覆盖半径为 $1/12$。
 
 \subsection{两档实现}
 
@@ -716,7 +712,7 @@ reuse 面向插值被多个右端项复用的场景，在归一化区间 $[n/8,n
  \qquad L=\operatorname{round}(n/2).                  \label{eq:reuse}
 \end{equation}
 重复候选在小网格上合并。候选数不随 $n$ 增长，而搜索区间和 pilot 长度随 $n$ 同步
-伸缩；几何端点被移出在线选择，新增 $3n/16$ 以细化 oracle 较集中的左半区间。实现按
+伸缩；几何端点被移出在线选择，$3n/16$ 细化 oracle 较集中的左半区间。实现按
 $m$ 递增地延续同一条 PCG 路径，并流式保留当前优胜者。
 
 \subsection{收敛预测与选择规则}
@@ -799,12 +795,9 @@ $\widehat N_{\widehat m}\le\widehat N_{m_{\mathcal M}}$，所以
 除以正数便得式~\eqref{eq:relregret}。
 \end{proof}
 
-该结果表明后悔值只由“真实最优候选被高估多少”和“实际所选候选被低估多少”决定，
-无需对所有候选施加统一双侧准确性。它把 reuse 的 pilot 精度与候选集内选择损失
-同时按绝对量和比例定量联系起来，
-对应参数选择中“廉价代理--真实目标--额外开销”的标准结构~\cite{FrascaCacciaSingh2023}。
-fast 以单点规则消除选择开销；reuse 支付五个候选的预测成本，以提高多右端项下的
-摊销收益。
+后悔值只由真实最优候选的高估和实际所选候选的低估决定。该结果把 pilot 精度与
+候选集内选择损失按绝对量和比例联系起来，对应“廉价代理--真实目标--额外开销”的
+参数选择结构~\cite{FrascaCacciaSingh2023}。
 
 \subsection{多右端项的盈亏平衡}
 
@@ -817,9 +810,8 @@ fast 以单点规则消除选择开销；reuse 支付五个候选的预测成本
 \begin{equation}
  R>R_{\rm break}=\frac{S_b-S_a}{T_a-T_b}.              \label{eq:breakeven}
 \end{equation}
-式~\eqref{eq:breakeven} 给出两档策略的可解释选择阈值，代表右端项的迁移能力由多
-右端项实验检验。相应的 RHS 迁移实验由常数 RHS 选择候选，再在六种平滑、局部与
-振荡 RHS 上独立求解，其结果直接衡量当前测试族上的代表性。
+式~\eqref{eq:breakeven} 给出两档策略的选择阈值。RHS 迁移实验由常数 RHS 选择候选，
+再在六种平滑、局部与振荡 RHS 上独立求解，以衡量其代表性。
 
 \section{结论与适用范围}
 

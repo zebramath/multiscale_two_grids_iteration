@@ -29,7 +29,6 @@ struct SolveResult {
 };
 
 struct CycleAggregate {
-    int cases = 0;
     int converged = 0;
     int slow = 0;
     int diverged = 0;
@@ -84,7 +83,6 @@ tgi::AdaptiveGlobalPcgResult build_adaptive(
 
 void add_aggregate(
     CycleAggregate& aggregate, const SolveResult& measurement) {
-    ++aggregate.cases;
     if (measurement.converged) {
         ++aggregate.converged;
         aggregate.cycles += measurement.cycles;

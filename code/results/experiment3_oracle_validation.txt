@@ -1,7 +1,7 @@
 Adaptive PCG versus an offline step-two oracle
 ==============================================
 
-Version           : 5.6.0
+Version           : 5.7.0
 Threads           : 4
 Oracle candidates : m=0 and (1/h)/8,...,(1/h)/2 by 2
 Solve tolerance   : 1e-6
