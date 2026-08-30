@@ -1,99 +1,83 @@
 Submission-focused robustness checks
 ====================================
 
-Version         : 5.7.0
+Version         : 5.8.0
 Grid            : 64/16
 Timing grid     : 128/16
 Contrast        : 1e4
 Topology        : cross-channel
 Threads         : 4
 Solve tolerance : 1e-6
-Maximum cycles  : 20000
+Maximum cycles  : adaptive/reference 20000; geometric 30000
 
-Note: This single compact experiment adds only the three checks needed before submission: five coefficient seeds, six right-hand sides evaluated with interpolation trained only on the constant RHS. The single timing question is the central 128/16 cross-channel case: adaptive-fast, adaptive-reuse and the global energy reference are measured in five post-warmup repetitions with rotating order after all three pass the formal convergence criterion. Q1, median and Q3 replace a single wall-clock observation.
+Note: This single compact experiment adds only the three checks needed before submission: five coefficient seeds and six right-hand sides evaluated with the same matrix-dependent interpolation. The single timing question is the central 128/16 cross-channel case: adaptive and the global energy reference are measured in five post-warmup repetitions with rotating order after both pass the formal convergence criterion. Q1, median and Q3 replace a single wall-clock observation.
 
 Coefficient-seed stability
 --------------------------
 Seed                 Method   Parameter      Cycles  Effective factor   P density %      Status
 -------  ------------------  ----------  ----------  ----------------  ------------  ----------
-1                      fast          21          65          0.806080       26.6650   converged
-1                     reuse          16          60          0.790885       18.7750   converged
+1                  adaptive          21          65          0.806080       26.6650   converged
 1          global-reference   tol=1e-10         321          0.957779       92.2549   converged
 
-3                      fast          21          69          0.818544       26.6650   converged
-3                     reuse          16          58          0.785636       18.7750   converged
+3                  adaptive          21          69          0.818544       26.6650   converged
 3          global-reference   tol=1e-10          95          0.863933       91.5811   converged
 
-7                      fast          21          57          0.784023       26.6650   converged
-7                     reuse          16          54          0.773466       18.7750   converged
+7                  adaptive          21          57          0.784023       26.6650   converged
 7          global-reference   tol=1e-10         155          0.914620       91.9725   converged
 
-11                     fast          21          61          0.796370       26.6650   converged
-11                    reuse          16          51          0.759902       18.7750   converged
+11                 adaptive          21          61          0.796370       26.6650   converged
 11         global-reference   tol=1e-10         182          0.926652       91.8145   converged
 
-19                     fast          21          75          0.830459       26.6650   converged
-19                    reuse          16          55          0.777614       18.7750   converged
+19                 adaptive          21          75          0.830459       26.6650   converged
 19         global-reference   tol=1e-10         113          0.884661       91.4472   converged
 
 Seed aggregate
 --------------
 Method              Conv/slow/div  Converged cycle sum  Mean converged  Worst converged
 ------------------  -------------  -------------------  --------------  ---------------
-fast                        5/0/0                  327           65.40               75
-reuse                       5/0/0                  278           55.60               60
+adaptive                    5/0/0                  327           65.40               75
 global-reference            5/0/0                  866          173.20              321
 
-Right-hand-side transfer (constant-RHS training)
-------------------------------------------------
+Right-hand-side transfer (fixed interpolation)
+----------------------------------------------
 Evaluation RHS                  Method        m    Cycles  Effective factor      Status
 ------------------  ------------------  -------  --------  ----------------  ----------
-constant                 adaptive-fast       21        65          0.806080   converged
-constant                adaptive-reuse       16        60          0.790886   converged
+constant                      adaptive       21        65          0.806080   converged
 constant              global-reference        -       321          0.957779   converged
-constant                     geometric        -     20000          0.999437  slow-limit
+constant                     geometric        -     24950          0.999446   converged
 
-smooth-low               adaptive-fast       21        76          0.832902   converged
-smooth-low              adaptive-reuse       16        59          0.788698   converged
+smooth-low                    adaptive       21        76          0.832902   converged
 smooth-low            global-reference        -       328          0.958659   converged
-smooth-low                   geometric        -     20000          0.999461  slow-limit
+smooth-low                   geometric        -     26780          0.999484   converged
 
-smooth-mixed             adaptive-fast       21        90          0.856965   converged
-smooth-mixed            adaptive-reuse       16        60          0.792272   converged
+smooth-mixed                  adaptive       21        90          0.856965   converged
 smooth-mixed          global-reference        -       304          0.955459   converged
-smooth-mixed                 geometric        -     20000          0.999515  slow-limit
+smooth-mixed                 geometric        -     29310          0.999529   converged
 
-localized-left           adaptive-fast       21        69          0.818051   converged
-localized-left          adaptive-reuse       16        58          0.784425   converged
+localized-left                adaptive       21        69          0.818051   converged
 localized-left        global-reference        -        42          0.715158   converged
-localized-left               geometric        -     20000          0.999505  slow-limit
+localized-left               geometric        -     28850          0.999521   converged
 
-localized-right          adaptive-fast       21        84          0.847480   converged
-localized-right         adaptive-reuse       16        48          0.746466   converged
+localized-right               adaptive       21        84          0.847480   converged
 localized-right       global-reference        -       224          0.940172   converged
 localized-right              geometric        -     19120          0.999278   converged
 
-oscillatory              adaptive-fast       21        85          0.849979   converged
-oscillatory             adaptive-reuse       16        51          0.760700   converged
+oscillatory                   adaptive       21        85          0.849979   converged
 oscillatory           global-reference        -       288          0.953140   converged
-oscillatory                  geometric        -     20000          0.999484  slow-limit
+oscillatory                  geometric        -     27957          0.999506   converged
 
 RHS aggregate
 -------------
 Method              Conv/slow/div  Converged cycle sum  Mean converged  Worst converged
 ------------------  -------------  -------------------  --------------  ---------------
-adaptive-fast               6/0/0                  469           78.17               90
-adaptive-reuse              6/0/0                  336           56.00               60
+adaptive                    6/0/0                  469           78.17               90
 global-reference            6/0/0                 1507          251.17              328
-geometric                   1/5/0                19120        19120.00            19120
+geometric                   6/0/0               156967        26161.17            29310
 
 Central 128/16 repeated wall-clock comparison
 ---------------------------------------------
 Policy              Runs  Setup med ms    Setup Q1    Setup Q3  Solve med ms   Solve Q1   Solve Q3  Total med ms   Total Q1   Total Q3   Cycles med
 ----------------  ------  -----------  ----------  ----------  ----------  ---------  ---------  ----------  ---------  ---------  -----------
-adaptive-fast          5      364.110     341.662     372.527     212.904    203.262    224.411     567.372    557.049    585.431          242
-adaptive-reuse         5      863.756     854.391     865.292     209.242    209.230    216.588    1072.997   1061.645   1097.731          242
-global-reference       5     1874.376    1842.051    1878.422    7017.694   6947.565   7255.852    9014.608   8821.942   9134.274         3227
-
-Note: Fast and reuse select the same m=43 interpolation on this center case. Their solve-time difference is timing variation; fast has the lower end-to-end cost because it reaches that interpolation without candidate pilots.
+adaptive               5      358.889     354.721     375.545     211.464    207.445    219.517     578.406    562.166    581.379          242
+global-reference       5     1881.798    1861.711    1892.718    6910.932   6876.660   7141.006    8772.643   8726.625   9022.804         3227
 

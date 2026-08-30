@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
         rows.push_back(path_row(
             item, "geometric", 0, problem.matrix, problem.rhs,
             geometric.prolongation, reference_energy, initial_excess,
-            config.threads, maximum_cycles));
+            config.threads, experiment_support::maximum_geometric_cycles));
         tgi::GlobalEnergyPcgPath path(
             grid, problem.matrix, geometric.prolongation, config.threads);
         for (int numerator = 1; numerator <= 8; ++numerator) {
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
         {"Cases", std::to_string(cases.size())},
         {"Checkpoints", "m/(1/h)=0,1/16,...,1/2 and reference"},
         {"Solve tolerance", "1e-6"},
-        {"Maximum cycles", std::to_string(maximum_cycles)}});
+        {"Maximum cycles", "finite/reference 20000; geometric 30000"}});
     report.add_note(
         "The three cross-channel cases isolate scale and contrast. Only the "
         "energy excess, interpolation density and independently measured "

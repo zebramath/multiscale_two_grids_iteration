@@ -43,8 +43,7 @@ struct TimingSample {
 };
 
 enum class TimingMethod {
-    Fast,
-    Reuse,
+    Adaptive,
     GlobalReference
 };
 
@@ -71,14 +70,11 @@ SolveResult measure_solve(
 
 tgi::AdaptiveGlobalPcgResult build_adaptive(
     const tgi::StructuredGrid& grid, const tgi::SparseMatrix& matrix,
-    const tgi::SparseMatrix& geometric, const tgi::Vector& training_rhs,
-    tgi::AdaptiveGlobalPcgPolicy policy, int threads, int maximum_cycles) {
+    const tgi::SparseMatrix& geometric, int threads) {
     tgi::AdaptiveGlobalPcgOptions options;
-    options.policy = policy;
-    options.maximum_cycles = maximum_cycles;
     options.thread_count = threads;
     return tgi::build_adaptive_global_pcg_interpolation(
-        grid, matrix, geometric, options, training_rhs);
+        grid, matrix, geometric, options);
 }
 
 void add_aggregate(
@@ -177,11 +173,7 @@ TimingSample timing_sample(
     }
     const auto geometric = tgi::build_geometric_interpolation(grid);
     const auto adaptive = build_adaptive(
-        grid, matrix, geometric.prolongation, rhs,
-        method == TimingMethod::Fast
-            ? tgi::AdaptiveGlobalPcgPolicy::Fast
-            : tgi::AdaptiveGlobalPcgPolicy::Reuse,
-        threads, maximum_cycles);
+        grid, matrix, geometric.prolongation, threads);
     const double setup_ms = elapsed_ms(setup_begin, Clock::now());
     const SolveResult solved = measure_solve(
         rhs, *adaptive.cycle, maximum_cycles);
@@ -247,26 +239,21 @@ int main(int argc, char** argv) {
         const auto problem = experiment_support::make_problem(
             grid, cross, config, seed);
         const auto geometric = tgi::build_geometric_interpolation(grid);
-        for (const auto& policy : {
-                 std::pair<const char*, tgi::AdaptiveGlobalPcgPolicy>{
-                     "fast", tgi::AdaptiveGlobalPcgPolicy::Fast},
-                 {"reuse", tgi::AdaptiveGlobalPcgPolicy::Reuse}}) {
-            const auto adaptive = build_adaptive(
-                grid, problem.matrix, geometric.prolongation, problem.rhs,
-                policy.second, threads, maximum_cycles);
-            const SolveResult solved = measure_solve(
-                problem.rhs, *adaptive.cycle, maximum_cycles);
-            add_aggregate(seed_aggregates[policy.first], solved);
-            seed_rows.push_back({
-                std::to_string(seed), policy.first,
-                std::to_string(adaptive.report.selected_steps),
-                std::to_string(solved.cycles),
-                experiment_support::fixed(solved.effective_factor, 6),
-                experiment_support::fixed(
-                    experiment_support::interpolation_density_percent(
-                        *adaptive.prolongation), 4),
-                tgi::two_grid_status_name(solved.status)});
-        }
+        const auto adaptive = build_adaptive(
+            grid, problem.matrix, geometric.prolongation, threads);
+        const SolveResult adaptive_solved = measure_solve(
+            problem.rhs, *adaptive.cycle, maximum_cycles);
+        add_aggregate(seed_aggregates["adaptive"], adaptive_solved);
+        seed_rows.push_back({
+            std::to_string(seed), "adaptive",
+            std::to_string(adaptive.report.selected_steps),
+            std::to_string(adaptive_solved.cycles),
+            experiment_support::fixed(
+                adaptive_solved.effective_factor, 6),
+            experiment_support::fixed(
+                experiment_support::interpolation_density_percent(
+                    *adaptive.prolongation), 4),
+            tgi::two_grid_status_name(adaptive_solved.status)});
         const auto reference = experiment_support::build_global_reference(
             grid, problem.matrix, threads);
         const tgi::TwoGridCycle reference_cycle(
@@ -284,8 +271,7 @@ int main(int argc, char** argv) {
             tgi::two_grid_status_name(solved.status)});
     }
     experiment_support::Rows seed_summary;
-    for (const std::string method : {
-             "fast", "reuse", "global-reference"}) {
+    for (const std::string method : {"adaptive", "global-reference"}) {
         const auto& aggregate = seed_aggregates[method];
         seed_summary.push_back({
             method,
@@ -307,14 +293,9 @@ int main(int argc, char** argv) {
     const auto transfer_problem = experiment_support::make_problem(
         grid, cross, config, 1);
     const auto transfer_geometric = tgi::build_geometric_interpolation(grid);
-    const auto fast = build_adaptive(
+    const auto adaptive = build_adaptive(
         grid, transfer_problem.matrix, transfer_geometric.prolongation,
-        transfer_problem.rhs, tgi::AdaptiveGlobalPcgPolicy::Fast,
-        threads, maximum_cycles);
-    const auto reuse = build_adaptive(
-        grid, transfer_problem.matrix, transfer_geometric.prolongation,
-        transfer_problem.rhs, tgi::AdaptiveGlobalPcgPolicy::Reuse,
-        threads, maximum_cycles);
+        threads);
     const auto reference = experiment_support::build_global_reference(
         grid, transfer_problem.matrix, threads);
     const tgi::TwoGridCycle geometric_cycle(
@@ -327,20 +308,20 @@ int main(int argc, char** argv) {
     for (const auto& rhs_case : rhs_cases) {
         for (const auto& method : {
                  std::pair<const char*, const tgi::TwoGridCycle*>{
-                     "adaptive-fast", fast.cycle.get()},
-                 {"adaptive-reuse", reuse.cycle.get()},
+                     "adaptive", adaptive.cycle.get()},
                  {"global-reference", &reference_cycle},
                  {"geometric", &geometric_cycle}}) {
+            const int cycle_limit = method.first == std::string("geometric")
+                ? experiment_support::maximum_geometric_cycles
+                : maximum_cycles;
             const SolveResult solved = measure_solve(
-                rhs_case.values, *method.second, maximum_cycles);
+                rhs_case.values, *method.second, cycle_limit);
             add_aggregate(rhs_aggregates[method.first], solved);
             rhs_rows.push_back({
                 rhs_case.name, method.first,
-                method.first == std::string("adaptive-fast")
-                    ? std::to_string(fast.report.selected_steps)
-                    : method.first == std::string("adaptive-reuse")
-                        ? std::to_string(reuse.report.selected_steps)
-                        : "-",
+                method.first == std::string("adaptive")
+                    ? std::to_string(adaptive.report.selected_steps)
+                    : "-",
                 std::to_string(solved.cycles),
                 experiment_support::fixed(solved.effective_factor, 6),
                 tgi::two_grid_status_name(solved.status)});
@@ -348,8 +329,7 @@ int main(int argc, char** argv) {
     }
     experiment_support::Rows rhs_summary;
     for (const std::string method : {
-             "adaptive-fast", "adaptive-reuse",
-             "global-reference", "geometric"}) {
+             "adaptive", "global-reference", "geometric"}) {
         const auto& aggregate = rhs_aggregates[method];
         rhs_summary.push_back({
             method,
@@ -376,41 +356,35 @@ int main(int argc, char** argv) {
         timing_grid, cross, timing_config, 1);
     (void)timing_sample(
         timing_grid, timing_problem.matrix, timing_problem.rhs,
-        TimingMethod::Fast, threads, maximum_cycles);
-    (void)timing_sample(
-        timing_grid, timing_problem.matrix, timing_problem.rhs,
-        TimingMethod::Reuse, threads, maximum_cycles);
+        TimingMethod::Adaptive, threads, maximum_cycles);
     (void)timing_sample(
         timing_grid, timing_problem.matrix, timing_problem.rhs,
         TimingMethod::GlobalReference, threads, maximum_cycles);
-    std::vector<TimingSample> fast_timings;
-    std::vector<TimingSample> reuse_timings;
+    std::vector<TimingSample> adaptive_timings;
     std::vector<TimingSample> reference_timings;
     constexpr int repetitions = 5;
     for (int repetition = 0; repetition < repetitions; ++repetition) {
         experiment_support::progress(
             "timing repetition " + std::to_string(repetition + 1) + "/" +
             std::to_string(repetitions));
-        const std::array<TimingMethod, 3> order{
-            static_cast<TimingMethod>(repetition % 3),
-            static_cast<TimingMethod>((repetition + 1) % 3),
-            static_cast<TimingMethod>((repetition + 2) % 3)};
+        const std::array<TimingMethod, 2> order = repetition % 2 == 0
+            ? std::array<TimingMethod, 2>{
+                  TimingMethod::Adaptive, TimingMethod::GlobalReference}
+            : std::array<TimingMethod, 2>{
+                  TimingMethod::GlobalReference, TimingMethod::Adaptive};
         for (TimingMethod method : order) {
             TimingSample sample = timing_sample(
                 timing_grid, timing_problem.matrix, timing_problem.rhs,
                 method, threads, maximum_cycles);
-            if (method == TimingMethod::Fast) {
-                fast_timings.push_back(sample);
-            } else if (method == TimingMethod::Reuse) {
-                reuse_timings.push_back(sample);
+            if (method == TimingMethod::Adaptive) {
+                adaptive_timings.push_back(sample);
             } else {
                 reference_timings.push_back(sample);
             }
         }
     }
     experiment_support::Rows timing_rows{
-        timing_row("adaptive-fast", fast_timings),
-        timing_row("adaptive-reuse", reuse_timings),
+        timing_row("adaptive", adaptive_timings),
         timing_row("global-reference", reference_timings)};
     experiment_support::Report report(
         "Submission-focused robustness checks");
@@ -422,15 +396,15 @@ int main(int argc, char** argv) {
         {"Topology", "cross-channel"},
         {"Threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"},
-        {"Maximum cycles", std::to_string(maximum_cycles)}});
+        {"Maximum cycles", "adaptive/reference 20000; geometric 30000"}});
     report.add_note(
         "This single compact experiment adds only the three checks needed "
-        "before submission: five coefficient seeds, six right-hand sides "
-        "evaluated with interpolation trained only on the constant RHS. The "
+        "before submission: five coefficient seeds and six right-hand sides "
+        "evaluated with the same matrix-dependent interpolation. The "
         "single timing question is the central 128/16 cross-channel case: "
-        "adaptive-fast, adaptive-reuse and the global energy reference are "
+        "adaptive and the global energy reference are "
         "measured in five post-warmup repetitions with rotating order after "
-        "all three pass the formal convergence criterion. Q1, median and Q3 "
+        "both pass the formal convergence criterion. Q1, median and Q3 "
         "replace a single wall-clock observation.");
     report.add_table(
         "Coefficient-seed stability",
@@ -443,7 +417,7 @@ int main(int argc, char** argv) {
          "Mean converged", "Worst converged"},
         {18, 13, 19, 14, 15}, seed_summary);
     report.add_table(
-        "Right-hand-side transfer (constant-RHS training)",
+        "Right-hand-side transfer (fixed interpolation)",
         {"Evaluation RHS", "Method", "m", "Cycles", "Effective factor",
          "Status"},
         {18, 18, 7, 8, 16, 10}, rhs_rows, true);
@@ -458,11 +432,6 @@ int main(int argc, char** argv) {
          "Solve med ms", "Solve Q1", "Solve Q3", "Total med ms", "Total Q1",
          "Total Q3", "Cycles med"},
         {16, 6, 11, 10, 10, 10, 9, 9, 10, 9, 9, 11}, timing_rows);
-    report.add_note(
-        "Fast and reuse select the same m=43 interpolation on this center "
-        "case. Their solve-time difference is timing variation; fast has the "
-        "lower end-to-end cost because it reaches that interpolation without "
-        "candidate pilots.");
     report.save("experiment4_submission_robustness");
     return 0;
 }

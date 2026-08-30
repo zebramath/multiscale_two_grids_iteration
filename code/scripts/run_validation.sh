@@ -45,7 +45,7 @@ build_direct() {
     # shellcheck disable=SC2086
     "$cxx" $common tests/unit_core.cpp -o "$build_dir/unit_core"
     # shellcheck disable=SC2086
-    "$cxx" $common tests/regression_v57.cpp -o "$build_dir/regression_v57"
+    "$cxx" $common tests/regression_v58.cpp -o "$build_dir/regression_v58"
     # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment1_two_grid_comparison.cpp \
@@ -75,7 +75,7 @@ else
     build_direct
     echo "[done]  build-direct"
     run_step unit-core "$build_dir/unit_core"
-    run_step regression-v57 "$build_dir/regression_v57"
+    run_step regression-v58 "$build_dir/regression_v58"
 fi
 
 if [ "$mode" = "quick" ]; then

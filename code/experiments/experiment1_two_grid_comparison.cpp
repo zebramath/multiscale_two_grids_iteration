@@ -31,10 +31,9 @@ struct Aggregate {
 Measurement measure(
     const std::string& method, const std::string& parameter,
     const tgi::SparseMatrix& prolongation, const tgi::TwoGridCycle& cycle,
-    const tgi::Vector& rhs) {
+    const tgi::Vector& rhs, int maximum_cycles) {
     auto solved = tgi::solve_two_grid(
-        rhs, cycle, 1.0e-6,
-        experiment_support::maximum_two_grid_cycles);
+        rhs, cycle, 1.0e-6, maximum_cycles);
     return {
         method, parameter,
         experiment_support::interpolation_density_percent(prolongation),
@@ -108,25 +107,14 @@ int main(int argc, char** argv) {
         const auto geometric = tgi::build_geometric_interpolation(grid);
         std::vector<Measurement> case_measurements;
 
-        for (const auto& policy : {
-                 std::pair<const char*, tgi::AdaptiveGlobalPcgPolicy>{
-                     "adaptive-fast", tgi::AdaptiveGlobalPcgPolicy::Fast},
-                 {"adaptive-reuse", tgi::AdaptiveGlobalPcgPolicy::Reuse}}) {
-            tgi::AdaptiveGlobalPcgOptions adaptive_options;
-            adaptive_options.policy = policy.second;
-            adaptive_options.maximum_cycles =
-                experiment_support::maximum_two_grid_cycles;
-            adaptive_options.thread_count = threads;
-            const auto adaptive =
-                tgi::build_adaptive_global_pcg_interpolation(
-                    grid, problem.matrix, geometric.prolongation,
-                    adaptive_options, problem.rhs);
-            case_measurements.push_back(measure(
-                policy.first,
-                "m=" +
-                    std::to_string(adaptive.report.selected_steps),
-                *adaptive.prolongation, *adaptive.cycle, problem.rhs));
-        }
+        tgi::AdaptiveGlobalPcgOptions adaptive_options;
+        adaptive_options.thread_count = threads;
+        const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
+            grid, problem.matrix, geometric.prolongation, adaptive_options);
+        case_measurements.push_back(measure(
+            "adaptive", "m=" + std::to_string(adaptive.report.selected_steps),
+            *adaptive.prolongation, *adaptive.cycle, problem.rhs,
+            experiment_support::maximum_two_grid_cycles));
 
         const auto reference = experiment_support::build_global_reference(
             grid, problem.matrix, threads);
@@ -134,13 +122,15 @@ int main(int argc, char** argv) {
             problem.matrix, reference.prolongation, 1, threads);
         case_measurements.push_back(measure(
             "global-reference", "tol=1e-10", reference.prolongation,
-            reference_cycle, problem.rhs));
+            reference_cycle, problem.rhs,
+            experiment_support::maximum_two_grid_cycles));
 
         const tgi::TwoGridCycle geometric_cycle(
             problem.matrix, geometric.prolongation, 1, threads);
         case_measurements.push_back(measure(
             "geometric", "P_G", geometric.prolongation,
-            geometric_cycle, problem.rhs));
+            geometric_cycle, problem.rhs,
+            experiment_support::maximum_geometric_cycles));
 
         for (const auto& measurement : case_measurements) {
             rows.push_back(measurement_row(item, measurement));
@@ -150,8 +140,7 @@ int main(int argc, char** argv) {
 
     experiment_support::Rows convergence_rows;
     for (const std::string method :
-         {"adaptive-fast", "adaptive-reuse",
-          "global-reference", "geometric"}) {
+         {"adaptive", "global-reference", "geometric"}) {
         const Aggregate& value = aggregates[method];
         convergence_rows.push_back({
             method,
@@ -171,17 +160,15 @@ int main(int argc, char** argv) {
         {"Mode", quick ? "quick" : "full"},
         {"Threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"},
-        {"Maximum cycles",
-         std::to_string(experiment_support::maximum_two_grid_cycles)}});
+        {"Maximum cycles", "adaptive/reference 20000; geometric 30000"}});
     report.add_note(
         "The matrix varies fine/coarse scale, contrast and six channel "
         "topologies. The two 256/16 extensions test cross-channel and "
-        "winding-ring coefficients at the largest scale. Fast uses (1/h)/8 "
+        "winding-ring coefficients at the largest scale. Adaptive uses (1/h)/8 "
         "when 1/H<=8; otherwise it uses (1/h)/4, (1/h)/3 or (1/h)/2 in "
-        "the low, intermediate or high diagonal-ratio band. Reuse tests five "
-        "normalized checkpoints (1/h)/8,3(1/h)/16,(1/h)/4,(1/h)/3,(1/h)/2 "
-        "with a (1/h)/2-cycle pilot. Effective factor is the whole-solve geometric "
-        "mean contraction; tail factor uses the last 32 cycles.");
+        "the low, intermediate or high diagonal-ratio band. Effective factor "
+        "is the whole-solve geometric mean contraction; tail factor uses the "
+        "last 32 cycles.");
     report.add_table(
         "All two-grid cases",
         {"Axis", "1/h", "1/H", "Contrast", "Topology", "Method",

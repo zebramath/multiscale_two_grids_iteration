@@ -13,7 +13,6 @@
 #include <mutex>
 #include <stdexcept>
 #include <thread>
-#include <utility>
 #include <vector>
 
 namespace tgi {
@@ -196,25 +195,14 @@ inline SparseMatrix GlobalEnergyPcgPath::prolongation(
         grid_.fine_size(), grid_.coarse_size(), entries, 0.0);
 }
 
-enum class AdaptiveGlobalPcgPolicy {
-    Fast,
-    Reuse
-};
-
 struct AdaptiveGlobalPcgOptions {
-    AdaptiveGlobalPcgPolicy policy = AdaptiveGlobalPcgPolicy::Fast;
-    int maximum_cycles = 40000;
     int smoothing_steps = 1;
     int thread_count = 1;
-    double solve_tolerance = 1.0e-6;
     double drop_tolerance = 0.0;
 };
 
 struct AdaptiveGlobalPcgReport {
     int selected_steps = 0;
-    int candidate_count = 0;
-    int maximum_sampled_steps = 0;
-    int pilot_cycles = 0;
 };
 
 struct AdaptiveGlobalPcgResult {
@@ -225,154 +213,29 @@ struct AdaptiveGlobalPcgResult {
 
 namespace adaptive_global_pcg_detail {
 
-struct SelectionProfile {
-    std::vector<int> checkpoints;
-    int pilot_cycles = 0;
-};
-
 inline int scaled_checkpoint(
     int resolution, int numerator, int denominator) {
     return (numerator * resolution + denominator / 2) / denominator;
 }
 
-inline SelectionProfile selection_profile(
-    const StructuredGrid& grid, const SparseMatrix& a,
-    AdaptiveGlobalPcgPolicy policy) {
+inline int select_steps(
+    const StructuredGrid& grid, const SparseMatrix& a) {
     const int resolution = grid.intervals();
-    SelectionProfile profile;
-    if (policy == AdaptiveGlobalPcgPolicy::Fast) {
-        const int coarse_resolution = resolution / grid.ratio();
-        if (coarse_resolution <= 8) {
-            profile.checkpoints.push_back(
-                scaled_checkpoint(resolution, 1, 8));
-            return profile;
-        }
-        const Vector diagonal = a.diagonal();
-        const auto extrema = std::minmax_element(
-            diagonal.begin(), diagonal.end());
-        const double stiffness_ratio = *extrema.second / *extrema.first;
-        if (stiffness_ratio < 1.0e3) {
-            profile.checkpoints.push_back(
-                scaled_checkpoint(resolution, 1, 4));
-        } else if (stiffness_ratio >= 1.0e5) {
-            profile.checkpoints.push_back(
-                scaled_checkpoint(resolution, 1, 2));
-        } else {
-            profile.checkpoints.push_back(
-                scaled_checkpoint(resolution, 1, 3));
-        }
-        return profile;
+    const int coarse_resolution = resolution / grid.ratio();
+    if (coarse_resolution <= 8) {
+        return scaled_checkpoint(resolution, 1, 8);
     }
-    profile.checkpoints = {
-        scaled_checkpoint(resolution, 1, 8),
-        scaled_checkpoint(resolution, 3, 16),
-        scaled_checkpoint(resolution, 1, 4),
-        scaled_checkpoint(resolution, 1, 3),
-        scaled_checkpoint(resolution, 1, 2)};
-    profile.checkpoints.erase(
-        std::unique(
-            profile.checkpoints.begin(), profile.checkpoints.end()),
-        profile.checkpoints.end());
-    profile.pilot_cycles = std::max(
-        1, scaled_checkpoint(resolution, 1, 2));
-    return profile;
-}
-
-inline double fit_tail(const std::vector<double>& norms) {
-    const int completed = static_cast<int>(norms.size()) - 1;
-    if (completed <= 0) return 1.0;
-    const int begin = completed / 2;
-    const int span = completed - begin;
-    const double first = std::max(
-        norms[static_cast<std::size_t>(begin)], 1.0e-300);
-    const double last = std::max(norms.back(), 1.0e-300);
-    return std::exp(std::log(last / first) /
-                    static_cast<double>(span));
-}
-
-inline int forecast_cycles(
-    int completed, double relative_residual, double rho,
-    double tolerance, int maximum) {
-    if (completed >= maximum) return maximum;
-    if (std::isfinite(relative_residual) &&
-        relative_residual >= 0.0 &&
-        relative_residual <= tolerance) {
-        return completed;
+    const Vector diagonal = a.diagonal();
+    const auto extrema = std::minmax_element(
+        diagonal.begin(), diagonal.end());
+    const double stiffness_ratio = *extrema.second / *extrema.first;
+    if (stiffness_ratio < 1.0e3) {
+        return scaled_checkpoint(resolution, 1, 4);
     }
-    if (!(relative_residual > 0.0) ||
-        !std::isfinite(relative_residual) ||
-        !(rho > 0.0) || rho >= 1.0 || !std::isfinite(rho)) {
-        return maximum;
+    if (stiffness_ratio >= 1.0e5) {
+        return scaled_checkpoint(resolution, 1, 2);
     }
-    const double remaining = std::ceil(
-        std::log(tolerance / relative_residual) / std::log(rho));
-    const int budget = maximum - completed;
-    if (!std::isfinite(remaining) ||
-        remaining >= static_cast<double>(budget)) {
-        return maximum;
-    }
-    return completed + std::max(0, static_cast<int>(remaining));
-}
-
-struct Candidate {
-    std::shared_ptr<SparseMatrix> prolongation;
-    std::unique_ptr<TwoGridCycle> cycle;
-    int steps = 0;
-    int pilot_iterations = 0;
-    int predicted_cycles = 0;
-    bool pilot_converged = false;
-    Vector solution;
-    Vector residual;
-    TwoGridCycle::Workspace workspace;
-    std::vector<double> norms;
-    double initial_norm = 1.0;
-};
-
-inline std::unique_ptr<Candidate> make_candidate(
-    const SparseMatrix& a, const Vector& rhs, SparseMatrix prolongation,
-    int steps, const AdaptiveGlobalPcgOptions& options) {
-    auto candidate = std::make_unique<Candidate>();
-    candidate->prolongation = std::make_shared<SparseMatrix>(
-        std::move(prolongation));
-    candidate->steps = steps;
-    candidate->cycle = std::make_unique<TwoGridCycle>(
-        a, *candidate->prolongation,
-        options.smoothing_steps, options.thread_count);
-    candidate->solution.assign(rhs.size(), 0.0);
-    candidate->residual = rhs;
-    candidate->initial_norm = std::max(norm2(rhs), 1.0e-300);
-    candidate->norms.push_back(candidate->initial_norm);
-    return candidate;
-}
-
-inline void probe_candidate(
-    Candidate& candidate, const Vector& rhs, int pilot_limit,
-    const AdaptiveGlobalPcgOptions& options) {
-    while (candidate.pilot_iterations < pilot_limit &&
-           !candidate.pilot_converged) {
-        const double squared = candidate.cycle->iterate(
-            rhs, candidate.solution, candidate.residual,
-            candidate.workspace);
-        const double current = std::max(std::sqrt(squared), 1.0e-300);
-        candidate.norms.push_back(current);
-        ++candidate.pilot_iterations;
-        candidate.pilot_converged =
-            current / candidate.initial_norm <= options.solve_tolerance;
-    }
-    const double relative_residual =
-        candidate.norms.back() / candidate.initial_norm;
-    const double pilot_rho = fit_tail(candidate.norms);
-    candidate.predicted_cycles = forecast_cycles(
-        candidate.pilot_iterations, relative_residual,
-        pilot_rho,
-        options.solve_tolerance, options.maximum_cycles);
-}
-
-inline bool is_better_candidate(
-    const Candidate& candidate, const Candidate& incumbent) {
-    return candidate.predicted_cycles < incumbent.predicted_cycles ||
-        (candidate.predicted_cycles == incumbent.predicted_cycles &&
-         candidate.steps < incumbent.steps);
+    return scaled_checkpoint(resolution, 1, 3);
 }
 
 }
@@ -380,53 +243,24 @@ inline bool is_better_candidate(
 inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& initial_prolongation,
-    const AdaptiveGlobalPcgOptions& options,
-    const Vector& representative_rhs) {
+    const AdaptiveGlobalPcgOptions& options) {
     using namespace adaptive_global_pcg_detail;
-    if (options.maximum_cycles <= 0 ||
-        options.smoothing_steps <= 0 ||
-        !(options.solve_tolerance > 0.0) ||
-        !(options.solve_tolerance < 1.0) ||
-        options.drop_tolerance < 0.0) {
+    if (options.smoothing_steps <= 0 || options.drop_tolerance < 0.0) {
         throw std::invalid_argument(
             "adaptive global PCG received invalid options");
     }
-    const SelectionProfile profile = selection_profile(
-        grid, a, options.policy);
+    const int steps = select_steps(grid, a);
     GlobalEnergyPcgPath path(
         grid, a, initial_prolongation, options.thread_count);
-    std::unique_ptr<Candidate> best;
-    for (int steps : profile.checkpoints) {
-        std::unique_ptr<Candidate> candidate;
-        if (steps > 0) {
-            path.advance_to(steps);
-            candidate = make_candidate(
-                a, representative_rhs,
-                path.prolongation(options.drop_tolerance),
-                steps, options);
-        } else {
-            candidate = make_candidate(
-                a, representative_rhs, initial_prolongation,
-                steps, options);
-        }
-        if (profile.pilot_cycles > 0) {
-            probe_candidate(
-                *candidate, representative_rhs,
-                profile.pilot_cycles, options);
-        }
-        if (!best || is_better_candidate(*candidate, *best)) {
-            best = std::move(candidate);
-        }
-    }
+    path.advance_to(steps);
 
     AdaptiveGlobalPcgResult result;
-    result.prolongation = std::move(best->prolongation);
-    result.cycle = std::move(best->cycle);
-    result.report.selected_steps = best->steps;
-    result.report.candidate_count =
-        static_cast<int>(profile.checkpoints.size());
-    result.report.maximum_sampled_steps = profile.checkpoints.back();
-    result.report.pilot_cycles = profile.pilot_cycles;
+    result.prolongation = std::make_shared<SparseMatrix>(
+        path.prolongation(options.drop_tolerance));
+    result.cycle = std::make_unique<TwoGridCycle>(
+        a, *result.prolongation,
+        options.smoothing_steps, options.thread_count);
+    result.report.selected_steps = steps;
     return result;
 }
 
