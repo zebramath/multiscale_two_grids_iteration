@@ -17,6 +17,15 @@
 
 namespace tgi {
 
+struct GlobalPcgPathReport {
+    int systems = 0;
+    int total_iterations = 0;
+    int minimum_iterations = 0;
+    int maximum_iterations = 0;
+    int failed_systems = 0;
+    double maximum_relative_residual = 0.0;
+};
+
 class GlobalEnergyPcgPath {
 public:
     GlobalEnergyPcgPath(
@@ -24,6 +33,9 @@ public:
         const SparseMatrix& initial_prolongation, int thread_count = 1);
 
     void advance_to(int target_steps);
+    GlobalPcgPathReport advance_until_relative_residual(
+        double tolerance, int maximum_steps = 40000);
+    GlobalPcgPathReport report(double tolerance = 0.0) const;
     SparseMatrix prolongation();
 
 private:
@@ -32,15 +44,20 @@ private:
         Vector residual;
         Vector direction;
         double rz = 0.0;
+        double initial_residual_norm = 1.0;
         int iterations = 0;
         bool active = true;
     };
+
+    bool advance_one_iteration(
+        ColumnState& state, Vector& product, Vector& z) const;
 
     const StructuredGrid& grid_;
     energy_interpolation_detail::GlobalFSystem system_;
     std::vector<ColumnState> columns_;
     int thread_count_ = 1;
     int steps_ = 0;
+    bool terminal_residual_stop_ = false;
 };
 
 inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
@@ -82,6 +99,7 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
         system_.matrix.multiply(state.solution, product);
         axpy(-1.0, product, state.residual);
         const double residual_scale = std::max(norm2(rhs), 1.0e-30);
+        state.initial_residual_norm = residual_scale;
         state.direction.resize(n);
         for (std::size_t index = 0; index < n; ++index) {
             state.direction[index] = system_.inverse_diagonal[index] *
@@ -95,6 +113,36 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
     }
 }
 
+inline bool GlobalEnergyPcgPath::advance_one_iteration(
+    ColumnState& state, Vector& product, Vector& z) const {
+    system_.matrix.multiply(state.direction, product);
+    const double denominator = dot(state.direction, product);
+    if (!(denominator > 0.0) || !std::isfinite(denominator) ||
+        !(state.rz > 0.0) || !std::isfinite(state.rz)) {
+        state.active = false;
+        return false;
+    }
+    const double alpha = state.rz / denominator;
+    axpy(alpha, state.direction, state.solution);
+    axpy(-alpha, product, state.residual);
+    ++state.iterations;
+    for (std::size_t index = 0; index < z.size(); ++index) {
+        z[index] = system_.inverse_diagonal[index] * state.residual[index];
+    }
+    const double rz_new = dot(state.residual, z);
+    if (!(rz_new > 0.0) || !std::isfinite(rz_new)) {
+        state.rz = rz_new;
+        state.active = false;
+        return false;
+    }
+    const double beta = rz_new / state.rz;
+    for (std::size_t index = 0; index < state.direction.size(); ++index) {
+        state.direction[index] = z[index] + beta * state.direction[index];
+    }
+    state.rz = rz_new;
+    return true;
+}
+
 inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
     if (target_steps < 0) {
         throw std::invalid_argument(
@@ -103,6 +151,10 @@ inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
     if (target_steps < steps_) {
         throw std::invalid_argument(
             "GlobalEnergyPcgPath checkpoints must be nondecreasing");
+    }
+    if (terminal_residual_stop_) {
+        throw std::logic_error(
+            "cannot continue a path after columnwise residual stopping");
     }
     if (target_steps == steps_) return;
     std::atomic<int> next_column{0};
@@ -118,34 +170,7 @@ inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
                 if (coarse >= grid_.coarse_size()) break;
                 ColumnState& state = columns_[static_cast<std::size_t>(coarse)];
                 while (state.active && state.iterations < target_steps) {
-                    system_.matrix.multiply(state.direction, product);
-                    const double denominator = dot(state.direction, product);
-                    if (!(denominator > 0.0) || !std::isfinite(denominator) ||
-                        !(state.rz > 0.0) || !std::isfinite(state.rz)) {
-                        state.active = false;
-                        break;
-                    }
-                    const double alpha = state.rz / denominator;
-                    axpy(alpha, state.direction, state.solution);
-                    axpy(-alpha, product, state.residual);
-                    ++state.iterations;
-                    for (std::size_t index = 0; index < z.size(); ++index) {
-                        z[index] = system_.inverse_diagonal[index] *
-                            state.residual[index];
-                    }
-                    const double rz_new = dot(state.residual, z);
-                    if (!(rz_new > 0.0) || !std::isfinite(rz_new)) {
-                        state.rz = rz_new;
-                        state.active = false;
-                        break;
-                    }
-                    const double beta = rz_new / state.rz;
-                    for (std::size_t index = 0;
-                         index < state.direction.size(); ++index) {
-                        state.direction[index] =
-                            z[index] + beta * state.direction[index];
-                    }
-                    state.rz = rz_new;
+                    if (!advance_one_iteration(state, product, z)) break;
                 }
             }
         } catch (...) {
@@ -166,6 +191,89 @@ inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
     }
     if (worker_error) std::rethrow_exception(worker_error);
     steps_ = target_steps;
+}
+
+inline GlobalPcgPathReport GlobalEnergyPcgPath::report(
+    double tolerance) const {
+    GlobalPcgPathReport value;
+    value.systems = static_cast<int>(columns_.size());
+    value.minimum_iterations = columns_.empty()
+        ? 0 : std::numeric_limits<int>::max();
+    for (const ColumnState& state : columns_) {
+        value.total_iterations += state.iterations;
+        value.minimum_iterations = std::min(
+            value.minimum_iterations, state.iterations);
+        value.maximum_iterations = std::max(
+            value.maximum_iterations, state.iterations);
+        const double relative =
+            norm2(state.residual) / state.initial_residual_norm;
+        value.maximum_relative_residual = std::max(
+            value.maximum_relative_residual, relative);
+        if (tolerance > 0.0 && relative > tolerance) {
+            ++value.failed_systems;
+        }
+    }
+    return value;
+}
+
+inline GlobalPcgPathReport
+GlobalEnergyPcgPath::advance_until_relative_residual(
+    double tolerance, int maximum_steps) {
+    if (!(tolerance > 0.0 && tolerance < 1.0) ||
+        !std::isfinite(tolerance)) {
+        throw std::invalid_argument(
+            "relative residual tolerance must lie in (0,1)");
+    }
+    if (maximum_steps <= 0) {
+        throw std::invalid_argument(
+            "maximum residual-stop steps must be positive");
+    }
+    if (terminal_residual_stop_) {
+        throw std::logic_error(
+            "columnwise residual stopping may be applied only once");
+    }
+    std::atomic<int> next_column{0};
+    std::exception_ptr worker_error;
+    std::mutex error_mutex;
+    auto worker = [&]() {
+        Vector product;
+        Vector z(system_.f_nodes.size(), 0.0);
+        try {
+            while (true) {
+                const int coarse =
+                    next_column.fetch_add(1, std::memory_order_relaxed);
+                if (coarse >= grid_.coarse_size()) break;
+                ColumnState& state = columns_[static_cast<std::size_t>(coarse)];
+                const double target = tolerance * state.initial_residual_norm;
+                while (state.active && state.iterations < maximum_steps &&
+                       norm2(state.residual) > target) {
+                    if (!advance_one_iteration(state, product, z)) break;
+                }
+            }
+        } catch (...) {
+            std::lock_guard<std::mutex> lock(error_mutex);
+            if (!worker_error) worker_error = std::current_exception();
+            next_column.store(grid_.coarse_size());
+        }
+    };
+    if (thread_count_ == 1) {
+        worker();
+    } else {
+        std::vector<std::thread> workers;
+        workers.reserve(static_cast<std::size_t>(thread_count_));
+        for (int index = 0; index < thread_count_; ++index) {
+            workers.emplace_back(worker);
+        }
+        for (auto& thread : workers) thread.join();
+    }
+    if (worker_error) std::rethrow_exception(worker_error);
+    terminal_residual_stop_ = true;
+    const GlobalPcgPathReport value = report(tolerance);
+    if (value.failed_systems != 0) {
+        throw std::runtime_error(
+            "one or more PCG columns missed the residual tolerance");
+    }
+    return value;
 }
 
 inline SparseMatrix GlobalEnergyPcgPath::prolongation() {
@@ -194,6 +302,7 @@ inline SparseMatrix GlobalEnergyPcgPath::prolongation() {
 
 struct AdaptiveGlobalPcgReport {
     int selected_steps = 0;
+    GlobalPcgPathReport path;
 };
 
 struct AdaptiveGlobalPcgResult {
@@ -247,6 +356,7 @@ inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
     result.cycle = std::make_unique<TwoGridCycle>(
         a, *result.prolongation, 1, thread_count);
     result.report.selected_steps = steps;
+    result.report.path = path.report();
     return result;
 }
 

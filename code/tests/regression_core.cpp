@@ -84,6 +84,50 @@ int main() {
     require(doubled_steps == 4,
             "adaptive checkpoint ignored the coarse-resolution regime");
 
+    tgi::FixedPhysicalCoefficientOptions physical_options;
+    physical_options.distribution =
+        tgi::CoefficientDistribution::ChannelizedBinary;
+    physical_options.contrast = 1.0e4;
+    physical_options.seed = 7;
+    physical_options.background_blocks_per_direction = 8;
+    physical_options.channel_width = 1.0 / 16.0;
+    const auto physical_coarse = tgi::make_fixed_physical_coefficient(
+        grid, physical_options);
+    const auto physical_fine = tgi::make_fixed_physical_coefficient(
+        doubled_grid, physical_options);
+    for (int iy = 0; iy < grid.fine_n(); ++iy) {
+        for (int ix = 0; ix < grid.fine_n(); ++ix) {
+            const int coarse_id = grid.fine_id(ix, iy);
+            const int fine_id = doubled_grid.fine_id(
+                2 * (ix + 1) - 1, 2 * (iy + 1) - 1);
+            require(
+                physical_coarse.values[
+                    static_cast<std::size_t>(coarse_id)] ==
+                    physical_fine.values[
+                        static_cast<std::size_t>(fine_id)],
+                "fixed-physical coefficient changed at a shared node");
+        }
+    }
+
+    tgi::GlobalEnergyPcgPath residual_path(
+        grid, a, geometric.prolongation, 2);
+    require_throws(
+        [&]() { residual_path.advance_until_relative_residual(1.0); },
+        "residual stopping accepted a noncontractive tolerance");
+    require_throws(
+        [&]() {
+            residual_path.advance_until_relative_residual(1.0e-2, 0);
+        },
+        "residual stopping accepted a nonpositive iteration limit");
+    const auto residual_report =
+        residual_path.advance_until_relative_residual(1.0e-2, 1000);
+    require(residual_report.failed_systems == 0 &&
+                residual_report.maximum_relative_residual <= 1.0e-2,
+            "columnwise residual stopping missed its tolerance");
+    require_throws(
+        [&]() { residual_path.advance_to(10); },
+        "residual-stopped PCG path was incorrectly continued");
+
     for (int resolution = 8; resolution <= 257; ++resolution) {
         auto within_rounding_bound = [resolution](
                                          int numerator, int denominator) {

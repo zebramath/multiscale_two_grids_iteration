@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 6.2.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 6.3.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -52,9 +52,15 @@ tgi_add_program(experiment3_oracle_validation
     experiments/experiment3_oracle_validation.cpp)
 tgi_add_program(experiment4_submission_robustness
     experiments/experiment4_submission_robustness.cpp)
+tgi_add_program(experiment5_stopping_ablation
+    experiments/experiment5_stopping_ablation.cpp)
+tgi_add_program(experiment6_fixed_physical_refinement
+    experiments/experiment6_fixed_physical_refinement.cpp)
 add_custom_target(experiments
     DEPENDS experiment1_two_grid_comparison experiment2_finite_path
-            experiment3_oracle_validation experiment4_submission_robustness)
+            experiment3_oracle_validation experiment4_submission_robustness
+            experiment5_stopping_ablation
+            experiment6_fixed_physical_refinement)
 
 include(CTest)
 if(BUILD_TESTING)

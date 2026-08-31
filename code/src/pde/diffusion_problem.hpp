@@ -54,6 +54,15 @@ struct CoefficientOptions {
     int channel_width_fine_cells = 2;
 };
 
+struct FixedPhysicalCoefficientOptions {
+    CoefficientDistribution distribution =
+        CoefficientDistribution::ChannelizedBinary;
+    double contrast = 1e4;
+    std::uint64_t seed = 1;
+    int background_blocks_per_direction = 8;
+    double channel_width = 1.0 / 16.0;
+};
+
 struct CoefficientField {
     Vector values;
     double actual_contrast = 0.0;
@@ -61,6 +70,9 @@ struct CoefficientField {
 
 inline CoefficientField make_coefficient(const StructuredGrid& grid,
                                   const CoefficientOptions& options);
+inline CoefficientField make_fixed_physical_coefficient(
+    const StructuredGrid& grid,
+    const FixedPhysicalCoefficientOptions& options);
 inline SparseMatrix assemble_diffusion(const StructuredGrid& grid,
                                 const Vector& coefficient);
 
@@ -216,6 +228,50 @@ inline CoefficientField make_coefficient(const StructuredGrid& grid,
             (diffusion_problem_detail::is_high_conductivity_topology(
                  options.distribution, x, y, width, options.seed) ||
              high_inclusion)
+                ? options.contrast
+                : 1.0;
+    }
+    const auto [field_min, field_max] =
+        std::minmax_element(field.values.begin(), field.values.end());
+    field.actual_contrast = *field_max / *field_min;
+    return field;
+}
+
+inline CoefficientField make_fixed_physical_coefficient(
+    const StructuredGrid& grid,
+    const FixedPhysicalCoefficientOptions& options) {
+    if (!(options.contrast >= 1.0) || !std::isfinite(options.contrast) ||
+        options.background_blocks_per_direction <= 0 ||
+        !(options.channel_width > 0.0 && options.channel_width < 1.0) ||
+        !std::isfinite(options.channel_width)) {
+        throw std::invalid_argument(
+            "invalid fixed-physical coefficient-field options");
+    }
+    CoefficientField field;
+    field.values.resize(static_cast<std::size_t>(grid.fine_size()));
+    for (int id = 0; id < grid.fine_size(); ++id) {
+        const auto [ix, iy] = grid.fine_coords(id);
+        const double x = static_cast<double>(ix + 1) * grid.h();
+        const double y = static_cast<double>(iy + 1) * grid.h();
+        const int block_x = std::min(
+            options.background_blocks_per_direction - 1,
+            static_cast<int>(
+                x * options.background_blocks_per_direction));
+        const int block_y = std::min(
+            options.background_blocks_per_direction - 1,
+            static_cast<int>(
+                y * options.background_blocks_per_direction));
+        const std::uint64_t hash = diffusion_problem_detail::mix_bits(
+            options.seed ^
+            (static_cast<std::uint64_t>(
+                 static_cast<std::uint32_t>(block_x)) << 32U) ^
+            static_cast<std::uint64_t>(
+                static_cast<std::uint32_t>(block_y)));
+        const bool high_inclusion = (hash & 1ULL) != 0ULL;
+        field.values[static_cast<std::size_t>(id)] =
+            (diffusion_problem_detail::is_high_conductivity_topology(
+                 options.distribution, x, y, options.channel_width,
+                 options.seed) || high_inclusion)
                 ? options.contrast
                 : 1.0;
     }

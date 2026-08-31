@@ -28,7 +28,7 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "6.2.0", "wrong package version");
+    require(tgi::version == "6.3.0", "wrong package version");
     require(tgi::version_major == 6 && tgi::version_minor == 2 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");

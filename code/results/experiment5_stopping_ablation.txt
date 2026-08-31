@@ -1,0 +1,48 @@
+Ablation of adaptive versus simple early-stopping policies
+==========================================================
+
+Version                       : 6.3.0
+Mode                          : full
+Cases                         : 6
+Threads                       : 4
+Fixed-step baseline           : m=round((1/h)/4)
+Residual baseline             : per-column relative residual 1e-2
+Solve tolerance               : 1e-6
+Adaptive <= fixed-step cycles : 5/6
+Adaptive <= residual cycles   : 6/6
+
+Note: All three policies start from the same geometric interpolation and use the same global Jacobi-PCG column equations. Fixed-step applies one normalized checkpoint to every problem. Fixed-residual stops each column independently at the same relative residual. The comparison is intentionally compact and tests transfer across scale, contrast and topology without retuning either baseline. Column iteration totals are deterministic setup-work counts; wall time is not used in this ablation.
+
+Per-case stopping-policy comparison
+-----------------------------------
+1/h      1/H    Contrast              Topology            Policy               Parameter  Column m min/max  Column iter sum  Max column relres         Energy  P density %    Cycles      Status   Eff factor
+-----  -----  ----------  --------------------  ----------------  ----------------------  ----------------  ---------------  -----------------  -------------  -----------  --------  ----------  -----------
+32         8       1e+04         cross-channel          adaptive                     m=4               4/4              196           1.54e+03     4.3535e+08      15.9039        37   converged     0.682669
+32         8       1e+04         cross-channel        fixed-step            m=round(n/4)               8/8              392           5.11e+02     4.0961e+08      29.5971        40   converged     0.703341
+32         8       1e+04         cross-channel    fixed-residual     column relres<=1e-2              7/48             1159           9.99e-03     4.0643e+08      62.4031        54   converged     0.773503
+
+64        16       1e+04         cross-channel          adaptive                    m=21             21/21             4725           1.13e+02     5.4081e+09      26.6650        65   converged     0.806080
+64        16       1e+04         cross-channel        fixed-step            m=round(n/4)             16/16             3600           1.48e+02     5.4113e+09      18.7750        60   converged     0.790885
+64        16       1e+04         cross-channel    fixed-residual     column relres<=1e-2              8/74             6797           9.95e-03     5.4078e+09      39.9600       312   converged     0.956651
+
+128       16       1e+02         cross-channel          adaptive                    m=32             32/32             7200           1.05e+00     1.8010e+08      20.4547       293   converged     0.953841
+128       16       1e+02         cross-channel        fixed-step            m=round(n/4)             32/32             7200           1.05e+00     1.8010e+08      20.4547       293   converged     0.953841
+128       16       1e+02         cross-channel    fixed-residual     column relres<=1e-2            11/106            10334           1.00e-02     1.8001e+08      33.1255       756   converged     0.981879
+128       16       1e+04         cross-channel          adaptive                    m=43             43/43             9675           5.87e+01     1.6845e+10      29.4678       242   converged     0.944407
+128       16       1e+04         cross-channel        fixed-step            m=round(n/4)             32/32             7200           1.32e+02     1.6870e+10      20.4547       347   converged     0.960874
+128       16       1e+04         cross-channel    fixed-residual     column relres<=1e-2            11/179            15096           1.00e-02     1.6852e+10      45.7896      3449   converged     0.996002
+128       16       1e+06         cross-channel          adaptive                    m=64             64/64            14400           3.83e+03     1.6828e+12      48.1166       273   converged     0.950536
+128       16       1e+06         cross-channel        fixed-step            m=round(n/4)             32/32             7200           1.32e+04     1.6858e+12      20.4547     20000  slow-limit     0.999374
+128       16       1e+06         cross-channel    fixed-residual     column relres<=1e-2            11/226            19174           1.00e-02     1.6840e+12      50.0858     20000  slow-limit     0.999985
+128       16       1e+04          winding-ring          adaptive                    m=43             43/43             9675           5.78e+01     1.7972e+10      29.4678       237   converged     0.943169
+128       16       1e+04          winding-ring        fixed-step            m=round(n/4)             32/32             7200           1.36e+02     1.7992e+10      20.4547       358   converged     0.962131
+128       16       1e+04          winding-ring    fixed-residual     column relres<=1e-2            11/133            13127           9.99e-03     1.7982e+10      41.6276      1087   converged     0.987366
+
+Aggregate ablation summary
+--------------------------
+Policy              Converged   Recorded cycle sum  Column iteration sum
+----------------  -----------  -------------------  --------------------
+adaptive                  6/6                 1147                 45871
+fixed-step                5/6                21098                 32792
+fixed-residual            5/6                25658                 65687
+

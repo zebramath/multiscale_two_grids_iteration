@@ -1,4 +1,4 @@
-# two_grids_iteration v6.2.0
+# two_grids_iteration v6.3.0
 
 ## 核心模块
 
@@ -31,11 +31,13 @@ auto result = tgi::build_adaptive_global_pcg_interpolation(
 
 ```bash
 ./scripts/run_validation.sh quick
+./scripts/run_validation.sh supplemental
 ./scripts/run_validation.sh full
 ```
 
 脚本优先使用 CMake；没有 CMake 时采用等价的严格 C++17 直接构建。可通过
-`TGI_THREADS`、`TGI_BUILD_DIR` 和 `TGI_STEP_TIMEOUT_SECONDS` 调整运行。`quick`
+`TGI_THREADS`、`TGI_BUILD_DIR` 和 `TGI_STEP_TIMEOUT_SECONDS` 调整运行。`supplemental`
+只运行 v6.3 新增的实验 5--6，避免重复正式实验 1--4。`quick`
 结果默认写入构建目录下的 `quick-results`，不会覆盖 `results` 中的正式完整结果；
 可分别通过 `TGI_QUICK_RESULTS_DIR` 和 `TGI_RESULTS_DIR` 改写输出位置。
 
@@ -47,8 +49,14 @@ auto result = tgi::build_adaptive_global_pcg_interpolation(
 | `experiment2_finite_path` | 能量单调下降与循环数非单调变化的直接证据 |
 | `experiment3_oracle_validation` | 七个设计问题和三个冻结后验证问题的归一化 step--2 窗口受限离线 oracle |
 | `experiment4_submission_robustness` | 五种 seed、六类 RHS 与中心问题重复计时 |
+| `experiment5_stopping_ablation` | adaptive 与固定归一化步数、逐列固定残差停止的消融 |
+| `experiment6_fixed_physical_refinement` | 固定物理系数场的三层嵌套网格加密 |
 
 正式求解从零初值运行到相对残量 `1e-6`；adaptive/reference 的循环上限为 20000，
 geometric 为 30000。结果同时报告
 `converged`、`slow-limit`、`diverged`、全程有效收敛因子和末端收敛因子。
 中心计时表仅在两种被比较方法均达到正式容差后生成。
+
+实验 5 的三种策略从同一几何插值出发并求解同一组全局 PCG 列方程；结果以确定性的
+列迭代总数和两网格循环数比较，不用单次墙钟时间作结论。实验 6 将通道物理宽度固定为
+`1/16`、背景划分固定为 `8 x 8`，并在求解前检查相邻嵌套网格所有共享节点的系数值。

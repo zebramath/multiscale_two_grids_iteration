@@ -6,9 +6,9 @@ threads="${TGI_THREADS:-4}"
 build_dir="${TGI_BUILD_DIR:-build}"
 step_timeout="${TGI_STEP_TIMEOUT_SECONDS:-900}"
 case "$mode" in
-    quick|full) ;;
+    quick|supplemental|full) ;;
     *)
-        echo "usage: $0 [quick|full]" >&2
+        echo "usage: $0 [quick|supplemental|full]" >&2
         exit 2
         ;;
 esac
@@ -80,6 +80,14 @@ build_direct() {
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment4_submission_robustness.cpp \
         -o "$build_dir/experiment4_submission_robustness"
+    # shellcheck disable=SC2086
+    "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
+        experiments/experiment5_stopping_ablation.cpp \
+        -o "$build_dir/experiment5_stopping_ablation"
+    # shellcheck disable=SC2086
+    "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
+        experiments/experiment6_fixed_physical_refinement.cpp \
+        -o "$build_dir/experiment6_fixed_physical_refinement"
 }
 
 if command -v cmake >/dev/null 2>&1; then
@@ -101,6 +109,13 @@ if [ "$mode" = "quick" ]; then
         env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment1_two_grid_comparison" \
         --quick --threads="$threads"
+elif [ "$mode" = "supplemental" ]; then
+    run_step experiment5-stopping-ablation \
+        env TGI_RESULTS_DIR="$results_dir" \
+        "$build_dir/experiment5_stopping_ablation" --threads="$threads"
+    run_step experiment6-fixed-physical \
+        env TGI_RESULTS_DIR="$results_dir" \
+        "$build_dir/experiment6_fixed_physical_refinement" --threads="$threads"
 else
     run_step experiment1-two-grid \
         env TGI_RESULTS_DIR="$results_dir" \
@@ -114,5 +129,11 @@ else
     run_step experiment4-submission \
         env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment4_submission_robustness" --threads="$threads"
+    run_step experiment5-stopping-ablation \
+        env TGI_RESULTS_DIR="$results_dir" \
+        "$build_dir/experiment5_stopping_ablation" --threads="$threads"
+    run_step experiment6-fixed-physical \
+        env TGI_RESULTS_DIR="$results_dir" \
+        "$build_dir/experiment6_fixed_physical_refinement" --threads="$threads"
 fi
 echo "[info] results directory: $results_dir"
