@@ -1,4 +1,4 @@
-# two_grids_iteration v5.9.0
+# two_grids_iteration v5.10.0
 
 ## 核心模块
 
@@ -35,7 +35,9 @@ auto result = tgi::build_adaptive_global_pcg_interpolation(
 ```
 
 脚本优先使用 CMake；没有 CMake 时采用等价的严格 C++17 直接构建。可通过
-`TGI_THREADS`、`TGI_BUILD_DIR` 和 `TGI_STEP_TIMEOUT_SECONDS` 调整运行。
+`TGI_THREADS`、`TGI_BUILD_DIR` 和 `TGI_STEP_TIMEOUT_SECONDS` 调整运行。`quick`
+结果默认写入构建目录下的 `quick-results`，不会覆盖 `results` 中的正式完整结果；
+可分别通过 `TGI_QUICK_RESULTS_DIR` 和 `TGI_RESULTS_DIR` 改写输出位置。
 
 ## 实验
 
@@ -43,7 +45,7 @@ auto result = tgi::build_adaptive_global_pcg_interpolation(
 |---|---|
 | `experiment1_two_grid_comparison` | 尺寸、对比度、六类拓扑和 256/16 大尺度比较 |
 | `experiment2_finite_path` | 能量单调下降与循环数非单调变化的直接证据 |
-| `experiment3_oracle_validation` | 七个设计问题和三个冻结后验证问题的归一化 step--2 离线 oracle |
+| `experiment3_oracle_validation` | 七个设计问题和三个冻结后验证问题的归一化 step--2 窗口受限离线 oracle |
 | `experiment4_submission_robustness` | 五种 seed、六类 RHS 与中心问题重复计时 |
 
 正式求解从零初值运行到相对残量 `1e-6`；adaptive/reference 的循环上限为 20000，

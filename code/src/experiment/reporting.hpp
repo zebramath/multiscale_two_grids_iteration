@@ -3,6 +3,7 @@
 #include "core/linear_algebra.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -94,7 +95,11 @@ public:
     }
 
     void save(const std::string& name) const {
-        const std::filesystem::path directory = TGI_RESULTS_DIR;
+        const char* runtime_directory = std::getenv("TGI_RESULTS_DIR");
+        const std::filesystem::path directory =
+            runtime_directory != nullptr && runtime_directory[0] != '\0'
+                ? runtime_directory
+                : TGI_RESULTS_DIR;
         std::filesystem::create_directories(directory);
         const std::filesystem::path path = directory / (name + ".txt");
         std::ofstream stream(path);

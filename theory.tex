@@ -18,7 +18,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.9}
+\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.10}
 \author{崔正平}
 \date{}
 
@@ -122,6 +122,9 @@ $\bm B\bm W^\ast+\bm C=0$ 消失，即得两式。
 这些工作以能量、近核空间再现、局部支撑或并行实现为主要设计准则；本文固定粗点与
 初始插值，由式~\eqref{eq:Wstar} 出发，研究同一全局能量方程的有限 Krylov 路径与
 两网格目标之间的非单调关系。
+相关的粗空间研究还表明，针对算子范数的标准谱空间不必最小化两层迭代的谱半径
+\cite{CiaramellaVanzan2022}；本文则针对能量极小插值的有限 PCG 构造路径，分析
+能量代理与对称两网格目标的错位并给出低成本截断规则。
 
 第 $j$ 列满足 $\bm B\bm w_j^\ast=-\bm C\bm e_j$。
 设 $\bm w_{j,m}$ 是从给定初值运行 $m$ 步 PCG 的结果，
@@ -562,9 +565,10 @@ $O(h^{-1})$，故双侧合起来给出 $\Theta(h^{-1})$。
 拓扑类别和粗化比变化。式~\eqref{eq:optimalwindow} 描述两网格最优点的模型尺度，PCG
 的代数终止上界仍由细点系统维数决定。
 
-七个设计组的 step--2 sampled oracle 满足
+七个设计组的窗口受限 step--2 sampled oracle 满足
 $m_{\rm or}/(1/h)\in[0.125,0.484]$，为归一化搜索窗提供数值证据；这些离散采样点
-不等同于定理~\ref{thm:optimalwindow} 中连续路径上的 $m_{\rm opt}(h)$。
+不等同于定理~\ref{thm:optimalwindow} 中连续路径上的 $m_{\rm opt}(h)$，也不主张是
+完整 PCG 路径上的全局最优点。
 
 \subsection{尺度自适应单候选}
 
@@ -605,7 +609,8 @@ $\theta\in\{1/8,1/4,1/3,1/2\}$，因而
 最优步数的双侧尺度窗口由标准 $O(h^{-2})$ 条件数上界、一侧路径非退化和固定可见
 误差带推出。
 数值部分在二维规则网格与高对比通道族上隔离并检验这一主线；尺度自适应规则以一次
-有限 PCG 构造实现定理所预示的线性分辨率步数。
+有限 PCG 构造实现定理所预示的线性分辨率步数。系数几何按网格单元数定义，故尺寸
+实验代表受控离散问题族，不解释为固定连续系数场的标准网格细化。
 
 \begin{thebibliography}{99}
 
@@ -682,6 +687,13 @@ X. Xu and C.-S. Zhang,
 Convergence analysis of inexact two-grid methods: A theoretical framework,
 \emph{SIAM Journal on Numerical Analysis}, 60(1):133--156, 2022,
 \href{https://doi.org/10.1137/20M1356075}{doi:10.1137/20M1356075}.
+
+\bibitem{CiaramellaVanzan2022}
+G. Ciaramella and T. Vanzan,
+Spectral coarse spaces for the substructured parallel Schwarz method,
+\emph{Journal of Scientific Computing}, 91:69, 2022,
+\href{https://doi.org/10.1007/s10915-022-01840-9}
+{doi:10.1007/s10915-022-01840-9}.
 
 \end{thebibliography}
 

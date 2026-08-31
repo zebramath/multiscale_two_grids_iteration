@@ -12,8 +12,26 @@ case "$mode" in
         exit 2
         ;;
 esac
+case "$threads" in
+    ''|*[!0-9]*|0)
+        echo "TGI_THREADS must be a positive integer" >&2
+        exit 2
+        ;;
+esac
+case "$step_timeout" in
+    ''|*[!0-9]*|0)
+        echo "TGI_STEP_TIMEOUT_SECONDS must be a positive integer" >&2
+        exit 2
+        ;;
+esac
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$script_dir/.."
+
+if [ "$mode" = "quick" ]; then
+    results_dir="${TGI_QUICK_RESULTS_DIR:-$build_dir/quick-results}"
+else
+    results_dir="${TGI_RESULTS_DIR:-results}"
+fi
 
 run_step() {
     label="$1"
@@ -45,7 +63,7 @@ build_direct() {
     # shellcheck disable=SC2086
     "$cxx" $common tests/unit_core.cpp -o "$build_dir/unit_core"
     # shellcheck disable=SC2086
-    "$cxx" $common tests/regression_v59.cpp -o "$build_dir/regression_v59"
+    "$cxx" $common tests/regression_v510.cpp -o "$build_dir/regression_v510"
     # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment1_two_grid_comparison.cpp \
@@ -75,20 +93,26 @@ else
     build_direct
     echo "[done]  build-direct"
     run_step unit-core "$build_dir/unit_core"
-    run_step regression-v59 "$build_dir/regression_v59"
+    run_step regression-v510 "$build_dir/regression_v510"
 fi
 
 if [ "$mode" = "quick" ]; then
     run_step experiment1-two-grid \
+        env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment1_two_grid_comparison" \
         --quick --threads="$threads"
 else
     run_step experiment1-two-grid \
+        env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment1_two_grid_comparison" --threads="$threads"
     run_step experiment2-finite-path \
+        env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment2_finite_path" --threads="$threads"
     run_step experiment3-oracle \
+        env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment3_oracle_validation" --threads="$threads"
     run_step experiment4-submission \
+        env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment4_submission_robustness" --threads="$threads"
 fi
+echo "[info] results directory: $results_dir"

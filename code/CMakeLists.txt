@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 5.9.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 5.10.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -11,6 +11,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 find_package(Threads REQUIRED)
 find_package(OpenMP QUIET)
+
+option(TGI_WARNINGS_AS_ERRORS "Treat compiler warnings as errors" ON)
 
 add_library(tgi_headers INTERFACE)
 target_include_directories(tgi_headers INTERFACE src)
@@ -30,6 +32,9 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         tgi_headers INTERFACE
         -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion
         -Wnull-dereference -Wformat=2)
+endif()
+if(TGI_WARNINGS_AS_ERRORS AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(tgi_headers INTERFACE -Werror)
 endif()
 
 function(tgi_add_program target)
@@ -56,7 +61,7 @@ if(BUILD_TESTING)
     add_executable(unit_core tests/unit_core.cpp)
     target_link_libraries(unit_core PRIVATE tgi_headers)
     add_test(NAME unit_core COMMAND unit_core)
-    add_executable(regression_v59 tests/regression_v59.cpp)
-    target_link_libraries(regression_v59 PRIVATE tgi_headers)
-    add_test(NAME regression_v59 COMMAND regression_v59)
+    add_executable(regression_v510 tests/regression_v510.cpp)
+    target_link_libraries(regression_v510 PRIVATE tgi_headers)
+    add_test(NAME regression_v510 COMMAND regression_v510)
 endif()

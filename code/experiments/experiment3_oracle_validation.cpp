@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::Report report(
-        "Adaptive PCG versus an offline step-two oracle");
+        "Adaptive PCG versus a window-restricted offline step-two oracle");
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Threads", std::to_string(threads)},
@@ -155,7 +155,9 @@ int main(int argc, char** argv) {
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
-        "The step-two oracle is evaluation-only. Adaptive uses (1/h)/8 when "
+        "The window-restricted step-two oracle is evaluation-only and does "
+        "not claim the optimum over the complete PCG path. Adaptive uses "
+        "(1/h)/8 when "
         "1/H<=8; otherwise it maps the matrix diagonal ratio to (1/h)/4, "
         "(1/h)/3 or (1/h)/2. It uses matrix and grid information but no "
         "contrast or topology label. Oracle candidates are screened to 6000 cycles; a "
