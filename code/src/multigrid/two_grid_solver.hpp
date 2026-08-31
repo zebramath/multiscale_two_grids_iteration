@@ -10,6 +10,7 @@
 #include <limits>
 #include <mutex>
 #include <stdexcept>
+#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -90,6 +91,11 @@ struct TwoGridIterationResult {
 inline TwoGridIterationResult solve_two_grid(
     const Vector& rhs, const TwoGridCycle& cycle,
     double relative_tolerance = 1e-8, int max_cycles = 40000);
+
+template <class Cycle>
+inline TwoGridIterationResult solve_stationary_cycles(
+    const Vector& rhs, const Cycle& cycle, double relative_tolerance,
+    int max_cycles, const char* method_name);
 
 namespace two_grid_solver_detail {
 
@@ -312,6 +318,35 @@ inline void multiply_add_parallel(const SparseMatrix& matrix, double alpha,
     }
     for (auto& thread : workers) thread.join();
 #endif
+}
+
+inline void gauss_seidel_sweep(
+    const SparseMatrix& matrix, const Vector& inverse_diagonal,
+    const std::vector<int>& diagonal_position, const Vector& rhs,
+    bool forward, Vector& solution) {
+    const int begin = forward ? 0 : matrix.rows() - 1;
+    const int end = forward ? matrix.rows() : -1;
+    const int increment = forward ? 1 : -1;
+    for (int row = begin; row != end; row += increment) {
+        double value = rhs[static_cast<std::size_t>(row)];
+        const int diagonal =
+            diagonal_position[static_cast<std::size_t>(row)];
+        for (int position = matrix.row_ptr()[static_cast<std::size_t>(row)];
+             position < diagonal; ++position) {
+            value -= matrix.values()[static_cast<std::size_t>(position)] *
+                solution[static_cast<std::size_t>(
+                    matrix.col_idx()[static_cast<std::size_t>(position)])];
+        }
+        for (int position = diagonal + 1;
+             position < matrix.row_ptr()[static_cast<std::size_t>(row) + 1U];
+             ++position) {
+            value -= matrix.values()[static_cast<std::size_t>(position)] *
+                solution[static_cast<std::size_t>(
+                    matrix.col_idx()[static_cast<std::size_t>(position)])];
+        }
+        solution[static_cast<std::size_t>(row)] = value *
+            inverse_diagonal[static_cast<std::size_t>(row)];
+    }
 }
 
 }
@@ -564,6 +599,24 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
         : std::move(result);
 }
 
+inline SparseMatrix galerkin_coarse_operator(
+    const SparseMatrix& fine_matrix, const SparseMatrix& prolongation,
+    int setup_threads = 1) {
+    if (fine_matrix.rows() != fine_matrix.cols() ||
+        fine_matrix.rows() != prolongation.rows() ||
+        prolongation.cols() <= 0) {
+        throw std::invalid_argument(
+            "incompatible dimensions in Galerkin coarse operator");
+    }
+    const SparseMatrix restriction =
+        prolongation.transpose(setup_threads);
+    const SparseMatrix action =
+        two_grid_solver_detail::multiply_sparse_matrices(
+            fine_matrix, prolongation, 0.0, setup_threads, false);
+    return two_grid_solver_detail::multiply_sparse_matrices(
+        restriction, action, 0.0, setup_threads, true);
+}
+
 inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
                                   int smoothing_steps, int setup_threads)
     : a_(a), p_(p), smoothing_steps_(smoothing_steps) {
@@ -592,12 +645,10 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
     }
 
     p_transpose_ = p_.transpose(setup_threads);
-    const SparseMatrix ap =
-        two_grid_solver_detail::multiply_sparse_matrices(
-            a_, p_, 0.0, setup_threads, false);
-    coarse_matrix_ =
-        two_grid_solver_detail::multiply_sparse_matrices(
-            p_transpose_, ap, 0.0, setup_threads, true);
+    const SparseMatrix ap = two_grid_solver_detail::multiply_sparse_matrices(
+        a_, p_, 0.0, setup_threads, false);
+    coarse_matrix_ = two_grid_solver_detail::multiply_sparse_matrices(
+        p_transpose_, ap, 0.0, setup_threads, true);
     for (double value : coarse_matrix_.diagonal()) {
         setup_report_.interpolation_energy += value;
     }
@@ -624,31 +675,8 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
 
 inline void TwoGridCycle::solve_gauss_seidel_sweep(
     const Vector& rhs, bool forward, Vector& solution) const {
-    const int begin = forward ? 0 : a_.rows() - 1;
-    const int end = forward ? a_.rows() : -1;
-    const int increment = forward ? 1 : -1;
-    for (int row = begin; row != end; row += increment) {
-        double value = rhs[static_cast<std::size_t>(row)];
-        const int diagonal =
-            diagonal_position_[static_cast<std::size_t>(row)];
-        for (int position =
-                 a_.row_ptr()[static_cast<std::size_t>(row)];
-             position < diagonal; ++position) {
-            value -= a_.values()[static_cast<std::size_t>(position)] *
-                     solution[static_cast<std::size_t>(
-                         a_.col_idx()[static_cast<std::size_t>(position)])];
-        }
-        for (int position = diagonal + 1;
-             position <
-                 a_.row_ptr()[static_cast<std::size_t>(row) + 1U];
-             ++position) {
-            value -= a_.values()[static_cast<std::size_t>(position)] *
-                     solution[static_cast<std::size_t>(
-                         a_.col_idx()[static_cast<std::size_t>(position)])];
-        }
-        solution[static_cast<std::size_t>(row)] =
-            value * inverse_diagonal_[static_cast<std::size_t>(row)];
-    }
+    two_grid_solver_detail::gauss_seidel_sweep(
+        a_, inverse_diagonal_, diagonal_position_, rhs, forward, solution);
 }
 
 inline void TwoGridCycle::restrict_fine_residual(
@@ -709,18 +737,20 @@ inline double TwoGridCycle::iterate(
         solution, rhs, residual, application_threads_);
 }
 
-inline TwoGridIterationResult solve_two_grid(
-    const Vector& rhs, const TwoGridCycle& cycle,
-    double relative_tolerance, int max_cycles) {
+template <class Cycle>
+inline TwoGridIterationResult solve_stationary_cycles(
+    const Vector& rhs, const Cycle& cycle, double relative_tolerance,
+    int max_cycles, const char* method_name) {
     if (!(relative_tolerance > 0.0) ||
         !(relative_tolerance < 1.0) || max_cycles <= 0) {
-        throw std::invalid_argument("invalid two-grid stopping criteria");
+        throw std::invalid_argument(
+            std::string("invalid ") + method_name + " stopping criteria");
     }
     constexpr int tail_window = 32;
     TwoGridIterationResult result;
     result.solution.assign(rhs.size(), 0.0);
     Vector residual = rhs;
-    TwoGridCycle::Workspace workspace;
+    typename Cycle::Workspace workspace;
     std::array<double, static_cast<std::size_t>(tail_window + 1)>
         recent_residuals{};
     const double initial_norm = norm2(residual);
@@ -794,6 +824,13 @@ inline TwoGridIterationResult solve_two_grid(
         }
     }
     return result;
+}
+
+inline TwoGridIterationResult solve_two_grid(
+    const Vector& rhs, const TwoGridCycle& cycle,
+    double relative_tolerance, int max_cycles) {
+    return solve_stationary_cycles(
+        rhs, cycle, relative_tolerance, max_cycles, "two-grid");
 }
 
 }

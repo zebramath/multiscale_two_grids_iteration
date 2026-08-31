@@ -1,0 +1,27 @@
+Three-level V-cycle pilot experiment
+====================================
+
+Version         : 6.4.0
+Mode            : full
+Cases           : 2
+Hierarchy       : 64/16/8, 128/16/8
+Contrast        : 1e4
+Smoother        : 1 forward + 1 backward Gauss-Seidel
+Coarsest solve  : exact sparse Cholesky
+Setup threads   : 4
+Solve tolerance : 1e-6
+
+Note: This is a deliberately secondary multilevel pilot. The same transfer construction is applied independently on both Galerkin transitions. Exact two-grid cycles with the first transfer provide a controlled reference for the cost of replacing that exact coarse solve by one recursive V-cycle; no wall-clock claim is made.
+
+Exact two-grid versus recursive V-cycle
+---------------------------------------
+Case               Levels              Method           Level params      P density %   Op comp   TG cyc    V cyc     V/TG      Status  Final relres   Eff factor
+-------------  ----------  ------------------  ---------------------  ---------------  --------  -------  -------  -------  ----------  ------------  -----------
+cross-medium      64/16/8            adaptive               m=21/m=2    26.665/78.667    3.0786       65      101    1.554   converged      8.58e-07     0.870836
+cross-medium      64/16/8    global-reference    tol=1e-10/tol=1e-10    92.255/78.667    3.7064      321      321    1.000   converged      1.00e-06     0.957873
+cross-medium      64/16/8           geometric                P_G/P_G      1.235/4.000    1.1128    24950    30000    1.202  slow-limit      1.15e-06     0.999544
+
+ring-center      128/16/8            adaptive               m=43/m=2    29.468/78.667    1.5379      237      237    1.000   converged      9.90e-07     0.943331
+ring-center      128/16/8    global-reference    tol=1e-10/tol=1e-10    97.304/78.667    1.6617      768      770    1.003   converged      9.99e-07     0.982217
+ring-center      128/16/8           geometric                P_G/P_G      1.395/4.000    1.0276    30000    30000    1.000  slow-limit      1.02e-02     0.999847
+

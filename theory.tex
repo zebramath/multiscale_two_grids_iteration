@@ -18,7 +18,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v6.3}
+\title{有限 Krylov 能量插值与尺度自适应多层选择：理论分析 v6.4}
 \author{崔正平}
 \date{}
 
@@ -42,6 +42,8 @@
 最后，在标准 Jacobi--PCG 条件数具有 $O(h^{-2})$ 上界并配合一侧路径非退化条件的
 模型族上，本文给出最优路径步数的条件性 $\Theta(h^{-1})$ 窗口；据此构造只需一次
 路径推进、且与网格分辨率同步伸缩的尺度自适应插值。
+此外，本文给出精确两网格与递归 V--cycle 之间的误差传播恒等式及能量范数界，
+从而明确有限步传递算子向多层层次结构递归时新增误差的唯一来源。
 
 这些结论构成“为何在有限 Krylov 路径上选点”的理论依据。数值验证采用二维规则网格、
 高对比扩散、固定粗点和两网格结构，以受控方式检验这一机制。
@@ -62,11 +64,33 @@
  \qquad \bm W\in\R^{n_F\times n_C}.                  \label{eq:P}
 \end{equation}
 当前算法从几何插值出发，对各列方程使用 Jacobi--PCG，沿同一条增量路径生成有限步候选。
-每个候选均配合同一前向/后向 Gauss--Seidel 磨光器和精确 Galerkin 粗解。
+两网格主实验中，每个候选均配合同一前向/后向 Gauss--Seidel 磨光器和精确 Galerkin
+粗解；多层次要实验则在每个非最粗层独立构造同类传递算子，并在最粗层精确求解。
 
 本文区分三个层次：能量极小插值是变分终点；有限 PCG 是生成候选的路径；两网格谱半径
 或代表右端项上的实际循环数才是最终选择目标。把这三个量混为一谈，正是“能量越小，
 两网格必然越好”这一错误直觉的来源。
+
+\subsection{记号、维数与术语}
+
+全文矩阵均为实矩阵。$n_F,n_C$ 分别表示当前层细变量（F--variables）与保留粗变量
+（C--variables）的个数；因此
+$\bm B\in\R^{n_F\times n_F}$、$\bm C\in\R^{n_F\times n_C}$、
+$\bm W\in\R^{n_F\times n_C}$、$\Sc\in\R^{n_C\times n_C}$。
+对 SPD 矩阵 $\bm M$，$\bm M^{1/2}$ 始终指唯一 SPD 平方根，并约定
+\[
+ \norm{\bm x}_{\bm M}^2=\bm x^T\bm M\bm x,
+ \qquad
+ \norm{\bm X}_{\bm M,F}^2=\tr(\bm X^T\bm M\bm X),
+ \qquad
+ \norm{\bm K}_{\bm M}=\norm{\bm M^{1/2}\bm K\bm M^{-1/2}}_2.
+\]
+$\norm{\cdot}_2$ 与 $\norm{\cdot}_F$ 分别为谱范数和 Frobenius 范数，
+$\sigma_i(\cdot)$ 按非增次序排列；$\Ran(\bm X)$ 表示列空间，$\rho(\bm X)$ 表示谱半径。
+$\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^T\bm A$ 称为 $\bm G$ 的
+$\bm A$--伴随。``Galerkin 粗算子''专指 $\bm A_c=\bm P^T\bm A\bm P$；
+``对称两网格''专指前磨光为 $\bm G$、后磨光为 $\bm G^{\dagger_{\bm A}}$ 且粗解精确的
+误差传播。PCG 指采用 SPD 预条件器的标准预条件共轭梯度法。
 
 \subsection{结论与假设层级}
 
@@ -79,6 +103,7 @@
 代数恒等式 & $\bm A\succ0$、固定粗点单位注入；网格可为一般离散结构 \\
 PCG 能量账本 & 每列方程使用 SPD 预条件的标准 CG，任意迭代区间的尾和按精确算术陈述 \\
 两网格投影公式 & 精确 Galerkin 粗解，后磨光为前磨光的 $\bm A$--伴随 \\
+多层递归分解 & 各层 Galerkin 关系成立；递归粗解误差显式保留，不把 V--cycle 当作精确粗解 \\
 终点一阶与 Pareto 律 & 能量终点处相关最大奇异值为正；允许任意有限重数，$\bm Y$ 的秩决定一阶改善是否存在 \\
 严格反单调尾部 & 进入终点邻域；一般路径满足~\eqref{eq:tailcondition}，渐近相干路径满足~\eqref{eq:coherentpath} \\
 最优步数尺度 & 标准 $O(h^{-2})$ 条件数上界、一侧路径非退化、最优点处于固定误差带 \\
@@ -114,9 +139,24 @@ $10^{-10}$ 下的高精度参考。
 \end{theorem}
 
 \begin{proof}
-展开 $J$ 的一阶条件得 $\bm B\bm W+\bm C=0$。把
-$\bm W=\bm W^\ast+\bm\Delta$ 代回，交叉项因
-$\bm B\bm W^\ast+\bm C=0$ 消失，即得两式。
+由分块乘法，
+\[
+ 2J(\bm W)=\tr(\bm W^T\bm B\bm W)
+ +2\tr(\bm W^T\bm C)+\tr(\bm A_{CC}).
+\]
+其 Fr\'echet 导数为
+$DJ(\bm W)[\bm H]=\tr\{\bm H^T(\bm B\bm W+\bm C)\}$。
+因为 $\bm B\succ0$，驻点唯一且为 $\bm W^\ast=-\bm B^{-1}\bm C$；严格凸性说明它是
+唯一全局极小点。令 $\bm W=\bm W^\ast+\bm\Delta$，则
+\begin{align*}
+ 2\{J(\bm W)-J(\bm W^\ast)\}
+ &=\tr(\bm\Delta^T\bm B\bm\Delta)
+ +2\tr\{\bm\Delta^T(\bm B\bm W^\ast+\bm C)\}\\
+ &=\norm{\bm\Delta}_{\bm B,F}^2.
+\end{align*}
+同样展开 $\bm P(\bm W)^T\bm A\bm P(\bm W)$，线性交叉项消失，常数项为
+$\bm A_{CC}-\bm C^T\bm B^{-1}\bm C=\Sc$，故得式~\eqref{eq:acgap}。
+$\Sc\succ0$ 则由 $\bm A\succ0$ 的 Schur 补判据得到。
 \end{proof}
 
 能量极小插值及局部优化插值的经典算法背景可参见
@@ -169,6 +209,9 @@ $\bm e_{j,m+1}\perp_{\bm B}(\bm w_{j,m+1}-\bm w_{j,m})$。
 式~\eqref{eq:matrixpyth}。从 $k=m$ 到 $\ell-1$ 求和后中间误差项望远镜消去，得到
 式~\eqref{eq:pcgtailsum}；再结合定理~\ref{thm:energy} 得到
 式~\eqref{eq:pcgenergysum}。
+这里矩阵路径使用同步检查点：已经收敛的列在后续检查点保持不变，因而其更新向量为零，
+上述列求和仍然严格成立。有限精度实现中的等式可受舍入误差影响，所以代码把它作为
+结构性理论账本，而不以浮点逐步完全相等作为停止条件。
 \end{proof}
 
 该定理刻画路径朝能量终点前进；两网格目标还取决于粗空间方向。两者的差异是后文的
@@ -222,11 +265,25 @@ $\Ran(\bm Q_F)\oplus\Ran(\bm Q_\ast)$ 坐标中是图空间
 \end{theorem}
 
 \begin{proof}
-前两式由定理~\ref{thm:energy} 和定义~\eqref{eq:Z} 直接得到。
-式~\eqref{eq:coarseloewner} 的谱结论随即由奇异值分解得到。
-又有
-$\bm P(\bm W)\Sc^{-1/2}=\bm Q_\ast+\bm Q_F\bm Z$。
-在 $\bm A$--正交坐标中应用图空间主角公式即可；参见~\cite{BjorckGolub1973}。
+由 $\bm\Delta=\bm B^{-1/2}\bm Z\Sc^{1/2}$，有
+$\bm\Delta^T\bm B\bm\Delta=\Sc^{1/2}\bm Z^T\bm Z\Sc^{1/2}$，
+代入式~\eqref{eq:energygap} 与~\eqref{eq:acgap} 即得前两式。
+左右同乘 $\Sc^{-1/2}$ 得式~\eqref{eq:coarseloewner}；再对 $\bm Z$ 作奇异值分解，
+便知 $\bm I+\bm Z^T\bm Z$ 的特征值为 $1+\sigma_i(\bm Z)^2$，不足的维数补 $1$。
+
+另一方面，直接利用 $\bm B\bm W^\ast+\bm C=0$ 可验证
+$\bm Q_F^T\bm A\bm Q_\ast=0$，而两组基各自在 $\bm A$ 内积下正交归一。又有
+\[
+ \bm P(\bm W)\Sc^{-1/2}
+ =\bm Q_\ast+\bm Q_F\bm Z.
+\]
+故在正交直和坐标
+$[\widetilde{\bm Q}_F,\widetilde{\bm Q}_\ast]$ 中，候选粗空间恰由
+$[\bm Z^T,\bm I]^T$ 的列张成。令
+$\bm Z=\bm U\bm\Sigma\bm V^T$，在相应左右奇异向量二维平面中，图向量为
+$[\sigma_i,1]^T$，与终点粗轴 $[0,1]^T$ 的夹角满足
+$\tan\theta_i=\sigma_i$。取最大值即得式~\eqref{eq:angles}；这也说明结论在
+$\bm Z$ 秩亏或矩形时仍成立。主角公式的标准形式参见~\cite{BjorckGolub1973}。
 \end{proof}
 
 式~\eqref{eq:Zenergy} 与~\eqref{eq:angles} 说明能量距离和粗空间距离相关但不等价：
@@ -473,6 +530,125 @@ $\gamma\le\norm{\bm T}_2\norm{\bm Z}_2/\sqrt{1+\norm{\bm Z}_2^2}$。
 
 这两个下界把固定幅度的两网格优势同时转化为非零粗空间距离和非零插值能量超额，说明
 有限步优势不能无限逼近能量终点。
+
+\section{从精确两网格到递归 V--cycle}
+
+为解释次要多层实验，下面把“精确粗解”被“下一层一次 V--cycle”替代所引入的误差
+单独分离。设层编号为 $\ell=0,\ldots,L$，$\ell=L$ 为最粗层，并满足 Galerkin 关系
+\begin{equation}
+ \bm A_{\ell+1}=\bm P_\ell^T\bm A_\ell\bm P_\ell.
+ \label{eq:multigalerkin}
+\end{equation}
+令 $\bm B_{\ell+1}^{V}$ 表示从零初值施加下一层一次 V--cycle 所得到的线性近似逆，
+并定义其粗层误差传播
+\begin{equation}
+ \bm E_{\ell+1}^{V}=\bm I-\bm B_{\ell+1}^{V}\bm A_{\ell+1}.
+ \label{eq:coarseVerror}
+\end{equation}
+在层 $\ell$，前磨光误差传播为 $\bm G_\ell$，后磨光取
+$\bm G_\ell^{\dagger_{\bm A_\ell}}$。记
+\begin{align}
+ \bm E_\ell^{V}
+ &=\bm G_\ell^{\dagger_{\bm A_\ell}}
+   (\bm I-\bm P_\ell\bm B_{\ell+1}^{V}
+                   \bm P_\ell^T\bm A_\ell)\bm G_\ell,       \label{eq:EV}\\
+ \bm E_\ell^{TG}
+ &=\bm G_\ell^{\dagger_{\bm A_\ell}}
+   (\bm I-\bm Q_\ell)\bm G_\ell,\qquad
+ \bm Q_\ell=\bm P_\ell\bm A_{\ell+1}^{-1}
+                   \bm P_\ell^T\bm A_\ell.                   \label{eq:ETGlevel}
+\end{align}
+其中 $\bm E_\ell^{TG}$ 使用精确的层 $\ell+1$ 粗解。
+
+\begin{theorem}[递归粗解误差的精确分解与稳定界]
+\label{thm:multileveldecomposition}
+对每个 $0\le\ell<L$，有恒等式
+\begin{equation}
+ \boxed{
+ \bm E_\ell^{V}=\bm E_\ell^{TG}
+ +\bm G_\ell^{\dagger_{\bm A_\ell}}
+  \bm P_\ell\bm E_{\ell+1}^{V}\bm A_{\ell+1}^{-1}
+  \bm P_\ell^T\bm A_\ell\bm G_\ell.}
+ \label{eq:multilevelidentity}
+\end{equation}
+因而
+\begin{equation}
+ \norm{\bm E_\ell^{V}-\bm E_\ell^{TG}}_{\bm A_\ell}
+ \le \norm{\bm G_\ell}_{\bm A_\ell}^{,2}
+       \norm{\bm E_{\ell+1}^{V}}_{\bm A_{\ell+1}}.            \label{eq:multilevelbound}
+\end{equation}
+若 $\bm E_{\ell+1}^{V}$ 关于 $\bm A_{\ell+1}$ 自伴，则
+$\bm E_\ell^{V}$ 关于 $\bm A_\ell$ 自伴。特别地，下一层粗解精确时
+$\bm E_{\ell+1}^{V}=0$，递归 V--cycle 在本层严格退化为精确两网格算子。
+\end{theorem}
+
+\begin{proof}
+由式~\eqref{eq:coarseVerror} 右乘 $\bm A_{\ell+1}^{-1}$ 得
+\[
+ \bm B_{\ell+1}^{V}
+ =(\bm I-\bm E_{\ell+1}^{V})\bm A_{\ell+1}^{-1}.
+\]
+把它代入式~\eqref{eq:EV}，中间粗校正可逐项写成
+\begin{align*}
+ \bm I-\bm P_\ell\bm B_{\ell+1}^{V}
+                  \bm P_\ell^T\bm A_\ell
+ &=\bm I-\bm P_\ell\bm A_{\ell+1}^{-1}
+                  \bm P_\ell^T\bm A_\ell\\
+ &\quad+\bm P_\ell\bm E_{\ell+1}^{V}
+                  \bm A_{\ell+1}^{-1}
+                  \bm P_\ell^T\bm A_\ell.
+\end{align*}
+前一行第一项经前后磨光后正是 $\bm E_\ell^{TG}$，故得
+式~\eqref{eq:multilevelidentity}。
+
+再令
+$\bm R_\ell=\bm A_{\ell+1}^{-1}\bm P_\ell^T\bm A_\ell$。
+Galerkin 关系给出
+\begin{equation*}
+ \norm{\bm P_\ell\bm y}_{\bm A_\ell}=\norm{\bm y}_{\bm A_{\ell+1}},
+ \qquad
+ \norm{\bm R_\ell\bm x}_{\bm A_{\ell+1}}
+ =\norm{\bm Q_\ell\bm x}_{\bm A_\ell}
+ \le\norm{\bm x}_{\bm A_\ell}.
+\end{equation*}
+即 $\bm P_\ell$ 是能量等距嵌入，$\bm R_\ell$ 是其能量伴随且为压缩；同时
+$\norm{\bm G_\ell^{\dagger_{\bm A_\ell}}}_{\bm A_\ell}
+=\norm{\bm G_\ell}_{\bm A_\ell}$。对式~\eqref{eq:multilevelidentity} 的第二项
+逐因子取诱导范数便得到式~\eqref{eq:multilevelbound}。
+若 $\bm E_{\ell+1}^{V}$ 在粗层能量内积下自伴，则
+$\bm P_\ell\bm E_{\ell+1}^{V}\bm R_\ell$ 在细层能量内积下自伴；再由
+$\bm G_\ell^{\dagger_{\bm A_\ell}}(\cdot)\bm G_\ell$ 的夹心结构得到最后结论。
+\end{proof}
+
+\begin{corollary}[多层误差的逐层展开]
+\label{cor:multilevelrecursion}
+若最粗层精确求解，即 $\bm E_L^{V}=0$，则对 $0\le\ell<L$，
+\begin{equation}
+ \norm{\bm E_\ell^{V}}_{\bm A_\ell}
+ \le \norm{\bm E_\ell^{TG}}_{\bm A_\ell}
+ +\norm{\bm G_\ell}_{\bm A_\ell}^{,2}
+  \norm{\bm E_{\ell+1}^{V}}_{\bm A_{\ell+1}}.                \label{eq:multilevelrecursion}
+\end{equation}
+递归展开得到
+\begin{equation}
+ \norm{\bm E_0^{V}}_{\bm A_0}
+ \le\sum_{j=0}^{L-1}
+ \left(\prod_{i=0}^{j-1}\norm{\bm G_i}_{\bm A_i}^{,2}\right)
+ \norm{\bm E_j^{TG}}_{\bm A_j},                               \label{eq:multilevelsum}
+\end{equation}
+其中空乘积取 $1$。
+\end{corollary}
+
+\begin{proof}
+式~\eqref{eq:multilevelrecursion} 由定理~\ref{thm:multileveldecomposition}、三角不等式
+直接得到。从 $\ell=L-1$ 向 $0$ 反向代入，并使用 $\bm E_L^V=0$，即得
+式~\eqref{eq:multilevelsum}。
+\end{proof}
+
+该分解没有把两网格结论无条件外推成最优多重网格结论：它精确指出，递归后唯一新增项
+是下一层 V--cycle 的粗解误差。实验 7 因而同时报告首层精确两网格循环数与三层
+V--cycle 循环数，用来直接观察这一递归代价；该实验不承担墙钟复杂度或任意层数最优性
+主张。
 
 \section{有限步优于能量终点的局部机制}
 
@@ -843,7 +1019,8 @@ $\theta\in\{1/8,1/4,1/3,1/2\}$，因而
  \text{PCG 正交能量尾}
  \longrightarrow \bm Z\text{ 的粗空间几何}
  \longrightarrow \rhoTG\text{ 的投影目标}
- \longrightarrow \text{有限步非单调性与尺度自适应选择}.}
+ \longrightarrow \text{有限步非单调性与尺度自适应选择}
+ \longrightarrow \text{递归 V--cycle}.}
 \]
 代数恒等式和全局稳定界适用于有限维 SPD 系统、固定粗点及对称两网格结构；能量误差
 现在还给出两网格因子和循环数的显式证书。终点一阶机制和反单调尾部允许主导奇异值
@@ -853,9 +1030,12 @@ $\bm Y$ 满列秩完全刻画。固定能量预算下的最优问题进一步给
 严格有利方向且具有非单位收缩比，不再要求相邻误差精确共线。
 最优步数的双侧尺度窗口由标准 $O(h^{-2})$ 条件数上界、一侧路径非退化和固定可见
 误差带推出。
+精确两网格到递归 V--cycle 的恒等分解进一步把下一层非精确粗解误差隔离为显式扰动项，
+并给出逐层能量范数上界；它为三层次要实验提供理论接口，但不替代一般多层复杂度或
+网格无关收敛分析。
 数值部分在二维规则网格与高对比通道族上隔离并检验这一主线；尺度自适应规则以一次
 有限 PCG 构造实现定理所预示的线性分辨率步数。系数几何按网格单元数定义，故尺寸
-实验代表受控离散问题族，不解释为固定连续系数场的标准网格细化。
+实验代表受控离散问题族；独立的固定物理几何嵌套加密实验另行检验标准网格细化情形。
 
 \begin{thebibliography}{99}
 

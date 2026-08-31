@@ -6,9 +6,9 @@ threads="${TGI_THREADS:-4}"
 build_dir="${TGI_BUILD_DIR:-build}"
 step_timeout="${TGI_STEP_TIMEOUT_SECONDS:-900}"
 case "$mode" in
-    quick|supplemental|full) ;;
+    quick|supplemental|multilevel|full) ;;
     *)
-        echo "usage: $0 [quick|supplemental|full]" >&2
+        echo "usage: $0 [quick|supplemental|multilevel|full]" >&2
         exit 2
         ;;
 esac
@@ -88,6 +88,10 @@ build_direct() {
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment6_fixed_physical_refinement.cpp \
         -o "$build_dir/experiment6_fixed_physical_refinement"
+    # shellcheck disable=SC2086
+    "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
+        experiments/experiment7_multilevel_pilot.cpp \
+        -o "$build_dir/experiment7_multilevel_pilot"
 }
 
 if command -v cmake >/dev/null 2>&1; then
@@ -116,6 +120,10 @@ elif [ "$mode" = "supplemental" ]; then
     run_step experiment6-fixed-physical \
         env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment6_fixed_physical_refinement" --threads="$threads"
+elif [ "$mode" = "multilevel" ]; then
+    run_step experiment7-multilevel \
+        env TGI_RESULTS_DIR="$results_dir" \
+        "$build_dir/experiment7_multilevel_pilot" --threads="$threads"
 else
     run_step experiment1-two-grid \
         env TGI_RESULTS_DIR="$results_dir" \
@@ -135,5 +143,8 @@ else
     run_step experiment6-fixed-physical \
         env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment6_fixed_physical_refinement" --threads="$threads"
+    run_step experiment7-multilevel \
+        env TGI_RESULTS_DIR="$results_dir" \
+        "$build_dir/experiment7_multilevel_pilot" --threads="$threads"
 fi
 echo "[info] results directory: $results_dir"
