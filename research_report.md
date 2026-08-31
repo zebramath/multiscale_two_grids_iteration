@@ -1,4 +1,4 @@
-# 多尺度有限 Krylov 能量插值研究方案 v6.1
+# 多尺度有限 Krylov 能量插值研究方案 v6.2
 
 ## 1. 研究定位
 
@@ -129,8 +129,7 @@ $$
 $$
 
 归一化 Galerkin 粗矩阵为 $I+Z^TZ\succeq I$，其非平凡特征值为
-$1+\sigma_i(Z)^2$，行列式膨胀因子为 $\prod_i(1+\sigma_i(Z)^2)$。图空间投影及其
-正交补还可同时闭式写成
+$1+\sigma_i(Z)^2$。图空间投影及其正交补可同时闭式写成
 
 $$
 \Pi(Z)=\begin{bmatrix}Z\\I\end{bmatrix}(I+Z^TZ)^{-1}
@@ -174,9 +173,7 @@ H_0=U_F(Y^TY)^{-1}Y^T,
 \qquad U_F^TH_0Y=I_r,
 $$
 
-于是方向导数严格等于 $-1$。这个 $H_0$ 还是所有满足 $U_F^THY=I_r$ 的方向中唯一的
-Frobenius 最小范数解，且
-$\lVert H_0\rVert_F^2=\operatorname{tr}((Y^TY)^{-1})$。标量公式是重数为一时的特例。
+于是方向导数严格等于 $-1$。标量公式是重数为一时的特例。
 
 若 $g(Z)=\lambda_{\min}(\operatorname{sym}(U_F^TZY))$，则终点附近存在统一常数
 $K,r_0>0$，使
@@ -186,25 +183,50 @@ $$
 \qquad |R(Z)|\le K\lVert Z\rVert_F^2.
 $$
 
-因此在满足 $g(Z)\ge\mu\lVert Z\rVert_F$ 的有利锥中，只要
-$\lVert Z\rVert_F\le\min\{r_0,\mu/(2K)\}$，便有
+v6.2 不再停留于“某个方向有利”的存在性，而是求解固定能量预算下的局部最优问题。
+定义
 
 $$
-\sqrt{\rho_{TG}(0)}-\sqrt{\rho_{TG}(Z)}
-\ge\frac\mu2\lVert Z\rVert_F,
+\mathcal G(\varepsilon)=\sqrt{\rho_{TG}(0)}-
+\min_{\frac12\lVert ZS^{1/2}\rVert_F^2\le\varepsilon}
+\sqrt{\rho_{TG}(Z)}.
 $$
 
-而
+当 $\operatorname{rank}(Y)=r$ 时，尖锐的单位能量一阶改善常数及唯一最优方向分别为
 
 $$
-\frac{\lambda_{\min}(S)}2\lVert Z\rVert_F^2
-\le J(W)-J(W_*)
-\le\frac{\lambda_{\max}(S)}2\lVert Z\rVert_F^2.
+\alpha_E=\left[\operatorname{tr}
+\left((Y^TS^{-1}Y)^{-1}\right)\right]^{-1/2},
 $$
 
-这把中心现象定量化为“性能改善是一阶量，能量超额是二阶量”。逆向锥
-$g(Z)\le-\mu\lVert Z\rVert_F$ 中则得到同阶的性能恶化下界。对逐步收缩且方向相干的
-PCG 局部尾，线性项最终严格压过二阶余项，从而严格推出“能量下降、两网格因子上升”。
+$$
+\widehat H_E=\alpha_EU_F(Y^TS^{-1}Y)^{-1}Y^TS^{-1},
+\qquad \lVert\widehat H_ES^{1/2}\rVert_F=1.
+$$
+
+它们满足
+
+$$
+\sup_{H\ne0}\frac{g(H)}{\lVert HS^{1/2}\rVert_F}=\alpha_E,
+\qquad
+\mathcal G(\varepsilon)=\alpha_E\sqrt{2\varepsilon}+O(\varepsilon).
+$$
+
+该结果给出真正的局部能量--性能 Pareto 前沿：主导性能收益是能量预算平方根量级，
+其系数和方向均为尖锐且可计算。若 $\operatorname{rank}(Y)<r$，则对充分小的预算只有
+$0\le\mathcal G(\varepsilon)\le C\varepsilon$，即所有一阶改善同时消失。这比单个有利
+方向的充分条件更强，也明确区分了满秩和秩退化两种机制。
+
+严格反单调结论也不再要求相邻误差精确共线。若 PCG 尾部满足
+
+$$
+Z_m=t_mH+E_m,qquad \lVert E_m\rVert_F=o(t_m),qquad
+t_{m+1}/t_m\to q<1,qquad g(H)>0,
+$$
+
+则一阶方向项为 $((1-q)g(H)+o(1))t_m$，而扰动余项只有 $O(t_m^2)$；因此从某一步起
+必然严格出现“插值能量下降、两网格因子上升”。尤其当尾部渐近对齐唯一 Pareto 方向
+$\widehat H_E$ 时，该现象必然发生。
 
 全局稳定界还能把固定性能优势变成定量能量屏障。若候选相对能量终点的
 $\sqrt{\rho_{TG}}$ 改善至少为 $\gamma$，则
@@ -416,11 +438,11 @@ branching，以及 152/19、$10^6$ parallel 上 adaptive/oracle 分别为 278/24
 
 | 方法 | setup 中位数 ms（Q1--Q3） | solve 中位数 ms（Q1--Q3） | total 中位数 ms（Q1--Q3） | 循环 |
 |---|---:|---:|---:|---:|
-| adaptive | 375.720（371.005--379.193） | 225.587（214.829--227.634） | 598.639（590.434--601.306） | 242 |
-| global-reference | 1903.654（1888.064--1931.348） | 7252.850（7194.972--7316.201） | 9156.505（9083.036--9256.025） | 3227 |
+| adaptive | 382.207（371.904--388.968） | 213.774（211.888--225.289） | 594.095（585.678--614.258） | 242 |
+| global-reference | 1883.706（1871.846--1970.063） | 7394.038（6860.897--7650.004） | 9277.744（8732.743--9694.331） | 3227 |
 
 adaptive 在中心问题选择 $m=43$；global-reference 的 setup、循环数和完整求解时间
-均明显更高，total 中位数之比为 15.30。
+均明显更高，total 中位数之比为 15.62。
 
 ## 10. 复现
 

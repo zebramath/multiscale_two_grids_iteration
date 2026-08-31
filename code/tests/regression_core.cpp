@@ -66,7 +66,7 @@ int main() {
     require(adaptive.prolongation->rows() == grid.fine_size(),
             "adaptive PCG returned an invalid prolongation");
     require(adaptive.cycle->coarse_matrix().rows() == grid.coarse_size(),
-            "adaptive PCG returned an invalid reusable hierarchy");
+            "adaptive PCG returned an invalid two-grid cycle");
     const auto adaptive_solve = tgi::solve_two_grid(
         adaptive_rhs, *adaptive.cycle, 1.0e-6, 1000);
     require(adaptive_solve.converged,
