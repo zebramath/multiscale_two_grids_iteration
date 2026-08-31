@@ -28,8 +28,8 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "5.8.0", "wrong package version");
-    require(tgi::version_major == 5 && tgi::version_minor == 8 &&
+    require(tgi::version == "5.9.0", "wrong package version");
+    require(tgi::version_major == 5 && tgi::version_minor == 9 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
 
@@ -78,18 +78,6 @@ int main() {
             "global energy interpolation missed its residual tolerance");
     require(global.report.threads_used == 2,
             "global energy interpolation ignored its thread budget");
-
-    tgi::GlobalEnergyOptions fixed_step_options = global_options;
-    fixed_step_options.tolerance = 0.0;
-    fixed_step_options.maximum_iterations = 2;
-    fixed_step_options.require_convergence = false;
-    const auto pcg2 = tgi::refine_global_energy_interpolation(
-        grid, matrix, geometric.prolongation, fixed_step_options);
-    require(pcg2.report.column_solves.maximum_iterations == 2,
-            "fixed-step PCG did not honor the iteration budget");
-    require(pcg2.report.column_solves.total_iterations ==
-                2 * pcg2.report.column_solves.systems,
-            "fixed-step PCG stopped before its explicit budget");
 
     const tgi::TwoGridCycle cycle(matrix, global.prolongation, 1, 2);
     const auto& setup = cycle.setup_report();

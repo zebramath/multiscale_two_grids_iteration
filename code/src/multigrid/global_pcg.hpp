@@ -24,7 +24,7 @@ public:
         const SparseMatrix& initial_prolongation, int thread_count = 1);
 
     void advance_to(int target_steps);
-    SparseMatrix prolongation(double drop_tolerance = 0.0);
+    SparseMatrix prolongation();
 
 private:
     struct ColumnState {
@@ -168,16 +168,13 @@ inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
     steps_ = target_steps;
 }
 
-inline SparseMatrix GlobalEnergyPcgPath::prolongation(
-    double drop_tolerance) {
+inline SparseMatrix GlobalEnergyPcgPath::prolongation() {
     std::vector<Triplet> entries;
     std::size_t entry_count = static_cast<std::size_t>(grid_.coarse_size());
     for (const ColumnState& state : columns_) {
         entry_count += static_cast<std::size_t>(std::count_if(
             state.solution.begin(), state.solution.end(),
-            [drop_tolerance](double value) {
-                return std::abs(value) > drop_tolerance;
-            }));
+            [](double value) { return value != 0.0; }));
     }
     entries.reserve(entry_count);
     for (int coarse = 0; coarse < grid_.coarse_size(); ++coarse) {
@@ -185,7 +182,7 @@ inline SparseMatrix GlobalEnergyPcgPath::prolongation(
         const Vector& weights =
             columns_[static_cast<std::size_t>(coarse)].solution;
         for (std::size_t local = 0; local < weights.size(); ++local) {
-            if (std::abs(weights[local]) > drop_tolerance) {
+            if (weights[local] != 0.0) {
                 entries.push_back(
                     {system_.f_nodes[local], coarse, weights[local]});
             }
@@ -194,12 +191,6 @@ inline SparseMatrix GlobalEnergyPcgPath::prolongation(
     return SparseMatrix(
         grid_.fine_size(), grid_.coarse_size(), entries, 0.0);
 }
-
-struct AdaptiveGlobalPcgOptions {
-    int smoothing_steps = 1;
-    int thread_count = 1;
-    double drop_tolerance = 0.0;
-};
 
 struct AdaptiveGlobalPcgReport {
     int selected_steps = 0;
@@ -243,23 +234,18 @@ inline int select_steps(
 inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& initial_prolongation,
-    const AdaptiveGlobalPcgOptions& options) {
+    int thread_count = 1) {
     using namespace adaptive_global_pcg_detail;
-    if (options.smoothing_steps <= 0 || options.drop_tolerance < 0.0) {
-        throw std::invalid_argument(
-            "adaptive global PCG received invalid options");
-    }
     const int steps = select_steps(grid, a);
     GlobalEnergyPcgPath path(
-        grid, a, initial_prolongation, options.thread_count);
+        grid, a, initial_prolongation, thread_count);
     path.advance_to(steps);
 
     AdaptiveGlobalPcgResult result;
     result.prolongation = std::make_shared<SparseMatrix>(
-        path.prolongation(options.drop_tolerance));
+        path.prolongation());
     result.cycle = std::make_unique<TwoGridCycle>(
-        a, *result.prolongation,
-        options.smoothing_steps, options.thread_count);
+        a, *result.prolongation, 1, thread_count);
     result.report.selected_steps = steps;
     return result;
 }

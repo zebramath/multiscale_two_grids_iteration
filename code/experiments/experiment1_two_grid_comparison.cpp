@@ -107,10 +107,8 @@ int main(int argc, char** argv) {
         const auto geometric = tgi::build_geometric_interpolation(grid);
         std::vector<Measurement> case_measurements;
 
-        tgi::AdaptiveGlobalPcgOptions adaptive_options;
-        adaptive_options.thread_count = threads;
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
-            grid, problem.matrix, geometric.prolongation, adaptive_options);
+            grid, problem.matrix, geometric.prolongation, threads);
         case_measurements.push_back(measure(
             "adaptive", "m=" + std::to_string(adaptive.report.selected_steps),
             *adaptive.prolongation, *adaptive.cycle, problem.rhs,

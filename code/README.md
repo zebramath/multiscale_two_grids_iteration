@@ -1,4 +1,4 @@
-# two_grids_iteration v5.8.0
+# two_grids_iteration v5.9.0
 
 ## 核心模块
 
@@ -21,9 +21,11 @@
 该量不进入在线选择。
 
 ```cpp
-tgi::AdaptiveGlobalPcgOptions options;
-options.thread_count = 4;
+auto result = tgi::build_adaptive_global_pcg_interpolation(
+    grid, matrix, geometric.prolongation, 4);
 ```
+
+最后一个参数只控制并行线程数；在线策略固定为一次路径推进和单候选构造。
 
 ## 构建与验证
 

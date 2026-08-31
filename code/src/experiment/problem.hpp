@@ -74,7 +74,6 @@ inline tgi::InterpolationResult build_global_reference(
     tgi::GlobalEnergyOptions options;
     options.tolerance = 1.0e-10;
     options.thread_count = threads;
-    options.drop_tolerance = 0.0;
     return tgi::build_global_energy_interpolation(grid, matrix, options);
 }
 

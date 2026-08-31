@@ -1,6 +1,5 @@
 #include "multigrid/global_pcg.hpp"
 
-#include <algorithm>
 #include <cmath>
 #include <stdexcept>
 #include <string>
@@ -20,19 +19,6 @@ void require_throws(Action&& action, const std::string& message) {
         return;
     }
     throw std::runtime_error(message);
-}
-
-double relative_action_difference(
-    const tgi::SparseMatrix& lhs, const tgi::SparseMatrix& rhs) {
-    tgi::Vector input(static_cast<std::size_t>(lhs.cols()));
-    for (int index = 0; index < lhs.cols(); ++index) {
-        input[static_cast<std::size_t>(index)] =
-            std::sin(0.31 * static_cast<double>(index + 1));
-    }
-    const tgi::Vector lhs_value = lhs.multiply(input);
-    const tgi::Vector rhs_value = rhs.multiply(input);
-    return tgi::norm2(tgi::subtract(lhs_value, rhs_value)) /
-        std::max(tgi::norm2(rhs_value), 1.0e-30);
 }
 
 }
@@ -56,20 +42,9 @@ int main() {
     tgi::GlobalEnergyPcgPath path(
         grid, a, geometric.prolongation, 2);
     path.advance_to(2);
-    const tgi::SparseMatrix checkpoint_two = path.prolongation(0.0);
+    const tgi::SparseMatrix checkpoint_two = path.prolongation();
     path.advance_to(5);
-    const tgi::SparseMatrix continued = path.prolongation(0.0);
-    tgi::GlobalEnergyOptions fixed_options;
-    fixed_options.tolerance = 0.0;
-    fixed_options.maximum_iterations = 5;
-    fixed_options.thread_count = 2;
-    fixed_options.drop_tolerance = 0.0;
-    fixed_options.require_convergence = false;
-    const auto restarted = tgi::refine_global_energy_interpolation(
-        grid, a, geometric.prolongation, fixed_options);
-    require(relative_action_difference(
-                continued, restarted.prolongation) < 1.0e-12,
-            "continued PCG path differs from the fixed-budget reference");
+    const tgi::SparseMatrix continued = path.prolongation();
     const tgi::TwoGridCycle cycle_two(a, checkpoint_two, 1, 2);
     const tgi::TwoGridCycle cycle_five(a, continued, 1, 2);
     require(cycle_five.setup_report().interpolation_energy <=
@@ -82,12 +57,10 @@ int main() {
         [&]() { path.advance_to(-1); },
         "continued PCG path accepted a negative checkpoint");
 
-    tgi::AdaptiveGlobalPcgOptions adaptive_options;
-    adaptive_options.thread_count = 2;
     const tgi::Vector adaptive_rhs(
         static_cast<std::size_t>(grid.fine_size()), 1.0);
     const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
-        grid, a, geometric.prolongation, adaptive_options);
+        grid, a, geometric.prolongation, 2);
     require(adaptive.report.selected_steps == 2,
             "adaptive PCG selected the wrong scaled checkpoint");
     require(adaptive.prolongation->rows() == grid.fine_size(),
@@ -178,15 +151,6 @@ int main() {
                 adaptive_rhs, *adaptive.cycle, 1.0e-6, 0);
         },
         "two-grid solve accepted a nonpositive cycle limit");
-
-    tgi::AdaptiveGlobalPcgOptions invalid_options = adaptive_options;
-    invalid_options.smoothing_steps = 0;
-    require_throws(
-        [&]() {
-            (void)tgi::build_adaptive_global_pcg_interpolation(
-                grid, a, geometric.prolongation, invalid_options);
-        },
-        "adaptive PCG accepted a nonpositive smoothing count");
 
     return 0;
 }

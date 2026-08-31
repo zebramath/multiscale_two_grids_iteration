@@ -18,7 +18,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.8}
+\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.9}
 \author{崔正平}
 \date{}
 
@@ -261,8 +261,8 @@ $\sqrt{\lambda_{\min}(\bm A)}\norm{\bm e}_{\bm A}
 作用于分子和分母即可。
 \end{proof}
 
-命题~\ref{prop:rhs} 给出理论与实现的接口：谱半径描述最坏情形，代码则用代表 RHS 的
-短残量历史选择候选，分别对应谱目标与给定载荷目标。
+命题~\ref{prop:rhs} 区分最坏谱目标与给定载荷上的实际循环数。当前单候选规则不使用
+RHS 信息；数值实验同时报告循环数和有效收敛因子，以检验二者是否给出一致判断。
 
 \begin{proposition}[由 $\bm Z$ 给出的精确粗投影]\label{prop:projector}
 在基~\eqref{eq:bases} 中，图空间的正交投影为
@@ -435,10 +435,8 @@ $t^2\norm{\bm H\Sc^{1/2}}_F^2/2>0$。
 \end{proof}
 
 当 $r=1$ 时，式~\eqref{eq:derivative} 退化为
-$f'(0;\bm H)=-\bm u_F^T\bm H\bm y$，即原来的“问题可见性与路径对齐”标量。
-当 $r>1$ 时，要求对整个主导奇异子空间正定，而不是任意选取一对不唯一的奇异向量；
-因此结论既消除了单性假设，也避免了基选择造成的歧义。尺度、对比度和拓扑进入
-$\bm U_F,\bm Y$，实际 Krylov 误差方向进入 $\bm H$。
+$f'(0;\bm H)=-\bm u_F^T\bm H\bm y$；当 $r>1$ 时，正定条件作用于整个主导奇异
+子空间，因而不依赖非唯一奇异向量基的选择。
 
 \subsection{严格反单调 PCG 尾部}
 
@@ -483,38 +481,8 @@ $\bm Z_m\ne\bm Z_{m+1}$，相应 PCG 步非零。第一式于是由
 平方不改变严格不等号。
 \end{proof}
 
-条件~\eqref{eq:tailcondition} 是可检验的充分条件：主导子空间上的一阶有利量压过二阶
-余项时，“能量下降、两网格因子上升”形成严格尾部。它允许主导奇异值具有重数；当
-$r=1$ 时，$g(\bm Z_m)-g(\bm Z_{m+1})$ 正好退化为原标量步进方向。
-
-\subsection{高对比通道的可见性来源}
-
-对加权图拉普拉斯型离散，设节点集 $S$ 的加权边界与体积为
-\begin{equation}
- \partial_w S=\sum_{i\in S,j\notin S}w_{ij},\qquad
- \operatorname{vol}_w(S)=\sum_{i\in S}d_i,
- \quad d_i=\sum_jw_{ij}.
-\end{equation}
-
-\begin{proposition}[低割比通道产生慢 Jacobi 模态]\label{prop:channel}
-令 $\bm L$ 为加权图拉普拉斯，$\bm D=\diag(d_i)$，其中 $d_i>0$，并取
-$\bm x=\bm D^{1/2}\bm 1_S$。则
-\begin{equation}
- \frac{\bm x^T\bm D^{-1/2}\bm L\bm D^{-1/2}\bm x}
-      {\bm x^T\bm x}
- =\frac{\partial_w S}{\operatorname{vol}_w(S)}.        \label{eq:cutmode}
-\end{equation}
-因此内部强连接而外部弱连接的通道产生低 Jacobi 缩放特征值，难由局部磨光快速消除。
-\end{proposition}
-
-\begin{proof}
-代入 $\bm x=\bm D^{1/2}\bm 1_S$ 后，分子为
-$\bm 1_S^T\bm L\bm 1_S=\partial_w S$，分母为
-$\bm 1_S^T\bm D\bm 1_S=\operatorname{vol}_w(S)$。
-\end{proof}
-
-该命题解释高对比拓扑提高主导慢模态可见性的来源；最佳 PCG 步数还由粗点覆盖和
-路径对齐共同确定。
+条件~\eqref{eq:tailcondition} 表明：主导子空间上的一阶变化压过二阶余项时，形成严格的
+“能量下降、两网格因子上升”尾部；该结论同样允许主导奇异值具有重数。
 
 \section{最优步数的尺度窗口与自适应选择}
 
@@ -523,7 +491,7 @@ $\bm 1_S^T\bm D\bm 1_S=\operatorname{vol}_w(S)$。
  \chi_A=\frac{\max_i A_{ii}}{\min_i A_{ii}}.           \label{eq:diagratio}
 \end{equation}
 
-\subsection{固定能量衰减所需的步数}
+\subsection{条件性双侧尺度窗口}
 
 令 $\bm D_h=\diag(\bm B_h)$ 为当前实现使用的 Jacobi 预条件器，假定
 $\bm W_{0,h}\ne\bm W_h^\ast$，并记
@@ -538,22 +506,14 @@ $\bm W_{0,h}\ne\bm W_h^\ast$，并记
  q_h=\frac{\sqrt{\kappa_h}-1}{\sqrt{\kappa_h}+1}.      \label{eq:cgscale}
 \end{equation}
 
-\begin{proposition}[固定能量衰减的线性分辨率上界]\label{prop:fixedreduction}
 若某个网格族满足 $\kappa_h\le\kappa_+h^{-2}$，则对任意固定
-$\eta\in(0,1)$，只要
+$\eta\in(0,1)$，由式~\eqref{eq:cgscale} 及
+$(x-1)/(x+1)\le\exp\{-2/(x+1)\}$ 可知，只要
 \begin{equation}
  m\ge \frac12\left(\frac{\sqrt{\kappa_+}}{h}+1\right)
              \log\frac{2}{\eta},                     \label{eq:fixedreduction}
 \end{equation}
-便有 $d_{m,h}\le\eta$。因此达到固定相对能量误差只需 $O(h^{-1})$ 步。
-\end{proposition}
-
-\begin{proof}
-对 $x\ge1$ 有 $(x-1)/(x+1)\le\exp\{-2/(x+1)\}$。把
-$x=\sqrt{\kappa_h}\le\sqrt{\kappa_+}/h$ 代入式~\eqref{eq:cgscale} 即得。
-\end{proof}
-
-命题~\ref{prop:fixedreduction} 给出可由条件数控制的一侧界。实际步数下界还取决于初始
+便有 $d_{m,h}\le\eta$。这给出 $O(h^{-1})$ 的固定能量衰减上界。实际步数下界还取决于初始
 误差是否含有端点附近的谱分量；若这些分量随网格细化消失，PCG 可以明显早于最坏情形
 收敛。下面把这一必要的非退化性质显式列入假设。
 

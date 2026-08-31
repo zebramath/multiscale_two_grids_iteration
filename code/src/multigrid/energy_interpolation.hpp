@@ -19,8 +19,6 @@ struct GlobalEnergyOptions {
     double tolerance = 1.0e-10;
     int maximum_iterations = 40000;
     int thread_count = 1;
-    double drop_tolerance = 0.0;
-    bool require_convergence = true;
 };
 
 struct GlobalSolveStats {
@@ -52,39 +50,19 @@ struct ConjugateGradientStats {
 inline Vector solve_pcg(
     const SparseMatrix& matrix, const Vector& rhs, double tolerance,
     int maximum_iterations, ConjugateGradientStats& stats,
-    const Vector* initial = nullptr,
-    const Vector* inverse_diagonal_override = nullptr) {
+    const Vector& inverse_diagonal) {
     const int n = matrix.rows();
-    Vector x = initial != nullptr
-        ? *initial
-        : Vector(static_cast<std::size_t>(n), 0.0);
+    Vector x(static_cast<std::size_t>(n), 0.0);
     if (n == 0) {
         stats.converged = true;
         return x;
     }
 
-    Vector inverse_diagonal_storage;
-    const Vector* inverse_diagonal = inverse_diagonal_override;
-    if (inverse_diagonal == nullptr) {
-        const Vector diagonal = matrix.diagonal();
-        inverse_diagonal_storage.resize(diagonal.size());
-        for (std::size_t index = 0; index < diagonal.size(); ++index) {
-            inverse_diagonal_storage[index] = 1.0 / diagonal[index];
-        }
-        inverse_diagonal = &inverse_diagonal_storage;
-    }
-
     Vector residual = rhs;
     Vector product;
-    if (initial != nullptr) {
-        matrix.multiply(x, product);
-        axpy(-1.0, product, residual);
-    }
     const double residual_scale = std::max(norm2(rhs), 1.0e-30);
-    const bool fixed_budget = tolerance == 0.0;
-    const double target_squared = fixed_budget
-        ? -1.0
-        : tolerance * tolerance * residual_scale * residual_scale;
+    const double target_squared =
+        tolerance * tolerance * residual_scale * residual_scale;
     double residual_squared = dot(residual, residual);
     if (residual_squared <= target_squared) {
         stats.converged = true;
@@ -95,7 +73,7 @@ inline Vector solve_pcg(
 
     Vector z(residual.size());
     for (std::size_t index = 0; index < z.size(); ++index) {
-        z[index] = (*inverse_diagonal)[index] * residual[index];
+        z[index] = inverse_diagonal[index] * residual[index];
     }
     Vector direction = z;
     Vector action;
@@ -124,7 +102,7 @@ inline Vector solve_pcg(
                 break;
             }
             for (std::size_t index = 0; index < z.size(); ++index) {
-                z[index] = (*inverse_diagonal)[index] * residual[index];
+                z[index] = inverse_diagonal[index] * residual[index];
             }
             rz = dot(residual, z);
             if (!(rz > 0.0) || !std::isfinite(rz)) break;
@@ -132,7 +110,7 @@ inline Vector solve_pcg(
             continue;
         }
         for (std::size_t index = 0; index < z.size(); ++index) {
-            z[index] = (*inverse_diagonal)[index] * residual[index];
+            z[index] = inverse_diagonal[index] * residual[index];
         }
         const double rz_new = dot(residual, z);
         if (!(rz_new > 0.0) || !std::isfinite(rz_new)) break;
@@ -146,9 +124,7 @@ inline Vector solve_pcg(
     residual = rhs;
     axpy(-1.0, product, residual);
     residual_squared = dot(residual, residual);
-    if (!fixed_budget && residual_squared <= target_squared) {
-        stats.converged = true;
-    }
+    stats.converged = residual_squared <= target_squared;
     stats.relative_residual =
         std::sqrt(residual_squared) / residual_scale;
     return x;
@@ -266,8 +242,7 @@ inline SparseMatrix assemble_prolongation(
 
 inline InterpolationResult solve_global_energy_columns(
     const StructuredGrid& grid, const SparseMatrix& matrix,
-    const GlobalEnergyOptions& options,
-    const SparseMatrix* initial_transpose) {
+    const GlobalEnergyOptions& options) {
     const GlobalFSystem system = assemble_global_f_system(grid, matrix);
     unsigned int requested = options.thread_count > 0
         ? static_cast<unsigned int>(options.thread_count)
@@ -283,7 +258,6 @@ inline InterpolationResult solve_global_energy_columns(
     std::mutex error_mutex;
     auto worker = [&]() {
         Vector rhs(system.f_nodes.size(), 0.0);
-        Vector initial(system.f_nodes.size(), 0.0);
         try {
             while (true) {
                 const int coarse = next_coarse.fetch_add(
@@ -295,38 +269,16 @@ inline InterpolationResult solve_global_energy_columns(
                     rhs[static_cast<std::size_t>(row)] += value;
                 }
 
-                const Vector* initial_pointer = nullptr;
-                if (initial_transpose != nullptr) {
-                    std::fill(initial.begin(), initial.end(), 0.0);
-                    for (int position = initial_transpose->row_ptr()[
-                             static_cast<std::size_t>(coarse)];
-                         position < initial_transpose->row_ptr()[
-                             static_cast<std::size_t>(coarse) + 1U];
-                         ++position) {
-                        const int fine = initial_transpose->col_idx()[
-                            static_cast<std::size_t>(position)];
-                        if (grid.is_coarse_node(fine)) continue;
-                        const int local = system.local_index[
-                            static_cast<std::size_t>(fine)];
-                        if (local >= 0) {
-                            initial[static_cast<std::size_t>(local)] =
-                                initial_transpose->values()[
-                                    static_cast<std::size_t>(position)];
-                        }
-                    }
-                    initial_pointer = &initial;
-                }
-
                 ColumnResult result;
                 const Vector weights = solve_pcg(
                     system.matrix, rhs, options.tolerance,
                     options.maximum_iterations, result.solve,
-                    initial_pointer, &system.inverse_diagonal);
+                    system.inverse_diagonal);
                 result.triplets.reserve(weights.size() + 1U);
                 result.triplets.push_back(
                     {grid.coarse_fine_id(coarse), coarse, 1.0});
                 for (std::size_t local = 0; local < weights.size(); ++local) {
-                    if (std::abs(weights[local]) > options.drop_tolerance) {
+                    if (weights[local] != 0.0) {
                         result.triplets.push_back(
                             {system.f_nodes[local], coarse, weights[local]});
                     }
@@ -367,8 +319,7 @@ inline InterpolationResult solve_global_energy_columns(
             ++report.column_solves.failed_systems;
         }
     }
-    if (options.require_convergence &&
-        report.column_solves.failed_systems != 0) {
+    if (report.column_solves.failed_systems != 0) {
         throw std::runtime_error(
             "one or more global energy solves did not converge");
     }
@@ -430,16 +381,7 @@ inline InterpolationResult build_global_energy_interpolation(
     const StructuredGrid& grid, const SparseMatrix& matrix,
     const GlobalEnergyOptions& options = {}) {
     return energy_interpolation_detail::solve_global_energy_columns(
-        grid, matrix, options, nullptr);
-}
-
-inline InterpolationResult refine_global_energy_interpolation(
-    const StructuredGrid& grid, const SparseMatrix& matrix,
-    const SparseMatrix& initial, const GlobalEnergyOptions& options) {
-    const SparseMatrix initial_transpose =
-        initial.transpose(options.thread_count);
-    return energy_interpolation_detail::solve_global_energy_columns(
-        grid, matrix, options, &initial_transpose);
+        grid, matrix, options);
 }
 
 }

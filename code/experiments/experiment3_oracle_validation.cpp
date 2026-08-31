@@ -101,7 +101,7 @@ int main(int argc, char** argv) {
         for (int steps = first_oracle_step;
              steps <= item.fine / 2; steps += 2) {
             path.advance_to(steps);
-            const tgi::SparseMatrix candidate = path.prolongation(0.0);
+            const tgi::SparseMatrix candidate = path.prolongation();
             const CycleMeasurement measured = cycles_for(
                 problem.matrix, problem.rhs, candidate,
                 threads, oracle_candidate_limit);
@@ -112,10 +112,8 @@ int main(int argc, char** argv) {
             }
         }
 
-        tgi::AdaptiveGlobalPcgOptions options;
-        options.thread_count = threads;
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
-            grid, problem.matrix, geometric.prolongation, options);
+            grid, problem.matrix, geometric.prolongation, threads);
         const CycleMeasurement adaptive_cycles = cycles_for(
             problem.rhs, *adaptive.cycle, maximum_cycles);
         const double gap = adaptive_cycles.converged && oracle.converged

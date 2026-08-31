@@ -71,10 +71,8 @@ SolveResult measure_solve(
 tgi::AdaptiveGlobalPcgResult build_adaptive(
     const tgi::StructuredGrid& grid, const tgi::SparseMatrix& matrix,
     const tgi::SparseMatrix& geometric, int threads) {
-    tgi::AdaptiveGlobalPcgOptions options;
-    options.thread_count = threads;
     return tgi::build_adaptive_global_pcg_interpolation(
-        grid, matrix, geometric, options);
+        grid, matrix, geometric, threads);
 }
 
 void add_aggregate(

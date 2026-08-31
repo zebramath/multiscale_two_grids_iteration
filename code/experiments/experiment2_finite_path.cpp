@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
             path.advance_to(steps);
             rows.push_back(path_row(
                 item, "finite-PCG", steps, problem.matrix, problem.rhs,
-                path.prolongation(0.0), reference_energy, initial_excess,
+                path.prolongation(), reference_energy, initial_excess,
                 config.threads, maximum_cycles));
         }
         rows.push_back(path_row(
