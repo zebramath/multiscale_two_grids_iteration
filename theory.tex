@@ -18,7 +18,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v5.10}
+\title{有限 Krylov 能量插值与尺度自适应两网格选择：理论分析 v6.1}
 \author{崔正平}
 \date{}
 
@@ -34,9 +34,10 @@
  \bm Z=\bm B^{1/2}(\bm W-\bm W^\ast)\Sc^{-1/2},
 \]
 它同时刻画插值能量、Galerkin 粗矩阵增量和粗空间主角。由此得到对称两网格谱半径的
-精确投影表达式，以及其对粗空间扰动的全局稳定界。再次，在能量终点附近，即使主导
-奇异值具有重数，两网格目标的一阶变化仍可由主导奇异子空间上的对称压缩刻画；这给出
-有限步优于精确能量插值的充分条件，并在显式余项控制下导出严格的反单调 PCG 尾部。
+精确投影表达式，以及其对粗空间扰动和插值能量误差的全局稳定界。再次，在能量终点
+附近，即使主导奇异值具有重数，两网格目标的一阶变化仍可由主导奇异子空间上的对称
+压缩刻画；本文给出有利方向存在的充要条件和显式构造，并证明性能收益为一阶而能量
+代价为二阶。在显式余项控制下，这一局部结构进一步导出严格的反单调 PCG 尾部。
 最后，在标准 Jacobi--PCG 条件数具有 $O(h^{-2})$ 上界并配合一侧路径非退化条件的
 模型族上，本文给出最优路径步数的条件性 $\Theta(h^{-1})$ 窗口；据此构造只需一次
 路径推进、且与网格分辨率同步伸缩的尺度自适应插值。
@@ -75,7 +76,7 @@
 结论层级 & 明确假设 \\
 \midrule
 代数恒等式 & $\bm A\succ0$、固定粗点单位注入；网格可为一般离散结构 \\
-PCG 能量账本 & 每列方程使用 SPD 预条件的标准 CG，结论按精确算术陈述 \\
+PCG 能量账本 & 每列方程使用 SPD 预条件的标准 CG，任意迭代区间的尾和按精确算术陈述 \\
 两网格投影公式 & 精确 Galerkin 粗解，后磨光为前磨光的 $\bm A$--伴随 \\
 终点一阶机制 & 能量终点处相关最大奇异值为正；允许任意有限重数 \\
 严格反单调尾部 & 进入终点邻域，并满足主导奇异子空间上的逐步方向条件~\eqref{eq:tailcondition} \\
@@ -131,7 +132,7 @@ $\bm B\bm W^\ast+\bm C=0$ 消失，即得两式。
 $\bm e_{j,m}=\bm w_j^\ast-\bm w_{j,m}$，
 $\bm s_{j,m}=\bm w_{j,m+1}-\bm w_{j,m}$。
 
-\begin{theorem}[PCG 的正交能量尾]\label{thm:pcgtail}
+\begin{theorem}[PCG 的精确正交能量尾]\label{thm:pcgtail}
 在精确算术下，对每个尚未收敛的列，
 \begin{equation}
  \norm{\bm e_{j,m}}_{\bm B}^2
@@ -144,6 +145,18 @@ $\bm s_{j,m}=\bm w_{j,m+1}-\bm w_{j,m}$。
  =\norm{\bm\Delta_{m+1}}_{\bm B,F}^2
   +\norm{\bm W_{m+1}-\bm W_m}_{\bm B,F}^2.           \label{eq:matrixpyth}
 \end{equation}
+更强地，对任意整数 $\ell>m$，
+\begin{align}
+ \norm{\bm\Delta_m}_{\bm B,F}^2
+ &=\norm{\bm\Delta_\ell}_{\bm B,F}^2
+   +\sum_{k=m}^{\ell-1}
+     \norm{\bm W_{k+1}-\bm W_k}_{\bm B,F}^2,         \label{eq:pcgtailsum}\\
+ J(\bm W_m)-J(\bm W_\ell)
+ &=\frac12\sum_{k=m}^{\ell-1}
+     \norm{\bm W_{k+1}-\bm W_k}_{\bm B,F}^2.        \label{eq:pcgenergysum}
+\end{align}
+若在精确算术下某个共同终止指标 $M$ 满足 $\bm W_M=\bm W^\ast$，则
+$J(\bm W_m)-J(\bm W^\ast)$ 恰等于式~\eqref{eq:pcgenergysum} 的剩余更新能量和。
 特别地，插值能量沿 PCG 路径单调不增；只要至少一列产生非零 PCG 更新，该步便严格
 下降。
 \end{theorem}
@@ -151,7 +164,10 @@ $\bm s_{j,m}=\bm w_{j,m+1}-\bm w_{j,m}$。
 \begin{proof}
 CG 的 Galerkin 条件给出
 $\bm e_{j,m+1}\perp_{\bm B}(\bm w_{j,m+1}-\bm w_{j,m})$。
-对 $\bm e_{j,m}=\bm e_{j,m+1}+\bm s_{j,m}$ 使用勾股恒等式并对列求和。
+对 $\bm e_{j,m}=\bm e_{j,m+1}+\bm s_{j,m}$ 使用勾股恒等式并对列求和，得到
+式~\eqref{eq:matrixpyth}。从 $k=m$ 到 $\ell-1$ 求和后中间误差项望远镜消去，得到
+式~\eqref{eq:pcgtailsum}；再结合定理~\ref{thm:energy} 得到
+式~\eqref{eq:pcgenergysum}。
 \end{proof}
 
 该定理刻画路径朝能量终点前进；两网格目标还取决于粗空间方向。两者的差异是后文的
@@ -182,9 +198,19 @@ $\widetilde{\bm Q}_\ast=\bm A^{1/2}\bm Q_\ast$。
 \begin{align}
  2\{J(\bm W)-J(\bm W^\ast)\}
  &=\norm{\bm Z\Sc^{1/2}}_F^2,                         \label{eq:Zenergy}\\
- \bm P(\bm W)^T\bm A\bm P(\bm W)
+\bm P(\bm W)^T\bm A\bm P(\bm W)
  &=\Sc^{1/2}(\bm I+\bm Z^T\bm Z)\Sc^{1/2}.          \label{eq:Zcoarse}
 \end{align}
+因此归一化 Galerkin 粗矩阵满足
+\begin{equation}
+ \Sc^{-1/2}\bm P(\bm W)^T\bm A\bm P(\bm W)\Sc^{-1/2}
+ =\bm I+\bm Z^T\bm Z\succeq\bm I,                  \label{eq:coarseloewner}
+\end{equation}
+其非平凡特征值为 $1+\sigma_i(\bm Z)^2$，并且
+\begin{equation}
+ \frac{\det(\bm P(\bm W)^T\bm A\bm P(\bm W))}{\det(\Sc)}
+ =\prod_i\bigl(1+\sigma_i(\bm Z)^2\bigr).           \label{eq:coarsedet}
+\end{equation}
 此外，$\Ran(\bm P(\bm W))$ 在
 $\Ran(\bm Q_F)\oplus\Ran(\bm Q_\ast)$ 坐标中是图空间
 \begin{equation}
@@ -200,6 +226,7 @@ $\Ran(\bm Q_F)\oplus\Ran(\bm Q_\ast)$ 坐标中是图空间
 
 \begin{proof}
 前两式由定理~\ref{thm:energy} 和定义~\eqref{eq:Z} 直接得到。
+式~\eqref{eq:coarseloewner}--\eqref{eq:coarsedet} 随即由奇异值分解得到。
 又有
 $\bm P(\bm W)\Sc^{-1/2}=\bm Q_\ast+\bm Q_F\bm Z$。
 在 $\bm A$--正交坐标中应用图空间主角公式即可；参见~\cite{BjorckGolub1973}。
@@ -275,19 +302,42 @@ RHS 信息；数值实验同时报告循环数和有效收敛因子，以检验�
  (\bm I+\bm Z^T\bm Z)^{-1}
  \begin{bmatrix}\bm Z^T&\bm I\end{bmatrix}.           \label{eq:projector}
 \end{equation}
+其正交补具有显式正交基
+\begin{equation}
+ \bm N(\bm Z)=
+ \begin{bmatrix}\bm I\\-\bm Z^T\end{bmatrix}
+ (\bm I+\bm Z\bm Z^T)^{-1/2},
+ \qquad
+ \bm I-\bm\Pi(\bm Z)=\bm N(\bm Z)\bm N(\bm Z)^T.   \label{eq:complement}
+\end{equation}
 因此
 \begin{equation}
  \rhoTG(\bm W)=
- \norm{(\bm I-\bm\Pi(\bm Z))\bm T}_2^2,              \label{eq:rhoZ}
+ \norm{(\bm I-\bm\Pi(\bm Z))\bm T}_2^2
+ =\norm{(\bm I+\bm Z\bm Z^T)^{-1/2}
+        \begin{bmatrix}\bm I&-\bm Z\end{bmatrix}\bm T}_2^2. \label{eq:rhoZ}
 \end{equation}
 其中 $\bm T$ 也写在同一能量正交坐标中。
+此外，若 $p=\min(n_F,n_C)$，则
+\begin{align}
+ \norm{\bm\Pi(\bm Z)-\bm\Pi(0)}_2
+ &=\frac{\norm{\bm Z}_2}{\sqrt{1+\norm{\bm Z}_2^2}},          \label{eq:projectordist2}\\
+ \norm{\bm\Pi(\bm Z)-\bm\Pi(0)}_F^2
+ &=2\sum_{i=1}^{p}\frac{\sigma_i(\bm Z)^2}
+                           {1+\sigma_i(\bm Z)^2}.               \label{eq:projectordistF}
+\end{align}
 \end{proposition}
 
 \begin{proof}
 令 $\bm Y=[\bm Z^T,\bm I]^T$。图空间的欧氏正交投影为
 $\bm Y(\bm Y^T\bm Y)^{-1}\bm Y^T$，且
 $\bm Y^T\bm Y=\bm I+\bm Z^T\bm Z$，故得式~\eqref{eq:projector}；再代入
-式~\eqref{eq:rho} 即得式~\eqref{eq:rhoZ}。
+式~\eqref{eq:rho} 即得式~\eqref{eq:rhoZ}。直接验证
+$\bm N(\bm Z)^T\bm N(\bm Z)=\bm I$ 及
+$\bm N(\bm Z)^T[\bm Z^T,\bm I]^T=0$，便得到
+式~\eqref{eq:complement}。两个等维投影之差的非零奇异值由主角正弦给出，每个
+$\sin\theta_i$ 出现两次；结合式~\eqref{eq:angles} 即得
+式~\eqref{eq:projectordist2}--\eqref{eq:projectordistF}。
 \end{proof}
 
 \begin{theorem}[固定磨光器下的最佳同维粗空间]\label{thm:globalopt}
@@ -297,12 +347,22 @@ $\bm Y^T\bm Y=\bm I+\bm Z^T\bm Z$，故得式~\eqref{eq:projector}；再代入
  =\sigma_{n_C+1}(\bm T)^2.                             \label{eq:bestspace}
 \end{equation}
 一个最优空间由 $\bm T$ 的前 $n_C$ 个左奇异向量张成。
+更一般地，全部最优空间由下列半正定不等式精确刻画：
+\begin{equation}
+ \mathcal U\ \text{最优}
+ \quad\Longleftrightarrow\quad
+ \bm T^T(\bm I-\bm\Pi_{\mathcal U})\bm T
+ \preceq\sigma_{n_C+1}(\bm T)^2\bm I.               \label{eq:optimizerlmi}
+\end{equation}
 \end{theorem}
 
 \begin{proof}
 这是矩阵最佳秩 $n_C$ 逼近的投影形式：
 $\min_{\operatorname{rank}\bm\Pi=n_C}\norm{(\bm I-\bm\Pi)\bm T}_2
 =\sigma_{n_C+1}(\bm T)$。
+由于左端平方等于
+$\lambda_{\max}(\bm T^T(\bm I-\bm\Pi)\bm T)$，一个维数为 $n_C$ 的空间达到该下界，
+当且仅当式~\eqref{eq:optimizerlmi} 成立。
 \end{proof}
 
 定理~\ref{thm:globalopt} 给出固定磨光器下的理论最优空间。直接以两网格收敛率定义
@@ -324,6 +384,17 @@ $\min_{\operatorname{rank}\bm\Pi=n_C}\norm{(\bm I-\bm\Pi)\bm T}_2
 \end{align}
 特别地，对 $\bm W$ 与 $\bm W^\ast$，右端最后一项可由
 式~\eqref{eq:angles} 精确写成 $\bm Z$ 的函数。
+进一步，对任意两个图空间 $\bm Z,\bm Y$，
+\begin{align}
+ \norm{\bm\Pi(\bm Z)-\bm\Pi(\bm Y)}_2
+ &\le \min\left\{
+ \norm{(\bm Z-\bm Y)(\bm I+\bm Z^T\bm Z)^{-1/2}}_2,
+ \norm{(\bm Z-\bm Y)(\bm I+\bm Y^T\bm Y)^{-1/2}}_2
+ \right\}                                                        \notag\\
+ &\le\norm{\bm Z-\bm Y}_2.                          \label{eq:graphlipschitz}
+\end{align}
+因此 $\abs{\sqrt{\rhoTG(\bm Z)}-\sqrt{\rhoTG(\bm Y)}}
+\le\norm{\bm T}_2\norm{\bm Z-\bm Y}_2$。
 \end{theorem}
 
 \begin{proof}
@@ -343,6 +414,49 @@ $\abs{f_{\mathcal U}^2-f_{\mathcal V}^2}
 得到式~\eqref{eq:rholipschitz}。与常用的
 $2\norm{\bm T}_2^2\sin\theta_{\max}$ 上界相比，式~\eqref{eq:rholipschitz}
 保留了两个粗空间自身的实际收敛因子，因而在二者都较好时更紧。
+为证式~\eqref{eq:graphlipschitz}，令
+$\bm Q(\bm Z)=[\bm Z^T,\bm I]^T(\bm I+\bm Z^T\bm Z)^{-1/2}$。
+等维投影满足
+$\norm{\bm\Pi(\bm Z)-\bm\Pi(\bm Y)}_2
+=\norm{(\bm I-\bm\Pi(\bm Y))\bm Q(\bm Z)}_2$。利用
+$(\bm I-\bm\Pi(\bm Y))[\bm Y^T,\bm I]^T=0$ 得到第一个上界；交换
+$\bm Z,\bm Y$ 得到第二个上界。最后用
+$\norm{(\bm I+\bm Z^T\bm Z)^{-1/2}}_2\le1$。
+\end{proof}
+
+\begin{corollary}[能量误差到两网格性能的显式传递]\label{cor:energytransfer}
+令 $\delta_J=J(\bm W)-J(\bm W^\ast)$、$f_\ast=\sqrt{\rhoTG(\bm W^\ast)}$，并定义
+\begin{equation}
+ \beta(\delta_J)=\norm{\bm T}_2
+ \sqrt{\frac{2\delta_J}{\lambda_{\min}(\Sc)+2\delta_J}}.
+                                                                    \label{eq:beta}
+\end{equation}
+则
+\begin{align}
+ \abs{\sqrt{\rhoTG(\bm W)}-f_\ast}&\le\beta(\delta_J),          \label{eq:energytof}\\
+ \abs{\rhoTG(\bm W)-\rhoTG(\bm W^\ast)}
+ &\le\bigl(\sqrt{\rhoTG(\bm W)}+f_\ast\bigr)\beta(\delta_J). \label{eq:energytorho}
+\end{align}
+若 $\bar f=f_\ast+\beta(\delta_J)<1$，则该候选必为收敛的对称两网格方法；把任意
+初始误差的能量范数降低到比例 $\varepsilon\in(0,1)$ 时，循环数上界为
+\begin{equation}
+ k_{\rm cert}=\left\lceil
+ \frac{\log(1/\varepsilon)}{-2\log\bar f}\right\rceil
+                                                                    \label{eq:cyclecertificate}
+\end{equation}
+；即运行 $k_{\rm cert}$ 个循环必已达到该能量误差比例。
+\end{corollary}
+
+\begin{proof}
+由式~\eqref{eq:Zenergy}，
+$\norm{\bm Z}_2\le\norm{\bm Z}_F
+\le\sqrt{2\delta_J/\lambda_{\min}(\Sc)}$。代入
+式~\eqref{eq:angles} 和定理~\ref{thm:lipschitz}，并利用
+$x/\sqrt{1+x^2}$ 的单调性，即得式~\eqref{eq:energytof}；平方差分解给出
+式~\eqref{eq:energytorho}。最后
+$\rhoTG(\bm W)\le\bar f^2<1$，命题~\ref{prop:rhs} 的能量收缩式给出
+$\norm{\bm e_k}_{\bm A}/\norm{\bm e_0}_{\bm A}\le\bar f^{2k}$，整理即得
+式~\eqref{eq:cyclecertificate}。
 \end{proof}
 
 \begin{corollary}[固定性能增益需要非零能量距离]\label{cor:barrier}
@@ -395,7 +509,8 @@ $\bm T^T(\bm I-\bm\Pi(0))\bm U=\sigma\bm V$。在式~\eqref{eq:bases} 的
  \bm Y=\widetilde{\bm Q}_\ast^T\bm T\bm V,
  \qquad \operatorname{sym}(\bm X)=\tfrac12(\bm X+\bm X^T).       \label{eq:ua}
 \end{equation}
-由于 $\bm U$ 属于 $\Ran(\bm I-\bm\Pi(0))$，其粗空间坐标为零。
+由于 $\bm U$ 属于 $\Ran(\bm I-\bm\Pi(0))$，其粗空间坐标为零，并且
+$\bm U_F^T\bm U_F=\bm I_r$。
 
 \begin{theorem}[能量终点处的一阶有利方向]\label{thm:firstorder}
 对任意方向 $\bm H$，
@@ -415,6 +530,20 @@ $0<t<\varepsilon$ 时
                                                                     \label{eq:finitebetter}
 \end{equation}
 即一个能量上更差的有限误差可产生更好的两网格因子。
+而且，存在满足上述严格正定条件的方向 $\bm H$，当且仅当
+\begin{equation}
+ \operatorname{rank}(\bm Y)=r.                                    \label{eq:rankiff}
+\end{equation}
+当式~\eqref{eq:rankiff} 成立时，一个显式有利方向为
+\begin{equation}
+ \bm H_0=\bm U_F(\bm Y^T\bm Y)^{-1}\bm Y^T,                    \label{eq:H0}
+\end{equation}
+它满足 $\bm U_F^T\bm H_0\bm Y=\bm I_r$ 和 $f'(0;\bm H_0)=-1$。
+在所有满足归一化约束 $\bm U_F^T\bm H\bm Y=\bm I_r$ 的方向中，$\bm H_0$ 还是唯一的
+Frobenius 最小范数解，并且
+\begin{equation}
+ \norm{\bm H_0}_F^2=\tr\bigl((\bm Y^T\bm Y)^{-1}\bigr).          \label{eq:H0norm}
+\end{equation}
 \end{theorem}
 
 \begin{proof}
@@ -435,6 +564,15 @@ $\bm U^T\bm F'(0)[\bm H]\bm V=-\bm U_F^T\bm H\bm Y$，从而得到
 式~\eqref{eq:derivative}。所给矩阵正定时方向导数严格为负，故第一结论成立；第二结论
 由~\eqref{eq:Zenergy} 得到，因为其能量超额为
 $t^2\norm{\bm H\Sc^{1/2}}_F^2/2>0$。
+由 $\bm U$ 的正交性及其粗坐标为零，已有 $\bm U_F^T\bm U_F=\bm I_r$。
+若 $\bm Y$ 不满列秩，取非零 $\bm x$ 使 $\bm Y\bm x=0$，则
+$\bm x^T\operatorname{sym}(\bm U_F^T\bm H\bm Y)\bm x=0$，故对任意 $\bm H$
+均不可能严格正定。反之，若 $\bm Y$ 满列秩，式~\eqref{eq:H0} 有定义，直接相乘得到
+$\bm U_F^T\bm H_0\bm Y=\bm I_r$。最后把任意 $\bm H$ 正交分解为
+$\bm H=\bm U_F\bm K+\bm H_\perp$，其中 $\bm U_F^T\bm H_\perp=0$。归一化约束等价于
+$\bm K\bm Y=\bm I_r$，而满列秩矩阵 $\bm Y$ 的唯一 Frobenius 最小范数左逆是
+$(\bm Y^T\bm Y)^{-1}\bm Y^T$；取 $\bm H_\perp=0$ 后得到式~\eqref{eq:H0}。
+利用 $\bm U_F^T\bm U_F=\bm I_r$ 计算范数，即得式~\eqref{eq:H0norm}。
 \end{proof}
 
 当 $r=1$ 时，式~\eqref{eq:derivative} 退化为
@@ -455,6 +593,47 @@ $\norm{\bm Z}_F\le r_0$ 与常数 $K>0$，使
  f(\bm Z)=f(0)-g(\bm Z)+R(\bm Z),
  \qquad \abs{R(\bm Z)}\le K\norm{\bm Z}_F^2.          \label{eq:taylor}
 \end{equation}
+
+\begin{corollary}[有利锥、逆向锥与一阶收益--二阶代价]\label{cor:cones}
+固定 $\mu>0$，定义
+\begin{equation}
+ \mathcal C_+(\mu)=\{\bm Z:g(\bm Z)\ge\mu\norm{\bm Z}_F\},
+ \qquad
+ \mathcal C_-(\mu)=\{\bm Z:g(\bm Z)\le-\mu\norm{\bm Z}_F\}.    \label{eq:cones}
+\end{equation}
+若
+$\norm{\bm Z}_F\le\min\{r_0,\mu/(2K)\}$，则分别有
+\begin{align}
+ \bm Z\in\mathcal C_+(\mu)&\Longrightarrow
+ f(0)-f(\bm Z)\ge\frac\mu2\norm{\bm Z}_F,             \label{eq:favorablecone}\\
+ \bm Z\in\mathcal C_-(\mu)&\Longrightarrow
+ f(\bm Z)-f(0)\ge\frac\mu2\norm{\bm Z}_F.             \label{eq:adversecone}
+\end{align}
+与此同时，能量超额满足精确的双侧估计
+\begin{equation}
+ \frac{\lambda_{\min}(\Sc)}2\norm{\bm Z}_F^2
+ \le J(\bm W)-J(\bm W^\ast)
+ \le\frac{\lambda_{\max}(\Sc)}2\norm{\bm Z}_F^2.      \label{eq:energytwosided}
+\end{equation}
+特别地，在有利锥内
+\begin{equation}
+ f(0)-f(\bm Z)
+ \ge\frac{\mu}{\sqrt{2\lambda_{\max}(\Sc)}}
+       \sqrt{J(\bm W)-J(\bm W^\ast)}.                 \label{eq:sqrttradeoff}
+\end{equation}
+因此沿严格有利方向靠近终点时，两网格性能收益对距离是一阶量，而额外插值能量是二阶量。
+\end{corollary}
+
+\begin{proof}
+在 $\mathcal C_+(\mu)$ 中，由式~\eqref{eq:taylor}，
+$f(0)-f(\bm Z)=g(\bm Z)-R(\bm Z)
+\ge\mu\norm{\bm Z}_F-K\norm{\bm Z}_F^2$，得到
+式~\eqref{eq:favorablecone}；$\mathcal C_-(\mu)$ 同理。
+式~\eqref{eq:energytwosided} 是式~\eqref{eq:Zenergy} 的特征值界；其右侧给出
+$\norm{\bm Z}_F\ge
+\sqrt{2\{J(\bm W)-J(\bm W^\ast)\}/\lambda_{\max}(\Sc)}$，代入
+式~\eqref{eq:favorablecone} 即得式~\eqref{eq:sqrttradeoff}。
+\end{proof}
 
 \begin{theorem}[有限 PCG 的严格反单调尾部]\label{thm:antimonotone}
 设连续一段 PCG 候选均落在上述邻域，并且每一步满足
@@ -486,6 +665,29 @@ $\bm Z_m\ne\bm Z_{m+1}$，相应 PCG 步非零。第一式于是由
 
 条件~\eqref{eq:tailcondition} 表明：主导子空间上的一阶变化压过二阶余项时，形成严格的
 “能量下降、两网格因子上升”尾部；该结论同样允许主导奇异值具有重数。
+
+\begin{corollary}[相干射线尾部的可验证充分条件]\label{cor:raytail}
+设相邻 PCG 误差在局部坐标中满足
+$\bm Z_m=t_m\bm H$、$\bm Z_{m+1}=t_{m+1}\bm H$，其中
+$g(\bm H)>0$、$0\le t_{m+1}\le q t_m$、$0\le q<1$。若
+\begin{equation}
+ 0<t_m<\min\left\{
+ \frac{r_0}{\norm{\bm H}_F},
+ \frac{(1-q)g(\bm H)}{K(1+q^2)\norm{\bm H}_F^2}
+ \right\},                                                       \label{eq:raycondition}
+\end{equation}
+则该步满足定理~\ref{thm:antimonotone} 的条件，因而插值能量严格下降而两网格因子严格
+上升。
+\end{corollary}
+
+\begin{proof}
+$g$ 对非负标量正齐次，故
+$g(\bm Z_m)-g(\bm Z_{m+1})
+=(t_m-t_{m+1})g(\bm H)\ge(1-q)t_mg(\bm H)$。另一方面，
+$K(\norm{\bm Z_m}_F^2+\norm{\bm Z_{m+1}}_F^2)
+\le K(1+q^2)t_m^2\norm{\bm H}_F^2$。式~\eqref{eq:raycondition} 使前者严格大于
+后者，并保证两点处于余项邻域。
+\end{proof}
 
 \section{最优步数的尺度窗口与自适应选择}
 
@@ -542,6 +744,13 @@ $\kappa_+,a_-,\gamma_+$，使
  \log\frac{2}{\eta_-}.                              \label{eq:optimalwindow}
 \end{equation}
 特别地，$m_{\rm opt}(h)=\Theta(h^{-1})$。
+更明确地，
+\begin{equation}
+ \frac1{\gamma_+}\log\frac{a_-}{\eta_+}
+ \le\liminf_{h\to0}hm_{\rm opt}(h)
+ \le\limsup_{h\to0}hm_{\rm opt}(h)
+ \le\frac{\sqrt{\kappa_+}}2\log\frac2{\eta_-}.       \label{eq:asymptoticwindow}
+\end{equation}
 \end{theorem}
 
 \begin{proof}
@@ -558,6 +767,7 @@ $q_h\le\exp\{-2/(\sqrt{\kappa_h}+1)\}$ 和条件数假设直接得到
 在 $m=m_{\rm opt}(h)$ 处结合 $d_{m_{\rm opt},h}\ge\eta_-$，取对数即得
 式~\eqref{eq:optimalwindow} 右侧。左端常数为正；右端在 $h\to0$ 时为
 $O(h^{-1})$，故双侧合起来给出 $\Theta(h^{-1})$。
+式~\eqref{eq:asymptoticwindow} 由式~\eqref{eq:optimalwindow} 同乘 $h$ 后取上下极限得到。
 \end{proof}
 
 路径下界排除相关谱质量随细化消失导致的超快衰减，标准条件数界给出另一侧。
@@ -604,8 +814,11 @@ $\theta\in\{1/8,1/4,1/3,1/2\}$，因而
  \longrightarrow \rhoTG\text{ 的投影目标}
  \longrightarrow \text{有限步非单调性与尺度自适应选择}.}
 \]
-代数恒等式和全局稳定界适用于有限维 SPD 系统、固定粗点及对称两网格结构；终点
-一阶机制和反单调尾部允许主导奇异值具有任意有限重数，后者另需局部邻域与方向条件。
+代数恒等式和全局稳定界适用于有限维 SPD 系统、固定粗点及对称两网格结构；能量误差
+现在还给出两网格因子和循环数的显式证书。终点一阶机制和反单调尾部允许主导奇异值
+具有任意有限重数；主导左奇异模态的细坐标自动正交，有利方向存在性仅由粗响应矩阵
+$\bm Y$ 满列秩完全刻画；显式构造同时是给定单位一阶改善约束下的唯一最小范数方向。
+局部有利锥进一步量化了一阶性能收益与二阶能量代价，而反单调尾部另需邻域与方向条件。
 最优步数的双侧尺度窗口由标准 $O(h^{-2})$ 条件数上界、一侧路径非退化和固定可见
 误差带推出。
 数值部分在二维规则网格与高对比通道族上隔离并检验这一主线；尺度自适应规则以一次

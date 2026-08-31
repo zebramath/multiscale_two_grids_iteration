@@ -1,4 +1,4 @@
-# 多尺度有限 Krylov 能量插值研究方案 v5.10
+# 多尺度有限 Krylov 能量插值研究方案 v6.1
 
 ## 1. 研究定位
 
@@ -9,8 +9,8 @@
 
 研究集中回答三个问题：
 
-1. 能量距离、粗空间几何和两网格谱因子之间有什么严格联系；
-2. 有限 Krylov 误差在什么条件下改善磨光后最坏误差模态；
+1. 能量距离、Galerkin 粗矩阵、粗空间几何和两网格谱因子之间有什么严格联系；
+2. 有利有限 Krylov 误差方向何时存在，以及性能收益与能量代价分别是什么阶；
 3. 最优有限步在什么条件下具有 $\Theta(h^{-1})$ 尺度，以及如何据此构造低 setup 的
    尺度自适应规则。
 
@@ -87,7 +87,16 @@ J(W)-J(W_*)=\frac12\lVert W-W_*\rVert_{B,F}^2,
 P(W)^TAP(W)=S+(W-W_*)^TB(W-W_*).
 $$
 
-PCG 路径 $W_m$ 在 $B$ 能量范数下单调逼近 $W_*$。两网格误差传播算子
+PCG 路径 $W_m$ 不仅在 $B$ 能量范数下单调逼近 $W_*$，而且任意两个路径位置
+$m<\ell$ 之间具有精确尾和
+
+$$
+J(W_m)-J(W_\ell)=\frac12\sum_{k=m}^{\ell-1}
+\lVert W_{k+1}-W_k\rVert_{B,F}^2.
+$$
+
+因此每段插值能量下降都能逐步归因到实际 PCG 更新，而不是只由一个渐近界控制。
+两网格误差传播算子
 
 $$
 E_{TG}(W)=G^{\dagger_A}
@@ -119,6 +128,21 @@ $$
 \tan\theta_i=\sigma_i(Z).
 $$
 
+归一化 Galerkin 粗矩阵为 $I+Z^TZ\succeq I$，其非平凡特征值为
+$1+\sigma_i(Z)^2$，行列式膨胀因子为 $\prod_i(1+\sigma_i(Z)^2)$。图空间投影及其
+正交补还可同时闭式写成
+
+$$
+\Pi(Z)=\begin{bmatrix}Z\\I\end{bmatrix}(I+Z^TZ)^{-1}
+       \begin{bmatrix}Z^T&I\end{bmatrix},
+\qquad
+I-\Pi(Z)=N(Z)N(Z)^T,
+$$
+
+$$
+N(Z)=\begin{bmatrix}I\\-Z^T\end{bmatrix}(I+ZZ^T)^{-1/2}.
+$$
+
 在欧氏能量坐标中，若 $T=A^{1/2}GA^{-1/2}$，则
 
 $$
@@ -134,8 +158,53 @@ $$
 =-\lambda_{\min}\!\left(\operatorname{sym}(U_F^THY)\right).
 $$
 
-因此有限步改善条件作用于整个主导子空间，不依赖非唯一奇异向量基的选择；标量公式
-是重数为一时的特例。
+因此有限步改善条件作用于整个主导子空间，不依赖非唯一奇异向量基的选择。更强地，
+由于主导左奇异模态位于能量终点粗空间的正交补，其细坐标自动满足
+$U_F^TU_F=I_r$。严格有利方向存在当且仅当
+
+$$
+\operatorname{rank}(Y)=r.
+$$
+
+这个唯一的满列秩条件表示主导模态的粗空间响应彼此独立，不再需要额外的细空间
+可见性假设。条件成立时可显式取
+
+$$
+H_0=U_F(Y^TY)^{-1}Y^T,
+\qquad U_F^TH_0Y=I_r,
+$$
+
+于是方向导数严格等于 $-1$。这个 $H_0$ 还是所有满足 $U_F^THY=I_r$ 的方向中唯一的
+Frobenius 最小范数解，且
+$\lVert H_0\rVert_F^2=\operatorname{tr}((Y^TY)^{-1})$。标量公式是重数为一时的特例。
+
+若 $g(Z)=\lambda_{\min}(\operatorname{sym}(U_F^TZY))$，则终点附近存在统一常数
+$K,r_0>0$，使
+
+$$
+\sqrt{\rho_{TG}(Z)}=\sqrt{\rho_{TG}(0)}-g(Z)+R(Z),
+\qquad |R(Z)|\le K\lVert Z\rVert_F^2.
+$$
+
+因此在满足 $g(Z)\ge\mu\lVert Z\rVert_F$ 的有利锥中，只要
+$\lVert Z\rVert_F\le\min\{r_0,\mu/(2K)\}$，便有
+
+$$
+\sqrt{\rho_{TG}(0)}-\sqrt{\rho_{TG}(Z)}
+\ge\frac\mu2\lVert Z\rVert_F,
+$$
+
+而
+
+$$
+\frac{\lambda_{\min}(S)}2\lVert Z\rVert_F^2
+\le J(W)-J(W_*)
+\le\frac{\lambda_{\max}(S)}2\lVert Z\rVert_F^2.
+$$
+
+这把中心现象定量化为“性能改善是一阶量，能量超额是二阶量”。逆向锥
+$g(Z)\le-\mu\lVert Z\rVert_F$ 中则得到同阶的性能恶化下界。对逐步收缩且方向相干的
+PCG 局部尾，线性项最终严格压过二阶余项，从而严格推出“能量下降、两网格因子上升”。
 
 全局稳定界还能把固定性能优势变成定量能量屏障。若候选相对能量终点的
 $\sqrt{\rho_{TG}}$ 改善至少为 $\gamma$，则
@@ -147,6 +216,18 @@ J(W)-J(W_*)\ge
 $$
 
 因此具有固定幅度优势的有限步候选不能无限逼近能量终点。
+
+反方向也有显式传递。记 $\delta_J=J(W)-J(W_*)$，则
+
+$$
+\left|\sqrt{\rho_{TG}(W)}-\sqrt{\rho_{TG}(W_*)}\right|
+\le \lVert T\rVert_2
+\sqrt{\frac{2\delta_J}{\lambda_{\min}(S)+2\delta_J}}.
+$$
+
+只要该上界与终点的 $\sqrt{\rho_{TG}}$ 之和小于 1，就同时给出候选两网格收敛性和
+达到指定能量误差比例所需循环数的显式证书。于是全局理论形成双向闭环：能量接近度
+控制性能偏差，而固定性能优势反过来要求非零能量距离。
 
 ## 4. 尺度自适应选择
 
@@ -204,6 +285,15 @@ $$
 $m_{\mathrm{or}}/(1/h)$ 位于
 $0.125$--$0.484$，支持当前 $[1/8,1/2]$ 归一化窗口；这些离散采样点是尺度证据，
 不等同于连续候选路径上的 $m_{\mathrm{opt}}(h)$。
+
+更具体地，上述双侧界还给出归一化最优步的渐近夹逼
+
+$$
+\frac1{\gamma_+}\log\frac{a_-}{\eta_+}
+\le\liminf_{h\to0}hm_{\mathrm{opt}}(h)
+\le\limsup_{h\to0}hm_{\mathrm{opt}}(h)
+\le\frac{\sqrt{\kappa_+}}2\log\frac2{\eta_-}.
+$$
 
 ### 4.2 尺度自适应规则
 
