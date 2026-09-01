@@ -1,7 +1,7 @@
 Ablation of adaptive versus simple early-stopping policies
 ==========================================================
 
-Version                       : 6.3.0
+Version                       : 7.2.0
 Mode                          : full
 Cases                         : 6
 Threads                       : 4

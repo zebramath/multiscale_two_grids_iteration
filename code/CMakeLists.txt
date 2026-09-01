@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 7.1.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 7.2.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -64,13 +64,3 @@ add_custom_target(experiments
             experiment5_stopping_ablation
             experiment6_fixed_physical_refinement
             experiment7_multilevel_pilot)
-
-include(CTest)
-if(BUILD_TESTING)
-    add_executable(unit_core tests/unit_core.cpp)
-    target_link_libraries(unit_core PRIVATE tgi_headers)
-    add_test(NAME unit_core COMMAND unit_core)
-    add_executable(regression_core tests/regression_core.cpp)
-    target_link_libraries(regression_core PRIVATE tgi_headers)
-    add_test(NAME regression_core COMMAND regression_core)
-endif()

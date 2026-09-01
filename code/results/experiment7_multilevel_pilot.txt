@@ -1,7 +1,7 @@
 Three-level V-cycle pilot experiment
 ====================================
 
-Version         : 7.1.0
+Version         : 7.2.0
 Mode            : full
 Cases           : 2
 Hierarchy       : 64/16/8, 128/16/8

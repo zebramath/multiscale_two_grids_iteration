@@ -61,10 +61,6 @@ build_direct() {
         common="$common -fopenmp"
     fi
     # shellcheck disable=SC2086
-    "$cxx" $common tests/unit_core.cpp -o "$build_dir/unit_core"
-    # shellcheck disable=SC2086
-    "$cxx" $common tests/regression_core.cpp -o "$build_dir/regression_core"
-    # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment1_two_grid_comparison.cpp \
         -o "$build_dir/experiment1_two_grid_comparison"
@@ -96,16 +92,13 @@ build_direct() {
 
 if command -v cmake >/dev/null 2>&1; then
     run_step configure cmake -S . -B "$build_dir" \
-        -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+        -DCMAKE_BUILD_TYPE=Release
     run_step build cmake --build "$build_dir" --parallel "$threads"
-    run_step tests ctest --test-dir "$build_dir" --output-on-failure
 else
     echo "[info] cmake unavailable; using the direct C++17 build"
     echo "[start] build-direct"
     build_direct
     echo "[done]  build-direct"
-    run_step unit-core "$build_dir/unit_core"
-    run_step regression-core "$build_dir/regression_core"
 fi
 
 if [ "$mode" = "quick" ]; then

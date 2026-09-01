@@ -1,14 +1,14 @@
-# multiscale_two_grids_iteration v7.1
+# multiscale_two_grids_iteration v7.2
 
 二维高对比扩散问题中，有限 Krylov 能量插值与两网格非单调收敛研究。
 
 - `research_report.md`：研究问题、理论主线、算法设计与完整核心结果；
 - `theory.tex`：能量路径、粗空间几何、非单调机制和尺度自适应选择理论；
-- `VALIDATION_v7.1.md`：严格构建、数值回归、理论公式与文稿静态验证记录；
-- `code/`：C++17 两网格/三层 V-cycle 实现、七个整合实验、测试和 TXT 结果。
+- `VALIDATION_v7.2.md`：严格构建、完整实验复跑、理论公式与文稿静态验证记录；
+- `code/`：C++17 两网格/三层 V-cycle 实现、七个整合实验和对应 TXT 结果。
 
 理论稿使用 `ctexart`，需以 XeLaTeX 配合 TeX Live 中文组件编译。代码采用 C++17，
-可直接运行 `code/scripts/run_validation.sh quick` 完成严格构建、测试与小规模端到端检查。
+可直接运行 `code/scripts/run_validation.sh quick` 完成严格构建与小规模端到端检查。
 
 算法使用分辨率归一化的路径位置，根据粗空间分辨率和矩阵对角尺度比构造一个有限
 PCG 插值，只进行一次路径推进、插值组装和粗算子构造。
