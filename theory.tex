@@ -18,7 +18,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值、两网格选择与递归扩展：理论分析 v7.2}
+\title{有限 Krylov 能量插值、两网格选择与递归扩展：理论分析 v7.3}
 \author{崔正平}
 \date{}
 
@@ -38,10 +38,13 @@
 附近，即使主导奇异值具有重数，两网格目标的一阶变化仍可由主导奇异子空间上的对称
 压缩刻画；本文给出有利方向存在的充要条件，并进一步求解固定插值能量预算下的局部
 最优问题，得到尖锐的一阶 Pareto 常数、唯一最优方向及秩退化时的一阶失效。在显式
-余项控制下，这一局部结构进一步导出渐近相干 PCG 路径上的严格反单调尾部。
-最后，在标准 Jacobi--PCG 条件数具有 $O(h^{-2})$ 上界并配合一侧路径非退化条件的
-模型族上，本文给出最优路径步数的条件性 $\Theta(h^{-1})$ 窗口；据此构造只需一次
-路径推进、且与网格分辨率同步伸缩的尺度自适应插值。
+余项控制下，本文给出可在有限 PCG 路径逐步核验的严格反单调充分条件。
+最后，当标准 Jacobi--PCG 条件数具有 $O(h^{-2})$ 上界时，本文证明把能量误差降低到
+任意固定比例只需 $m=O(h^{-1})$ 步。基于这一尺度信息，当前 adaptive 定位为
+\[
+ \boxed{\text{theory-informed lightweight empirical selector}},
+\]
+其归一化步数和尺度比阈值均为经验参数，不宣称最优或 near--oracle。
 此外，本文给出精确两网格与递归 V--cycle 之间的误差传播恒等式及能量范数界，
 从而明确有限步传递算子向多层层次结构递归时新增误差的唯一来源。
 
@@ -105,8 +108,8 @@ PCG 能量账本 & 每列方程使用 SPD 预条件的标准 CG，任意迭代�
 两网格投影公式 & 精确 Galerkin 粗解，后磨光为前磨光的 $\bm A$--伴随 \\
 多层递归分解 & 各层 Galerkin 关系成立；递归粗解误差显式保留，不把 V--cycle 当作精确粗解 \\
 终点一阶与 Pareto 律 & 能量终点处相关最大奇异值为正；允许任意有限重数，$\bm Y$ 的秩决定一阶改善是否存在 \\
-严格反单调尾部 & 进入终点邻域；一般路径满足~\eqref{eq:tailcondition}，渐近相干路径满足~\eqref{eq:coherentpath} \\
-最优步数尺度 & 标准 $O(h^{-2})$ 条件数上界、一侧路径非退化、最优点处于固定误差带 \\
+严格反单调有限段 & 进入终点邻域，且所考察的每个相邻有限步满足~\eqref{eq:tailcondition} \\
+固定衰减步数尺度 & 标准 $O(h^{-2})$ 条件数上界；结论仅为达到固定能量误差比例的 $O(h^{-1})$ 充分上界 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -734,7 +737,7 @@ $\bm U_F^T\bm H_0\bm Y=\bm I_r$。这证明了充要性和显式构造。
 $f'(0;\bm H)=-\bm u_F^T\bm H\bm y$；当 $r>1$ 时，正定条件作用于整个主导奇异
 子空间，因而不依赖非唯一奇异向量基的选择。
 
-\subsection{局部最优权衡与严格反单调 PCG 尾部}
+\subsection{局部最优权衡与有限 PCG 的严格反单调段}
 
 令 $\bm Z_m=\bm B^{1/2}\bm\Delta_m\Sc^{-1/2}$，并记
 \begin{equation}
@@ -833,7 +836,7 @@ $f(0)-f(\bm Z)\le K\norm{\bm Z}_F^2
 $\mathcal G(\varepsilon)\ge0$，即得式~\eqref{eq:rankdeficient}。
 \end{proof}
 
-\begin{theorem}[有限 PCG 的严格反单调尾部]\label{thm:antimonotone}
+\begin{theorem}[有限 PCG 路径上的严格反单调段]\label{thm:antimonotone}
 设连续一段 PCG 候选均落在上述邻域，并且每一步满足
 \begin{equation}
  \eta_m:=g(\bm Z_m)-g(\bm Z_{m+1})
@@ -864,51 +867,18 @@ $g(\bm Z_m)>g(\bm Z_{m+1})$，故 $\bm Z_m\ne\bm Z_{m+1}$，相应 PCG 步非零
 这给出式~\eqref{eq:antifactor}；再用平方差分解即得式~\eqref{eq:antimonotone}。
 \end{proof}
 
-条件~\eqref{eq:tailcondition} 表明：主导子空间上的一阶变化压过二阶余项时，形成严格的
-“能量下降、两网格因子上升”尾部；该结论同样允许主导奇异值具有重数。
+条件~\eqref{eq:tailcondition} 表明：主导子空间上的一阶变化压过二阶余项时，在所考察的
+有限相邻步上形成严格的“能量下降、两网格因子上升”。该结论允许主导奇异值具有重数，
+但不声称该条件沿有限维 PCG 路径最终必然成立。
 
-\begin{corollary}[渐近相干 PCG 路径的必然反单调尾部]\label{cor:coherenttail}
-设 PCG 误差存在 $t_m>0$、固定非零方向 $\bm H$ 和扰动 $\bm E_m$，使
-\begin{equation}
- \bm Z_m=t_m\bm H+\bm E_m,\qquad
- t_m\to0,\qquad
- \frac{\norm{\bm E_m}_F}{t_m}\to0,\qquad
- \frac{t_{m+1}}{t_m}\to q\in[0,1),                              \label{eq:coherentpath}
-\end{equation}
-并且 $g(\bm H)>0$。则存在 $m_0$，使所有 $m\ge m_0$ 均满足
-\begin{equation}
- J(\bm W_{m+1})<J(\bm W_m),\qquad
- \rhoTG(\bm W_{m+1})>\rhoTG(\bm W_m).                           \label{eq:eventualtail}
-\end{equation}
-特别地，若 PCG 终点尾部渐近对齐于定理~\ref{thm:pareto} 的
-$\widehat{\bm H}_E$ 且收缩比极限小于一，则严格反单调性最终必然发生。
-\end{corollary}
-
-\begin{proof}
-最小特征值的 Weyl 界给出，对任意 $\bm Z_1,\bm Z_2$，
-$\abs{g(\bm Z_1)-g(\bm Z_2)}
-\le\norm{\bm U_F^T(\bm Z_1-\bm Z_2)\bm Y}_2
-\le\norm{\bm Y}_2\norm{\bm Z_1-\bm Z_2}_F$。因此
-\[
- g(\bm Z_m)=t_mg(\bm H)+o(t_m),
- \qquad
- g(\bm Z_m)-g(\bm Z_{m+1})
- =\bigl((1-q)g(\bm H)+o(1)\bigr)t_m.
-\]
-该量最终为严格正的一阶量，而
-$K(\norm{\bm Z_m}_F^2+\norm{\bm Z_{m+1}}_F^2)=O(t_m^2)$。
-故条件~\eqref{eq:tailcondition} 从某一步起恒成立，应用定理~\ref{thm:antimonotone} 即得
-式~\eqref{eq:eventualtail}。
-\end{proof}
-
-\section{最优步数的尺度窗口与自适应选择}
+\section{有限步尺度上界与经验选择}
 
 令 $n=1/h$ 为每个坐标方向的细网格区间数，并定义可由矩阵直接取得的对角尺度比
 \begin{equation}
  \chi_A=\frac{\max_i A_{ii}}{\min_i A_{ii}}.           \label{eq:diagratio}
 \end{equation}
 
-\subsection{条件性双侧尺度窗口}
+\subsection{固定能量衰减的 $O(h^{-1})$ 上界}
 
 令 $\bm D_h=\diag(\bm B_h)$ 为当前实现使用的 Jacobi 预条件器，假定
 $\bm W_{0,h}\ne\bm W_h^\ast$，并记
@@ -923,52 +893,19 @@ $\bm W_{0,h}\ne\bm W_h^\ast$，并记
  q_h=\frac{\sqrt{\kappa_h}-1}{\sqrt{\kappa_h}+1}.      \label{eq:cgscale}
 \end{equation}
 
+\begin{proposition}[固定比例能量衰减的线性分辨率步数]
+\label{prop:fixedreduction}
 若某个网格族满足 $\kappa_h\le\kappa_+h^{-2}$，则对任意固定
-$\eta\in(0,1)$，由式~\eqref{eq:cgscale} 及
-$(x-1)/(x+1)\le\exp\{-2/(x+1)\}$ 可知，只要
+$\eta\in(0,1)$，只要
 \begin{equation}
  m\ge \frac12\left(\frac{\sqrt{\kappa_+}}{h}+1\right)
              \log\frac{2}{\eta},                     \label{eq:fixedreduction}
 \end{equation}
-便有 $d_{m,h}\le\eta$。这给出 $O(h^{-1})$ 的固定能量衰减上界。实际步数下界还取决于初始
-误差是否含有端点附近的谱分量；若这些分量随网格细化消失，PCG 可以明显早于最坏情形
-收敛。下面把这一必要的非退化性质显式列入假设。
-
-\begin{theorem}[最优有限步的条件性 $\Theta(h^{-1})$ 窗口]
-\label{thm:optimalwindow}
-考虑一族固定对比度范围、拓扑类别、粗化比和磨光器的问题。设存在与 $h$ 无关的正常数
-$\kappa_+,a_-,\gamma_+$，使
-\begin{equation}
- \kappa_h\le\kappa_+h^{-2},
- \qquad
- d_{m,h}\ge a_-e^{-\gamma_+mh}
- \quad(0\le m\le m_{\rm opt}(h)).                    \label{eq:onesideddecay}
-\end{equation}
-再设两网格目标的一个最优有限步 $m_{\rm opt}(h)$ 落在固定可见误差带
-\begin{equation}
- 0<\eta_-\le d_{m_{\rm opt}(h),h}\le\eta_+<1,       \label{eq:visibleband}
-\end{equation}
-其中 $a_->\eta_+$。则
-\begin{equation}
- \frac{1}{\gamma_+}\log\frac{a_-}{\eta_+}\,h^{-1}
- \le m_{\rm opt}(h)\le
- \frac12\left(\frac{\sqrt{\kappa_+}}{h}+1\right)
- \log\frac{2}{\eta_-}.                              \label{eq:optimalwindow}
-\end{equation}
-特别地，$m_{\rm opt}(h)=\Theta(h^{-1})$。
-更明确地，
-\begin{equation}
- \frac1{\gamma_+}\log\frac{a_-}{\eta_+}
- \le\liminf_{h\to0}hm_{\rm opt}(h)
- \le\limsup_{h\to0}hm_{\rm opt}(h)
- \le\frac{\sqrt{\kappa_+}}2\log\frac2{\eta_-}.       \label{eq:asymptoticwindow}
-\end{equation}
-\end{theorem}
+便有 $d_{m,h}\le\eta$。因此，达到固定能量误差比例的充分步数为 $m=O(h^{-1})$。
+\end{proposition}
 
 \begin{proof}
-把式~\eqref{eq:visibleband} 的上界与式~\eqref{eq:onesideddecay} 的路径下界组合，得到
-$a_-e^{-\gamma_+m_{\rm opt}h}\le\eta_+$，从而得到式~\eqref{eq:optimalwindow} 左侧。
-另一侧由标准 PCG 界式~\eqref{eq:cgscale}、不等式
+由式~\eqref{eq:cgscale} 和不等式
 $q_h\le\exp\{-2/(\sqrt{\kappa_h}+1)\}$ 和条件数假设直接得到
 \[
  d_{m,h}\le
@@ -976,23 +913,19 @@ $q_h\le\exp\{-2/(\sqrt{\kappa_h}+1)\}$ 和条件数假设直接得到
  \le
  2\exp\!\left\{-\frac{2m}{\sqrt{\kappa_+}/h+1}\right\}.
 \]
-在 $m=m_{\rm opt}(h)$ 处结合 $d_{m_{\rm opt},h}\ge\eta_-$，取对数即得
-式~\eqref{eq:optimalwindow} 右侧。左端常数为正；右端在 $h\to0$ 时为
-$O(h^{-1})$，故双侧合起来给出 $\Theta(h^{-1})$。
-式~\eqref{eq:asymptoticwindow} 由式~\eqref{eq:optimalwindow} 同乘 $h$ 后取上下极限得到。
+将右端控制在 $\eta$ 以下即得式~\eqref{eq:fixedreduction}，其右端随 $h^{-1}$ 线性增长。
 \end{proof}
 
-路径下界排除相关谱质量随细化消失导致的超快衰减，标准条件数界给出另一侧。
-式~\eqref{eq:visibleband} 概括跨网格稳定的有利误差区间；常数可随固定的对比度范围、
-拓扑类别和粗化比变化。式~\eqref{eq:optimalwindow} 描述两网格最优点的模型尺度，PCG
-的代数终止上界仍由细点系统维数决定。
+命题~\ref{prop:fixedreduction} 只提供固定能量衰减所需步数的最坏情形充分上界。它不提供
+两网格最优步数的下界，不定位 PCG 路径上的最佳候选，也不决定任何归一化常数或对比度
+阈值；有限维 PCG 的代数终止上界仍由细点系统维数决定。
 
-七个设计组的窗口受限 step--2 sampled oracle 满足
-$m_{\rm or}/(1/h)\in[0.125,0.484]$，为归一化搜索窗提供数值证据；这些离散采样点
-不等同于定理~\ref{thm:optimalwindow} 中连续路径上的 $m_{\rm opt}(h)$，也不主张是
-完整 PCG 路径上的全局最优点。
+\subsection{理论知情的轻量经验单候选}
 
-\subsection{尺度自适应单候选}
+当前 adaptive 的定位明确为
+\[
+ \boxed{\text{theory-informed lightweight empirical selector}}.
+\]
 
 令 $n_H=1/H=n/r$ 为每方向粗网格区间数。算法构造
 \begin{equation}
@@ -1005,15 +938,18 @@ $m_{\rm or}/(1/h)\in[0.125,0.484]$，为归一化搜索窗提供数值证据；�
  \end{cases}                                           \label{eq:adaptive}
 \end{equation}
 该规则只使用粗空间分辨率和矩阵对角尺度比：小粗空间采用短路径，其余问题按尺度比的
-三个对数区间选取归一化位置。阈值 $10^3,10^5$ 是测试对比度 $10^2,10^4,10^6$ 的
-对数中点。每个分支均有 $m_{\rm ad}=\operatorname{round}(\theta/h)$，
-$\theta\in\{1/8,1/4,1/3,1/2\}$，因而
+三个对数区间选取归一化位置。每个分支均有
+$m_{\rm ad}=\operatorname{round}(\theta/h)$，
+$\theta\in\{1/8,1/4,1/3,1/2\}$，因而按构造
 \begin{equation}
- m_{\rm ad}=\Theta(h^{-1}),\qquad
+ m_{\rm ad}=O(h^{-1}),\qquad
  \abs{hm_{\rm ad}-\theta}\le h/2.                  \label{eq:adaptivescale}
 \end{equation}
-这与定理~\ref{thm:optimalwindow} 的尺度一致。算法只进行一次路径推进、一次插值组装和
-一次粗算子构造；离线 sampled oracle 仅评估该规则与当前测试集最优采样点的差距。
+命题~\ref{prop:fixedreduction} 只支持 $O(h^{-1})$ 这一尺度选择；
+$1/8,1/4,1/3,1/2$ 以及 $10^3,10^5$ 均是针对当前受控问题族设置的经验参数。
+本文不声称这些常数最优，也不把 adaptive 称为 near--oracle。算法只进行一次路径推进、
+一次插值组装和一次粗算子构造；窗口受限 sampled oracle 仅作为离线描述性评估基准，
+不进入在线选择，也不为参数最优性提供理论保证。
 
 \section{结论与适用范围}
 
@@ -1028,19 +964,23 @@ $\theta\in\{1/8,1/4,1/3,1/2\}$，因而
  \longrightarrow \text{递归 V--cycle}.}
 \]
 代数恒等式和全局稳定界适用于有限维 SPD 系统、固定粗点及对称两网格结构；能量误差
-现在还给出两网格因子和循环数的显式证书。终点一阶机制和反单调尾部允许主导奇异值
+现在还给出两网格因子和循环数的显式证书。终点一阶机制和有限反单调段允许主导奇异值
 具有任意有限重数；主导左奇异模态的细坐标自动正交，有利方向存在性仅由粗响应矩阵
 $\bm Y$ 满列秩完全刻画。固定能量预算下的最优问题进一步给出尖锐 Pareto 常数和唯一
-能量归一方向，并证明秩亏时一阶改善完全消失。反单调尾部只需 PCG 误差渐近对齐某个
-严格有利方向且具有非单位收缩比，不再要求相邻误差精确共线。
-最优步数的双侧尺度窗口由标准 $O(h^{-2})$ 条件数上界、一侧路径非退化和固定可见
-误差带推出。
+能量归一方向，并证明秩亏时一阶改善完全消失。严格反单调结论只作为沿有限 PCG 路径
+逐步核验的一组充分条件。
+标准 $O(h^{-2})$ 条件数上界只推出固定能量衰减所需的 $m=O(h^{-1})$ 充分尺度；它不
+定位两网格最优步数。
 精确两网格到递归 V--cycle 的恒等分解进一步把下一层非精确粗解误差隔离为显式扰动项，
 并给出逐层能量范数上界；它为三层次要实验提供理论接口，但不替代一般多层复杂度或
 网格无关收敛分析。
-数值部分在二维规则网格与高对比通道族上隔离并检验这一主线；尺度自适应规则以一次
-有限 PCG 构造实现定理所预示的线性分辨率步数。系数几何按网格单元数定义，故尺寸
-实验代表受控离散问题族；独立的固定物理几何嵌套加密实验另行检验标准网格细化情形。
+数值部分在二维规则网格与高对比通道族上隔离并检验这一主线；adaptive 定位为
+\[
+ \boxed{\text{theory-informed lightweight empirical selector}}.
+\]
+它以一次有限 PCG 构造实现理论支持的 $O(h^{-1})$ 步数尺度，但具体归一化位置和尺度比阈值均为经验选择，
+不宣称最优或 near--oracle。系数几何按网格单元数定义，故尺寸实验代表受控离散问题族；
+独立的固定物理几何嵌套加密实验另行检验标准网格细化情形。
 
 \begin{thebibliography}{99}
 

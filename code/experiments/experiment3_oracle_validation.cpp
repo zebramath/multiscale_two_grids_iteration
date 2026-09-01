@@ -156,11 +156,14 @@ int main(int argc, char** argv) {
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
         "The window-restricted step-two oracle is evaluation-only and does "
-        "not claim the optimum over the complete PCG path. Adaptive uses "
+        "not claim the optimum over the complete PCG path. It is a descriptive "
+        "benchmark, not evidence that the adaptive rule is optimal or near-oracle. "
+        "Adaptive is a theory-informed lightweight empirical selector and uses "
         "(1/h)/8 when "
         "1/H<=8; otherwise it maps the matrix diagonal ratio to (1/h)/4, "
         "(1/h)/3 or (1/h)/2. It uses matrix and grid information but no "
-        "contrast or topology label. Oracle candidates are screened to 6000 cycles; a "
+        "contrast or topology label. Its normalized fractions and diagonal-ratio "
+        "thresholds are empirical. Oracle candidates are screened to 6000 cycles; a "
         "candidate still above tolerance at that point cannot beat any "
         "reported oracle minimum. The final three cases are a post-freeze "
         "validation split with unseen resolutions and topology/contrast "

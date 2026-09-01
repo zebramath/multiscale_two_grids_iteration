@@ -1,4 +1,4 @@
-# two_grids_iteration v7.2.0
+# two_grids_iteration v7.3.0
 
 ## 核心模块
 
@@ -11,15 +11,22 @@
 
 实现采用固定粗点、精确 Galerkin 粗解和对称 Gauss--Seidel 的两网格结构。
 
-## 尺度自适应策略
+## 理论知情的轻量经验策略
+
+adaptive 的定位为
+
+$$
+\boxed{\text{theory-informed lightweight empirical selector}}.
+$$
 
 令 `n=grid.intervals()`、`n_H=n/grid.ratio()`。adaptive 只构造一个
 候选：`n_H<=8` 时取 `n/8`；其余情况按矩阵对角尺度比 `<1e3`、`[1e3,1e5)`、
 `>=1e5` 分别取 `n/4`、`n/3`、`n/2`。setup 只有一次 PCG 路径推进、
 插值组装和粗算子构造。
 
-离线 oracle 额外报告所选步数的归一化位置 `m/(1/h)`，用于检验理论中的尺度窗口；
-该量不进入在线选择。
+理论只支持固定能量衰减的 `m=O(1/h)` 充分尺度。`1/8,1/4,1/3,1/2` 与
+`1e3,1e5` 均为当前受控问题族上的经验参数，不宣称最优或 near-oracle。离线 oracle
+仅在预设 step--2 窗口内作描述性比较；它不进入在线选择，也不提供参数最优性保证。
 
 ```cpp
 auto result = tgi::build_adaptive_global_pcg_interpolation(

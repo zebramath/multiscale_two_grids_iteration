@@ -162,9 +162,11 @@ int main(int argc, char** argv) {
     report.add_note(
         "The matrix varies fine/coarse scale, contrast and six channel "
         "topologies. The two 256/16 extensions test cross-channel and "
-        "winding-ring coefficients at the largest scale. Adaptive uses (1/h)/8 "
+        "winding-ring coefficients at the largest scale. Adaptive is a "
+        "theory-informed lightweight empirical selector. It uses (1/h)/8 "
         "when 1/H<=8; otherwise it uses (1/h)/4, (1/h)/3 or (1/h)/2 in "
-        "the low, intermediate or high diagonal-ratio band. Effective factor "
+        "the low, intermediate or high diagonal-ratio band; these fractions "
+        "and band thresholds are empirical, without optimality claims. Effective factor "
         "is the whole-solve geometric mean contraction; tail factor uses the "
         "last 32 cycles.");
     report.add_table(
