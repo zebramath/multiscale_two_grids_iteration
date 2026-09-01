@@ -1,9 +1,10 @@
-# v6.4 数值结果
+# v7.1 数值结果
 
 实验 1--4 的四份 TXT 继承自已验证的 v6.2.0 完整运行，未作无必要的重复计算；实验
 5--6 的两份 TXT 由 v6.3.0 最终源码以完整模式、4 线程生成。相对残量容差为 `1e-6`；
 adaptive/reference 的循环上限为 20000，geometric 为 30000。
-实验 7 由 v6.4.0 源码以完整模式、4 线程新增运行；实验 1--6 未重复运行或改写。
+实验 7 由 v7.1.0 源码以完整模式、4 线程重新运行，以补充插值复杂度 $C_P$；算法参数
+与 v6.4.0 相同。实验 1--6 未重复运行或改写。
 
 | 文件 | 内容 | 核心结果 |
 |---|---|---|
@@ -13,7 +14,7 @@ adaptive/reference 的循环上限为 20000，geometric 为 30000。
 | `experiment4_submission_robustness.txt` | 五 seed、六 RHS、中心问题五次计时 | seed 循环和 327/866；RHS 循环和 469/1507；adaptive/reference 中心 total 中位数 594.095/9277.744 ms |
 | `experiment5_stopping_ablation.txt` | 六个问题的停止策略消融 | adaptive/fixed-step/fixed-residual 收敛 6/6、5/6、5/6；记录循环和 1147/21098/25658 |
 | `experiment6_fixed_physical_refinement.txt` | 固定物理系数的 32/4、64/8、128/16 嵌套加密 | 共享节点失配 0；adaptive 循环数 122/119/145 |
-| `experiment7_multilevel_pilot.txt` | 64/16/8、128/16/8 三层 V-cycle 与首层精确两网格配对 | adaptive V-cycle 为 101/237 次，reference 为 321/770 次；二者均 2/2 收敛 |
+| `experiment7_multilevel_pilot.txt` | 64/16/8、128/16/8 三层 V-cycle 与首层精确两网格配对 | adaptive V-cycle 为 101/237 次，reference 为 321/770 次；adaptive 的 $C_P$ 为 12.5962/13.4528，reference 为 42.4913/44.1727 |
 
 结果逐行报告收敛状态、全程有效收敛因子与末端因子。中心计时以预热后的 Q1、中位数
 和 Q3 比较 adaptive 与 reference，且两者均达到正式容差后才生成计时表。留出验证

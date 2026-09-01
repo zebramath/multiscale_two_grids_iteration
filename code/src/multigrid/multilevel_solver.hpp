@@ -36,6 +36,7 @@ public:
         return prolongations_.at(static_cast<std::size_t>(level));
     }
     double operator_complexity() const;
+    double interpolation_complexity() const;
 
 private:
     void smooth(int level, const Vector& rhs, bool forward,
@@ -185,7 +186,15 @@ inline double MultilevelVCycle::operator_complexity() const {
     return entries / static_cast<double>(matrices_.front().nnz());
 }
 
-inline TwoGridIterationResult solve_multilevel(
+inline double MultilevelVCycle::interpolation_complexity() const {
+    double entries = 0.0;
+    for (const SparseMatrix& interpolation : prolongations_) {
+        entries += static_cast<double>(interpolation.nnz());
+    }
+    return entries / static_cast<double>(matrices_.front().nnz());
+}
+
+inline StationaryIterationResult solve_multilevel(
     const Vector& rhs, const MultilevelVCycle& cycle,
     double relative_tolerance = 1e-8, int max_cycles = 40000) {
     return solve_stationary_cycles(

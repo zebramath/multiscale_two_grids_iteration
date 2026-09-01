@@ -29,8 +29,8 @@ double row_sum(const tgi::SparseMatrix& matrix, int row) {
 }
 
 int main() {
-    require(tgi::version == "6.4.0", "wrong package version");
-    require(tgi::version_major == 6 && tgi::version_minor == 4 &&
+    require(tgi::version == "7.1.0", "wrong package version");
+    require(tgi::version_major == 7 && tgi::version_minor == 1 &&
                 tgi::version_patch == 0,
             "inconsistent numeric package version");
 
@@ -104,17 +104,17 @@ int main() {
         static_cast<std::size_t>(grid.fine_size()), 1.0);
     const auto solved = tgi::solve_two_grid(rhs, cycle, 1.0e-6, 1000);
     require(solved.converged, "two-grid solve did not converge");
-    require(solved.status == tgi::TwoGridIterationStatus::Converged,
+    require(solved.status == tgi::StationaryIterationStatus::Converged,
             "converged two-grid solve reported the wrong status");
     const auto limited = tgi::solve_two_grid(rhs, cycle, 1.0e-30, 1);
     require(!limited.converged &&
-                limited.status == tgi::TwoGridIterationStatus::SlowAtLimit,
+                limited.status == tgi::StationaryIterationStatus::SlowAtLimit,
             "cycle-limited contraction was not classified as slow");
     require(std::isfinite(limited.tail_factor) &&
                 limited.tail_factor > 0.0,
             "cycle-limited solve reported an invalid tail factor");
-    require(std::string(tgi::two_grid_status_name(
-                static_cast<tgi::TwoGridIterationStatus>(99))) == "unknown",
+    require(std::string(tgi::stationary_status_name(
+                static_cast<tgi::StationaryIterationStatus>(99))) == "unknown",
             "invalid two-grid status was misclassified");
 
     const tgi::StructuredGrid middle_grid(3, 2);
@@ -148,7 +148,8 @@ int main() {
         {matrix, geometric_coarse, coarsest},
         {geometric.prolongation, middle_geometric.prolongation}, 1, 2);
     require(multilevel.levels() == 3 &&
-                multilevel.operator_complexity() > 1.0,
+                multilevel.operator_complexity() > 1.0 &&
+                multilevel.interpolation_complexity() > 0.0,
             "multilevel hierarchy metadata is invalid");
     const auto multilevel_solved = tgi::solve_multilevel(
         rhs, multilevel, 1.0e-6, 2000);

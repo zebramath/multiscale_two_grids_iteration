@@ -59,41 +59,41 @@ private:
     CoarseSetupReport setup_report_;
 };
 
-enum class TwoGridIterationStatus {
+enum class StationaryIterationStatus {
     Converged,
     SlowAtLimit,
     Diverged
 };
 
-inline const char* two_grid_status_name(TwoGridIterationStatus status) {
+inline const char* stationary_status_name(StationaryIterationStatus status) {
     switch (status) {
-        case TwoGridIterationStatus::Converged:
+        case StationaryIterationStatus::Converged:
             return "converged";
-        case TwoGridIterationStatus::SlowAtLimit:
+        case StationaryIterationStatus::SlowAtLimit:
             return "slow-limit";
-        case TwoGridIterationStatus::Diverged:
+        case StationaryIterationStatus::Diverged:
             return "diverged";
     }
     return "unknown";
 }
 
-struct TwoGridIterationResult {
+struct StationaryIterationResult {
     Vector solution;
     int cycles = 0;
     double relative_residual = 0.0;
     double best_relative_residual = 1.0;
     double effective_factor = 1.0;
     double tail_factor = 1.0;
-    TwoGridIterationStatus status = TwoGridIterationStatus::SlowAtLimit;
+    StationaryIterationStatus status = StationaryIterationStatus::SlowAtLimit;
     bool converged = false;
 };
 
-inline TwoGridIterationResult solve_two_grid(
+inline StationaryIterationResult solve_two_grid(
     const Vector& rhs, const TwoGridCycle& cycle,
     double relative_tolerance = 1e-8, int max_cycles = 40000);
 
 template <class Cycle>
-inline TwoGridIterationResult solve_stationary_cycles(
+inline StationaryIterationResult solve_stationary_cycles(
     const Vector& rhs, const Cycle& cycle, double relative_tolerance,
     int max_cycles, const char* method_name);
 
@@ -355,6 +355,15 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
     const SparseMatrix& lhs, const SparseMatrix& rhs,
     double drop_tolerance, int thread_count,
     bool upper_triangle_only) {
+    if (lhs.cols() != rhs.rows() || !(drop_tolerance >= 0.0) ||
+        !std::isfinite(drop_tolerance)) {
+        throw std::invalid_argument(
+            "invalid dimensions or drop tolerance in sparse product");
+    }
+    if (upper_triangle_only && lhs.rows() != rhs.cols()) {
+        throw std::invalid_argument(
+            "upper-triangle sparse product must be square");
+    }
     unsigned int requested = thread_count > 0
         ? static_cast<unsigned int>(thread_count)
         : std::thread::hardware_concurrency();
@@ -620,6 +629,11 @@ inline SparseMatrix galerkin_coarse_operator(
 inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
                                   int smoothing_steps, int setup_threads)
     : a_(a), p_(p), smoothing_steps_(smoothing_steps) {
+    if (a_.rows() <= 0 || a_.rows() != a_.cols() ||
+        p_.rows() != a_.rows() || p_.cols() <= 0 ||
+        smoothing_steps_ <= 0) {
+        throw std::invalid_argument("invalid two-grid hierarchy");
+    }
     inverse_diagonal_.resize(static_cast<std::size_t>(a_.rows()));
     diagonal_position_.resize(static_cast<std::size_t>(a_.rows()));
     for (int row = 0; row < a_.rows(); ++row) {
@@ -710,6 +724,10 @@ inline void TwoGridCycle::restrict_fine_residual(
 inline double TwoGridCycle::iterate(
     const Vector& rhs, Vector& solution, Vector& residual,
     Workspace& workspace) const {
+    if (rhs.size() != static_cast<std::size_t>(a_.rows()) ||
+        solution.size() != rhs.size()) {
+        throw std::invalid_argument("invalid two-grid iterate dimensions");
+    }
     for (int step = 0; step < smoothing_steps_; ++step) {
         solve_gauss_seidel_sweep(rhs, true, solution);
     }
@@ -738,7 +756,7 @@ inline double TwoGridCycle::iterate(
 }
 
 template <class Cycle>
-inline TwoGridIterationResult solve_stationary_cycles(
+inline StationaryIterationResult solve_stationary_cycles(
     const Vector& rhs, const Cycle& cycle, double relative_tolerance,
     int max_cycles, const char* method_name) {
     if (!(relative_tolerance > 0.0) ||
@@ -747,7 +765,7 @@ inline TwoGridIterationResult solve_stationary_cycles(
             std::string("invalid ") + method_name + " stopping criteria");
     }
     constexpr int tail_window = 32;
-    TwoGridIterationResult result;
+    StationaryIterationResult result;
     result.solution.assign(rhs.size(), 0.0);
     Vector residual = rhs;
     typename Cycle::Workspace workspace;
@@ -760,7 +778,7 @@ inline TwoGridIterationResult solve_stationary_cycles(
         result.best_relative_residual = 0.0;
         result.effective_factor = 0.0;
         result.tail_factor = 0.0;
-        result.status = TwoGridIterationStatus::Converged;
+        result.status = StationaryIterationStatus::Converged;
         return result;
     }
     recent_residuals[0] = 1.0;
@@ -772,7 +790,7 @@ inline TwoGridIterationResult solve_stationary_cycles(
             !std::isfinite(residual_squared)) {
             result.relative_residual =
                 std::numeric_limits<double>::infinity();
-            result.status = TwoGridIterationStatus::Diverged;
+            result.status = StationaryIterationStatus::Diverged;
             break;
         }
         result.relative_residual =
@@ -784,14 +802,14 @@ inline TwoGridIterationResult solve_stationary_cycles(
             result.relative_residual;
         if (result.relative_residual <= relative_tolerance) {
             result.converged = true;
-            result.status = TwoGridIterationStatus::Converged;
+            result.status = StationaryIterationStatus::Converged;
             break;
         }
         if (result.cycles >= tail_window &&
             result.relative_residual > 1.0e8 &&
             result.relative_residual >
                 10.0 * result.best_relative_residual) {
-            result.status = TwoGridIterationStatus::Diverged;
+            result.status = StationaryIterationStatus::Diverged;
             break;
         }
     }
@@ -813,20 +831,20 @@ inline TwoGridIterationResult solve_stationary_cycles(
         }
     }
     if (!result.converged &&
-        result.status != TwoGridIterationStatus::Diverged) {
+        result.status != StationaryIterationStatus::Diverged) {
         if (result.tail_factor > 1.001 &&
             result.relative_residual >= 1.0 &&
             result.relative_residual >
                 10.0 * result.best_relative_residual) {
-            result.status = TwoGridIterationStatus::Diverged;
+            result.status = StationaryIterationStatus::Diverged;
         } else {
-            result.status = TwoGridIterationStatus::SlowAtLimit;
+            result.status = StationaryIterationStatus::SlowAtLimit;
         }
     }
     return result;
 }
 
-inline TwoGridIterationResult solve_two_grid(
+inline StationaryIterationResult solve_two_grid(
     const Vector& rhs, const TwoGridCycle& cycle,
     double relative_tolerance, int max_cycles) {
     return solve_stationary_cycles(

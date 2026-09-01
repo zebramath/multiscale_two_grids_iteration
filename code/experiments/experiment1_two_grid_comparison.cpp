@@ -16,7 +16,7 @@ struct Measurement {
     std::string parameter;
     double density = 0.0;
     std::size_t coarse_nnz = 0;
-    tgi::TwoGridIterationResult solved;
+    tgi::StationaryIterationResult solved;
 };
 
 struct Aggregate {
@@ -53,7 +53,7 @@ experiment_support::Row measurement_row(
         experiment_support::fixed(measurement.density, 4),
         std::to_string(measurement.coarse_nnz),
         std::to_string(measurement.solved.cycles),
-        tgi::two_grid_status_name(measurement.solved.status),
+        tgi::stationary_status_name(measurement.solved.status),
         experiment_support::scientific(
             measurement.solved.relative_residual, 2),
         experiment_support::fixed(
@@ -69,7 +69,7 @@ void accumulate(
         ++aggregate.converged;
         aggregate.converged_cycles += measurement.solved.cycles;
     } else if (measurement.solved.status ==
-               tgi::TwoGridIterationStatus::Diverged) {
+               tgi::StationaryIterationStatus::Diverged) {
         ++aggregate.diverged;
     } else {
         ++aggregate.slow;

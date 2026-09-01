@@ -12,6 +12,9 @@ namespace tgi {
 using Vector = std::vector<double>;
 
 inline double dot(const Vector& x, const Vector& y) {
+    if (x.size() != y.size()) {
+        throw std::invalid_argument("dot product dimension mismatch");
+    }
     double sum = 0.0;
     for (std::size_t i = 0; i < x.size(); ++i) sum += x[i] * y[i];
     return sum;
@@ -20,10 +23,16 @@ inline double dot(const Vector& x, const Vector& y) {
 inline double norm2(const Vector& x) { return std::sqrt(dot(x, x)); }
 
 inline void axpy(double alpha, const Vector& x, Vector& y) {
+    if (x.size() != y.size()) {
+        throw std::invalid_argument("axpy dimension mismatch");
+    }
     for (std::size_t i = 0; i < x.size(); ++i) y[i] += alpha * x[i];
 }
 
 inline Vector subtract(const Vector& x, const Vector& y) {
+    if (x.size() != y.size()) {
+        throw std::invalid_argument("vector subtraction dimension mismatch");
+    }
     Vector result(x.size());
     for (std::size_t i = 0; i < x.size(); ++i) result[i] = x[i] - y[i];
     return result;
@@ -93,8 +102,17 @@ inline SparseMatrix::SparseMatrix(
     int rows, int cols, const std::vector<Triplet>& triplets,
     double drop_tolerance)
     : rows_(rows), cols_(cols) {
+    if (rows_ < 0 || cols_ < 0 || !(drop_tolerance >= 0.0) ||
+        !std::isfinite(drop_tolerance)) {
+        throw std::invalid_argument("invalid sparse matrix dimensions or drop tolerance");
+    }
     std::vector<int> counts(static_cast<std::size_t>(rows_), 0);
     for (const auto& item : triplets) {
+        if (item.row < 0 || item.row >= rows_ ||
+            item.column < 0 || item.column >= cols_ ||
+            !std::isfinite(item.value)) {
+            throw std::invalid_argument("invalid sparse matrix triplet");
+        }
         ++counts[static_cast<std::size_t>(item.row)];
     }
 
@@ -127,6 +145,9 @@ inline SparseMatrix::SparseMatrix(
                 value += current->second;
                 ++current;
             } while (current != end && current->first == col);
+            if (!std::isfinite(value)) {
+                throw std::overflow_error("nonfinite accumulated sparse entry");
+            }
             if (std::abs(value) > drop_tolerance) {
                 col_idx_.push_back(col);
                 values_.push_back(value);
@@ -141,7 +162,34 @@ inline SparseMatrix::SparseMatrix(
     int rows, int cols, std::vector<int> row_ptr,
     std::vector<int> col_idx, std::vector<double> values)
     : rows_(rows), cols_(cols), row_ptr_(std::move(row_ptr)),
-      col_idx_(std::move(col_idx)), values_(std::move(values)) {}
+      col_idx_(std::move(col_idx)), values_(std::move(values)) {
+    if (rows_ < 0 || cols_ < 0 ||
+        row_ptr_.size() != static_cast<std::size_t>(rows_) + 1U ||
+        col_idx_.size() != values_.size() || row_ptr_.empty() ||
+        row_ptr_.front() != 0 || row_ptr_.back() < 0 ||
+        static_cast<std::size_t>(row_ptr_.back()) != values_.size()) {
+        throw std::invalid_argument("invalid sparse CSR storage");
+    }
+    for (int row = 0; row < rows_; ++row) {
+        const int begin = row_ptr_[static_cast<std::size_t>(row)];
+        const int end = row_ptr_[static_cast<std::size_t>(row) + 1U];
+        if (begin < 0 || begin > end ||
+            static_cast<std::size_t>(end) > values_.size()) {
+            throw std::invalid_argument("nonmonotone sparse CSR row pointers");
+        }
+        int previous_column = -1;
+        for (int position = begin; position < end; ++position) {
+            const std::size_t index = static_cast<std::size_t>(position);
+            const int column = col_idx_[index];
+            if (column < 0 || column >= cols_ ||
+                column <= previous_column || !std::isfinite(values_[index])) {
+                throw std::invalid_argument(
+                    "CSR columns must be valid, sorted and unique with finite values");
+            }
+            previous_column = column;
+        }
+    }
+}
 
 inline Vector SparseMatrix::multiply(const Vector& x) const {
     Vector result;
@@ -151,6 +199,9 @@ inline Vector SparseMatrix::multiply(const Vector& x) const {
 
 inline void SparseMatrix::multiply(const Vector& x, Vector& result,
                                    int thread_count) const {
+    if (x.size() != static_cast<std::size_t>(cols_)) {
+        throw std::invalid_argument("sparse matrix-vector dimension mismatch");
+    }
     result.resize(static_cast<std::size_t>(rows_));
     const auto multiply_row = [&](int row) {
         double sum = 0.0;
@@ -179,6 +230,10 @@ inline void SparseMatrix::multiply(const Vector& x, Vector& result,
 
 inline void SparseMatrix::multiply_add(double alpha, const Vector& x,
                                        Vector& result, int thread_count) const {
+    if (x.size() != static_cast<std::size_t>(cols_) ||
+        result.size() != static_cast<std::size_t>(rows_)) {
+        throw std::invalid_argument("sparse multiply-add dimension mismatch");
+    }
     const auto multiply_add_row = [&](int row) {
         double sum = 0.0;
         const int begin = row_ptr_[static_cast<std::size_t>(row)];
@@ -207,6 +262,10 @@ inline void SparseMatrix::multiply_add(double alpha, const Vector& x,
 inline double SparseMatrix::residual_squared(
     const Vector& x, const Vector& rhs, Vector& residual,
     int thread_count) const {
+    if (x.size() != static_cast<std::size_t>(cols_) ||
+        rhs.size() != static_cast<std::size_t>(rows_)) {
+        throw std::invalid_argument("sparse residual dimension mismatch");
+    }
     residual.resize(static_cast<std::size_t>(rows_));
     double squared_norm = 0.0;
 #if defined(_OPENMP)
@@ -380,6 +439,27 @@ inline SparseCholesky::SparseCholesky(
 inline void SparseCholesky::factorize(
     const SparseMatrix& matrix,
     const std::vector<int>& new_to_old_permutation) {
+    if (matrix.rows() <= 0 || matrix.rows() != matrix.cols()) {
+        throw std::invalid_argument(
+            "SparseCholesky requires a nonempty square matrix");
+    }
+    if (!new_to_old_permutation.empty() &&
+        new_to_old_permutation.size() !=
+            static_cast<std::size_t>(matrix.rows())) {
+        throw std::invalid_argument("invalid SparseCholesky permutation size");
+    }
+    if (!new_to_old_permutation.empty()) {
+        std::vector<bool> seen(
+            static_cast<std::size_t>(matrix.rows()), false);
+        for (int old : new_to_old_permutation) {
+            if (old < 0 || old >= matrix.rows() ||
+                seen[static_cast<std::size_t>(old)]) {
+                throw std::invalid_argument(
+                    "SparseCholesky permutation must be a bijection");
+            }
+            seen[static_cast<std::size_t>(old)] = true;
+        }
+    }
     n_ = matrix.rows();
     if (new_to_old_permutation.empty()) {
         new_to_old_.resize(static_cast<std::size_t>(n_));
@@ -587,6 +667,12 @@ inline void SparseCholesky::factorize(
 
 inline void SparseCholesky::solve(const Vector& rhs, Vector& result,
                                   Vector& work) const {
+    if (n_ <= 0 || column_ptr_.size() != static_cast<std::size_t>(n_) + 1U) {
+        throw std::logic_error("SparseCholesky solve called before factorization");
+    }
+    if (rhs.size() != static_cast<std::size_t>(n_)) {
+        throw std::invalid_argument("SparseCholesky right-hand side dimension mismatch");
+    }
     work.resize(static_cast<std::size_t>(n_));
     for (int index = 0; index < n_; ++index) {
         work[static_cast<std::size_t>(index)] =

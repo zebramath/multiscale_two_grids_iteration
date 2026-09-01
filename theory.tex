@@ -18,7 +18,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值与尺度自适应多层选择：理论分析 v6.4}
+\title{有限 Krylov 能量插值、两网格选择与递归扩展：理论分析 v7.1}
 \author{崔正平}
 \date{}
 
@@ -408,6 +408,11 @@ $\min_{\operatorname{rank}\bm\Pi=n_C}\norm{(\bm I-\bm\Pi)\bm T}_2
 定理~\ref{thm:globalopt} 给出固定磨光器下的理论最优空间。直接以两网格收敛率定义
 最优插值的相关研究可参见~\cite{BrannickEtAl2018}。能量极小粗空间一般与该最优空间
 不同，因而有限步候选优于能量终点在结构上完全可能。
+需要强调的是，式~\eqref{eq:bestspace} 在全部 $n_C$ 维子空间上取最小，因此是固定
+粗点单位注入所允许图空间族的绝对基准。并非每个左奇异子空间都能写成
+$\Ran[\bm W^T,\bm I]^T$；只有当它与 F--变量子空间横截、且对应的粗坐标块可逆时，
+才能在当前注入约束下表示为图空间。故该定理不给出当前可行族内必可达到的最优插值，
+而是给出任何可行候选都不能突破的下界，并精确说明能量终点为何未必是两网格最优点。
 
 \begin{theorem}[谱半径平方根的全局稳定性]\label{thm:lipschitz}
 对任意两个同维粗空间 $\mathcal U,\mathcal V$，
@@ -574,7 +579,7 @@ $\bm G_\ell^{\dagger_{\bm A_\ell}}$。记
 因而
 \begin{equation}
  \norm{\bm E_\ell^{V}-\bm E_\ell^{TG}}_{\bm A_\ell}
- \le \norm{\bm G_\ell}_{\bm A_\ell}^{,2}
+ \le \norm{\bm G_\ell}_{\bm A_\ell}^{2}
        \norm{\bm E_{\ell+1}^{V}}_{\bm A_{\ell+1}}.            \label{eq:multilevelbound}
 \end{equation}
 若 $\bm E_{\ell+1}^{V}$ 关于 $\bm A_{\ell+1}$ 自伴，则
@@ -626,14 +631,14 @@ $\bm G_\ell^{\dagger_{\bm A_\ell}}(\cdot)\bm G_\ell$ 的夹心结构得到最后
 \begin{equation}
  \norm{\bm E_\ell^{V}}_{\bm A_\ell}
  \le \norm{\bm E_\ell^{TG}}_{\bm A_\ell}
- +\norm{\bm G_\ell}_{\bm A_\ell}^{,2}
+ +\norm{\bm G_\ell}_{\bm A_\ell}^{2}
   \norm{\bm E_{\ell+1}^{V}}_{\bm A_{\ell+1}}.                \label{eq:multilevelrecursion}
 \end{equation}
 递归展开得到
 \begin{equation}
  \norm{\bm E_0^{V}}_{\bm A_0}
  \le\sum_{j=0}^{L-1}
- \left(\prod_{i=0}^{j-1}\norm{\bm G_i}_{\bm A_i}^{,2}\right)
+ \left(\prod_{i=0}^{j-1}\norm{\bm G_i}_{\bm A_i}^{2}\right)
  \norm{\bm E_j^{TG}}_{\bm A_j},                               \label{eq:multilevelsum}
 \end{equation}
 其中空乘积取 $1$。

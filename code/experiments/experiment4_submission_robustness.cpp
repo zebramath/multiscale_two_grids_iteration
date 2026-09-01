@@ -23,8 +23,8 @@ struct SolveResult {
     int cycles = 0;
     double milliseconds = 0.0;
     double effective_factor = 1.0;
-    tgi::TwoGridIterationStatus status =
-        tgi::TwoGridIterationStatus::SlowAtLimit;
+    tgi::StationaryIterationStatus status =
+        tgi::StationaryIterationStatus::SlowAtLimit;
     bool converged = false;
 };
 
@@ -83,7 +83,7 @@ void add_aggregate(
         aggregate.maximum_cycles = std::max(
             aggregate.maximum_cycles, measurement.cycles);
     } else if (measurement.status ==
-               tgi::TwoGridIterationStatus::Diverged) {
+               tgi::StationaryIterationStatus::Diverged) {
         ++aggregate.diverged;
     } else {
         ++aggregate.slow;
@@ -251,7 +251,7 @@ int main(int argc, char** argv) {
             experiment_support::fixed(
                 experiment_support::interpolation_density_percent(
                     *adaptive.prolongation), 4),
-            tgi::two_grid_status_name(adaptive_solved.status)});
+            tgi::stationary_status_name(adaptive_solved.status)});
         const auto reference = experiment_support::build_global_reference(
             grid, problem.matrix, threads);
         const tgi::TwoGridCycle reference_cycle(
@@ -266,7 +266,7 @@ int main(int argc, char** argv) {
             experiment_support::fixed(
                 experiment_support::interpolation_density_percent(
                     reference.prolongation), 4),
-            tgi::two_grid_status_name(solved.status)});
+            tgi::stationary_status_name(solved.status)});
     }
     experiment_support::Rows seed_summary;
     for (const std::string method : {"adaptive", "global-reference"}) {
@@ -322,7 +322,7 @@ int main(int argc, char** argv) {
                     : "-",
                 std::to_string(solved.cycles),
                 experiment_support::fixed(solved.effective_factor, 6),
-                tgi::two_grid_status_name(solved.status)});
+                tgi::stationary_status_name(solved.status)});
         }
     }
     experiment_support::Rows rhs_summary;

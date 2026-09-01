@@ -74,6 +74,16 @@ public:
                    const std::vector<int>& widths,
                    const Rows& rows,
                    bool separate_first_column_groups = false) {
+        if (headers.empty() || headers.size() != widths.size() ||
+            std::any_of(widths.begin(), widths.end(),
+                        [](int width) { return width <= 0; })) {
+            throw std::invalid_argument("invalid report table schema");
+        }
+        for (const Row& row : rows) {
+            if (row.size() != headers.size()) {
+                throw std::invalid_argument("report table row width mismatch");
+            }
+        }
         text_ << section << '\n' << std::string(section.size(), '-') << '\n';
         write_text_row(headers, widths);
         for (std::size_t i = 0; i < widths.size(); ++i) {

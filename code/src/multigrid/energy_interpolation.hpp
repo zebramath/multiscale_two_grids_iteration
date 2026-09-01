@@ -203,6 +203,10 @@ inline GlobalFSystem assemble_global_f_system(
     const Vector diagonal = system.matrix.diagonal();
     system.inverse_diagonal.resize(diagonal.size());
     for (std::size_t index = 0; index < diagonal.size(); ++index) {
+        if (!(diagonal[index] > 0.0) || !std::isfinite(diagonal[index])) {
+            throw std::runtime_error(
+                "global F-block has a nonpositive or nonfinite diagonal");
+        }
         system.inverse_diagonal[index] = 1.0 / diagonal[index];
     }
     return system;
@@ -380,6 +384,16 @@ inline InterpolationResult build_geometric_interpolation(
 inline InterpolationResult build_global_energy_interpolation(
     const StructuredGrid& grid, const SparseMatrix& matrix,
     const GlobalEnergyOptions& options = {}) {
+    if (matrix.rows() != grid.fine_size() ||
+        matrix.cols() != grid.fine_size()) {
+        throw std::invalid_argument(
+            "global energy interpolation matrix-grid dimension mismatch");
+    }
+    if (!(options.tolerance > 0.0 && options.tolerance < 1.0) ||
+        !std::isfinite(options.tolerance) ||
+        options.maximum_iterations <= 0) {
+        throw std::invalid_argument("invalid global energy solve options");
+    }
     return energy_interpolation_detail::solve_global_energy_columns(
         grid, matrix, options);
 }

@@ -127,10 +127,12 @@ experiment_support::Row measurement_row(
         density_pair(
             multilevel.prolongation(0), multilevel.prolongation(1)),
         experiment_support::fixed(multilevel.operator_complexity(), 4),
+        experiment_support::fixed(
+            multilevel.interpolation_complexity(), 4),
         std::to_string(two_grid.cycles),
         std::to_string(v_cycle.cycles),
         experiment_support::fixed(cycle_ratio, 3),
-        tgi::two_grid_status_name(v_cycle.status),
+        tgi::stationary_status_name(v_cycle.status),
         experiment_support::scientific(v_cycle.relative_residual, 2),
         experiment_support::fixed(v_cycle.effective_factor, 6)};
 }
@@ -208,9 +210,9 @@ int main(int argc, char** argv) {
     report.add_table(
         "Exact two-grid versus recursive V-cycle",
         {"Case", "Levels", "Method", "Level params", "P density %",
-         "Op comp", "TG cyc", "V cyc", "V/TG", "Status",
+         "C_A", "C_P", "TG cyc", "V cyc", "V/TG", "Status",
          "Final relres", "Eff factor"},
-        {13, 10, 18, 21, 15, 8, 7, 7, 7, 10, 12, 11}, rows, true);
+        {13, 10, 18, 21, 15, 8, 8, 7, 7, 7, 10, 12, 11}, rows, true);
     report.save("experiment7_multilevel_pilot");
     return 0;
 }

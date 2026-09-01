@@ -64,6 +64,12 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& initial_prolongation, int thread_count)
     : grid_(grid) {
+    if (a.rows() != grid.fine_size() || a.cols() != grid.fine_size() ||
+        initial_prolongation.rows() != grid.fine_size() ||
+        initial_prolongation.cols() != grid.coarse_size() ||
+        thread_count <= 0) {
+        throw std::invalid_argument("invalid global PCG path inputs");
+    }
     system_ = energy_interpolation_detail::assemble_global_f_system(grid, a);
     thread_count_ = std::max(1, std::min(thread_count, grid.coarse_size()));
     columns_.resize(static_cast<std::size_t>(grid.coarse_size()));
@@ -119,8 +125,7 @@ inline bool GlobalEnergyPcgPath::advance_one_iteration(
     const double denominator = dot(state.direction, product);
     if (!(denominator > 0.0) || !std::isfinite(denominator) ||
         !(state.rz > 0.0) || !std::isfinite(state.rz)) {
-        state.active = false;
-        return false;
+        throw std::runtime_error("global PCG path lost positive curvature");
     }
     const double alpha = state.rz / denominator;
     axpy(alpha, state.direction, state.solution);
@@ -133,6 +138,12 @@ inline bool GlobalEnergyPcgPath::advance_one_iteration(
     if (!(rz_new > 0.0) || !std::isfinite(rz_new)) {
         state.rz = rz_new;
         state.active = false;
+        const double threshold = std::numeric_limits<double>::epsilon() *
+            state.initial_residual_norm;
+        if (!std::isfinite(rz_new) || norm2(state.residual) > threshold) {
+            throw std::runtime_error(
+                "global PCG path broke down before convergence");
+        }
         return false;
     }
     const double beta = rz_new / state.rz;
@@ -195,6 +206,9 @@ inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
 
 inline GlobalPcgPathReport GlobalEnergyPcgPath::report(
     double tolerance) const {
+    if (tolerance < 0.0 || !std::isfinite(tolerance)) {
+        throw std::invalid_argument("invalid PCG path report tolerance");
+    }
     GlobalPcgPathReport value;
     value.systems = static_cast<int>(columns_.size());
     value.minimum_iterations = columns_.empty()

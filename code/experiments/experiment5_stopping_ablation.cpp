@@ -23,7 +23,7 @@ struct Measurement {
     tgi::GlobalPcgPathReport path;
     double energy = 0.0;
     double density = 0.0;
-    tgi::TwoGridIterationResult solved;
+    tgi::StationaryIterationResult solved;
 };
 
 Measurement measure(
@@ -154,7 +154,7 @@ int main(int argc, char** argv) {
                 experiment_support::scientific(value.energy, 4),
                 experiment_support::fixed(value.density, 4),
                 std::to_string(value.solved.cycles),
-                tgi::two_grid_status_name(value.solved.status),
+                tgi::stationary_status_name(value.solved.status),
                 experiment_support::fixed(
                     value.solved.effective_factor, 6)});
         }

@@ -1,3 +1,4 @@
+#include "experiment/reporting.hpp"
 #include "multigrid/global_pcg.hpp"
 
 #include <cmath>
@@ -24,6 +25,42 @@ void require_throws(Action&& action, const std::string& message) {
 }
 
 int main() {
+    require_throws(
+        []() {
+            (void)tgi::dot(tgi::Vector{1.0}, tgi::Vector{1.0, 2.0});
+        },
+        "dot product accepted mismatched dimensions");
+    require_throws(
+        []() {
+            (void)tgi::SparseMatrix(
+                2, 2, std::vector<int>{0, 2, 2},
+                std::vector<int>{1, 0}, tgi::Vector{1.0, 1.0});
+        },
+        "CSR constructor accepted unsorted row structure");
+    require_throws(
+        []() {
+            const tgi::SparseMatrix identity(
+                2, 2, std::vector<tgi::Triplet>{{0, 0, 1.0}, {1, 1, 1.0}});
+            tgi::SparseCholesky factor;
+            factor.factorize(identity, {0, 0});
+        },
+        "SparseCholesky accepted a non-bijective permutation");
+    require_throws(
+        []() {
+            tgi::SparseCholesky factor;
+            tgi::Vector result;
+            tgi::Vector work;
+            factor.solve(tgi::Vector{1.0}, result, work);
+        },
+        "unfactorized SparseCholesky accepted a solve");
+    require_throws(
+        []() {
+            experiment_support::Report report("schema test");
+            report.add_table(
+                "bad table", {"A", "B"}, {4, 4}, {{"only-one"}});
+        },
+        "report accepted a row with the wrong column count");
+
     const tgi::StructuredGrid grid(15, 4);
     tgi::CoefficientOptions coefficient_options;
     coefficient_options.distribution =

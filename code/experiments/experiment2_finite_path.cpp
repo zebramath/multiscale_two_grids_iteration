@@ -39,7 +39,7 @@ experiment_support::Row path_row(
             experiment_support::interpolation_density_percent(
                 prolongation), 4),
         std::to_string(solved.cycles),
-        tgi::two_grid_status_name(solved.status),
+        tgi::stationary_status_name(solved.status),
         experiment_support::scientific(solved.relative_residual, 2),
         experiment_support::fixed(solved.effective_factor, 6),
         experiment_support::fixed(solved.tail_factor, 6)};

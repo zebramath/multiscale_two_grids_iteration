@@ -19,8 +19,8 @@ struct OracleCase {
 struct CycleMeasurement {
     int cycles = 0;
     double effective_factor = 1.0;
-    tgi::TwoGridIterationStatus status =
-        tgi::TwoGridIterationStatus::SlowAtLimit;
+    tgi::StationaryIterationStatus status =
+        tgi::StationaryIterationStatus::SlowAtLimit;
     bool converged = false;
 };
 
@@ -133,14 +133,14 @@ int main(int argc, char** argv) {
             std::to_string(adaptive_cycles.cycles),
             experiment_support::fixed(
                 adaptive_cycles.effective_factor, 6),
-            tgi::two_grid_status_name(adaptive_cycles.status),
+            tgi::stationary_status_name(adaptive_cycles.status),
             std::to_string(oracle_steps),
             experiment_support::fixed(
                 static_cast<double>(oracle_steps) /
                     static_cast<double>(item.fine), 3),
             std::to_string(oracle.cycles),
             experiment_support::fixed(oracle.effective_factor, 6),
-            tgi::two_grid_status_name(oracle.status),
+            tgi::stationary_status_name(oracle.status),
             adaptive_cycles.converged && oracle.converged
                 ? experiment_support::fixed(gap, 2)
                 : "--"});
