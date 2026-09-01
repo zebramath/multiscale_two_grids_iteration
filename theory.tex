@@ -18,7 +18,7 @@
 \newcommand{\Sc}{\bm S}
 \newcommand{\rhoTG}{\rho_{\rm TG}}
 
-\title{有限 Krylov 能量插值、两网格选择与递归扩展：理论分析 v7.3}
+\title{有限 Krylov 能量插值、两网格选择与递归扩展：理论分析 v7.4}
 \author{崔正平}
 \date{}
 
@@ -40,11 +40,9 @@
 最优问题，得到尖锐的一阶 Pareto 常数、唯一最优方向及秩退化时的一阶失效。在显式
 余项控制下，本文给出可在有限 PCG 路径逐步核验的严格反单调充分条件。
 最后，当标准 Jacobi--PCG 条件数具有 $O(h^{-2})$ 上界时，本文证明把能量误差降低到
-任意固定比例只需 $m=O(h^{-1})$ 步。基于这一尺度信息，当前 adaptive 定位为
-\[
- \boxed{\text{theory-informed lightweight empirical selector}},
-\]
-其归一化步数和尺度比阈值均为经验参数，不宣称最优或 near--oracle。
+任意固定比例只需 $m=O(h^{-1})$ 步。基于这一尺度信息，本文设置一个
+\emph{theory-informed lightweight empirical selector}；其归一化步数和尺度比阈值
+均为经验参数，不宣称最优或 near-oracle。
 此外，本文给出精确两网格与递归 V--cycle 之间的误差传播恒等式及能量范数界，
 从而明确有限步传递算子向多层层次结构递归时新增误差的唯一来源。
 
@@ -66,7 +64,7 @@
  \bm P(\bm W)=\begin{bmatrix}\bm W\\\bm I\end{bmatrix},
  \qquad \bm W\in\R^{n_F\times n_C}.                  \label{eq:P}
 \end{equation}
-当前算法从几何插值出发，对各列方程使用 Jacobi--PCG，沿同一条增量路径生成有限步候选。
+所研究构造从几何插值出发，对各列方程使用 Jacobi--PCG，沿同步检查点生成有限步候选。
 两网格主实验中，每个候选均配合同一前向/后向 Gauss--Seidel 磨光器和精确 Galerkin
 粗解；多层次要实验则在每个非最粗层独立构造同类传递算子，并在最粗层精确求解。
 
@@ -89,7 +87,8 @@ $\bm W\in\R^{n_F\times n_C}$、$\Sc\in\R^{n_C\times n_C}$。
  \norm{\bm K}_{\bm M}=\norm{\bm M^{1/2}\bm K\bm M^{-1/2}}_2.
 \]
 $\norm{\cdot}_2$ 与 $\norm{\cdot}_F$ 分别为谱范数和 Frobenius 范数，
-$\sigma_i(\cdot)$ 按非增次序排列；$\Ran(\bm X)$ 表示列空间，$\rho(\bm X)$ 表示谱半径。
+$\sigma_i(\cdot)$ 按非增次序排列；$\Ran(\bm X)$ 表示列空间，$\rho(\bm X)$ 表示谱半径；
+“主角”均指两个子空间之间的 principal angles。
 $\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^T\bm A$ 称为 $\bm G$ 的
 $\bm A$--伴随。``Galerkin 粗算子''专指 $\bm A_c=\bm P^T\bm A\bm P$；
 ``对称两网格''专指前磨光为 $\bm G$、后磨光为 $\bm G^{\dagger_{\bm A}}$ 且粗解精确的
@@ -114,8 +113,8 @@ PCG 能量账本 & 每列方程使用 SPD 预条件的标准 CG，任意迭代�
 \end{tabular}
 \end{center}
 
-下文 $\bm W^\ast$ 表示精确能量极小点；数值实验中的 global-reference 是有限容差
-$10^{-10}$ 下的高精度参考。
+下文 $\bm W^\ast$ 表示精确能量极小点；数值实验中的 global-reference 是以逐列相对
+欧氏残量 $10^{-10}$ 定义的数值参考，不与精确终点混同。
 
 \section{能量终点与有限 PCG 的精确账本}
 
@@ -169,7 +168,7 @@ $\Sc\succ0$ 则由 $\bm A\succ0$ 的 Schur 补判据得到。
 两网格目标之间的非单调关系。
 相关的粗空间研究还表明，针对算子范数的标准谱空间不必最小化两层迭代的谱半径
 \cite{CiaramellaVanzan2022}；本文则针对能量极小插值的有限 PCG 构造路径，分析
-能量代理与对称两网格目标的错位并给出低成本截断规则。
+能量代理与对称两网格目标的错位，并据此设置低成本的经验单候选规则。
 
 第 $j$ 列满足 $\bm B\bm w_j^\ast=-\bm C\bm e_j$。
 设 $\bm w_{j,m}$ 是从给定初值运行 $m$ 步 PCG 的结果，
@@ -403,8 +402,9 @@ $\bm N(\bm Z)^T[\bm Z^T,\bm I]^T=0$，便得到
 \end{theorem}
 
 \begin{proof}
-这是矩阵最佳秩 $n_C$ 逼近的投影形式：
-$\min_{\operatorname{rank}\bm\Pi=n_C}\norm{(\bm I-\bm\Pi)\bm T}_2
+这是矩阵最佳秩 $n_C$ 逼近的投影形式：在秩为 $n_C$ 的欧氏正交投影中，
+$\min_{\bm\Pi^T=\bm\Pi^2=\bm\Pi,\,\operatorname{rank}\bm\Pi=n_C}
+\norm{(\bm I-\bm\Pi)\bm T}_2
 =\sigma_{n_C+1}(\bm T)$。
 \end{proof}
 
@@ -489,10 +489,9 @@ $\norm{(\bm I+\bm Z^T\bm Z)^{-1/2}}_2\le1$。
 初始误差的能量范数降低到比例 $\varepsilon\in(0,1)$ 时，循环数上界为
 \begin{equation}
  k_{\rm cert}=\left\lceil
- \frac{\log(1/\varepsilon)}{-2\log\bar f}\right\rceil
-                                                                    \label{eq:cyclecertificate}
+ \frac{\log(1/\varepsilon)}{-2\log\bar f}\right\rceil.           \label{eq:cyclecertificate}
 \end{equation}
-；即运行 $k_{\rm cert}$ 个循环必已达到该能量误差比例。
+即运行 $k_{\rm cert}$ 个循环必已达到该能量误差比例。
 \end{corollary}
 
 \begin{proof}
@@ -927,7 +926,7 @@ $q_h\le\exp\{-2/(\sqrt{\kappa_h}+1)\}$ 和条件数假设直接得到
  \boxed{\text{theory-informed lightweight empirical selector}}.
 \]
 
-令 $n_H=1/H=n/r$ 为每方向粗网格区间数。算法构造
+令 $r_c=H/h$ 为粗化比，$n_H=1/H=n/r_c$ 为每个坐标方向的粗网格区间数。算法构造
 \begin{equation}
  m_{\rm ad}=
  \begin{cases}
@@ -947,7 +946,7 @@ $\theta\in\{1/8,1/4,1/3,1/2\}$，因而按构造
 \end{equation}
 命题~\ref{prop:fixedreduction} 只支持 $O(h^{-1})$ 这一尺度选择；
 $1/8,1/4,1/3,1/2$ 以及 $10^3,10^5$ 均是针对当前受控问题族设置的经验参数。
-本文不声称这些常数最优，也不把 adaptive 称为 near--oracle。算法只进行一次路径推进、
+本文不声称这些常数最优，也不把 adaptive 称为 near-oracle。算法只进行一次路径推进、
 一次插值组装和一次粗算子构造；窗口受限 sampled oracle 仅作为离线描述性评估基准，
 不进入在线选择，也不为参数最优性提供理论保证。
 
@@ -960,7 +959,7 @@ $1/8,1/4,1/3,1/2$ 以及 $10^3,10^5$ 均是针对当前受控问题族设置的�
  \text{PCG 正交能量尾}
  \longrightarrow \bm Z\text{ 的粗空间几何}
  \longrightarrow \rhoTG\text{ 的投影目标}
- \longrightarrow \text{有限步非单调性与尺度自适应选择}
+ \longrightarrow \text{有限步非单调性与经验单候选选择}
  \longrightarrow \text{递归 V--cycle}.}
 \]
 代数恒等式和全局稳定界适用于有限维 SPD 系统、固定粗点及对称两网格结构；能量误差
@@ -974,13 +973,11 @@ $\bm Y$ 满列秩完全刻画。固定能量预算下的最优问题进一步给
 精确两网格到递归 V--cycle 的恒等分解进一步把下一层非精确粗解误差隔离为显式扰动项，
 并给出逐层能量范数上界；它为三层次要实验提供理论接口，但不替代一般多层复杂度或
 网格无关收敛分析。
-数值部分在二维规则网格与高对比通道族上隔离并检验这一主线；adaptive 定位为
-\[
- \boxed{\text{theory-informed lightweight empirical selector}}.
-\]
-它以一次有限 PCG 构造实现理论支持的 $O(h^{-1})$ 步数尺度，但具体归一化位置和尺度比阈值均为经验选择，
-不宣称最优或 near--oracle。系数几何按网格单元数定义，故尺寸实验代表受控离散问题族；
-独立的固定物理几何嵌套加密实验另行检验标准网格细化情形。
+数值部分在二维规则网格与高对比通道族上隔离并检验这一主线。adaptive 作为
+\emph{theory-informed lightweight empirical selector}，以一次有限 PCG 构造实现
+理论支持的 $O(h^{-1})$ 步数尺度；具体归一化位置和尺度比阈值均为经验选择，不宣称最优
+或 near-oracle。系数几何按网格单元数定义，故尺寸实验代表受控离散问题族；独立的固定
+物理几何嵌套加密实验另行检验标准网格细化情形。
 
 \begin{thebibliography}{99}
 

@@ -151,24 +151,24 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::Report report(
-        "Cross-problem two-grid interpolation comparison");
+        "Two-grid comparison across scale, contrast and topology");
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Cases", std::to_string(cases.size())},
         {"Mode", quick ? "quick" : "full"},
         {"Threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"},
-        {"Maximum cycles", "adaptive/reference 20000; geometric 30000"}});
+        {"Maximum cycles", "adaptive/global-reference 20000; geometric 30000"}});
     report.add_note(
         "The matrix varies fine/coarse scale, contrast and six channel "
         "topologies. The two 256/16 extensions test cross-channel and "
         "winding-ring coefficients at the largest scale. Adaptive is a "
-        "theory-informed lightweight empirical selector. It uses (1/h)/8 "
+        "theory-informed lightweight empirical selector: it uses (1/h)/8 "
         "when 1/H<=8; otherwise it uses (1/h)/4, (1/h)/3 or (1/h)/2 in "
-        "the low, intermediate or high diagonal-ratio band; these fractions "
-        "and band thresholds are empirical, without optimality claims. Effective factor "
-        "is the whole-solve geometric mean contraction; tail factor uses the "
-        "last 32 cycles.");
+        "the low, intermediate or high diagonal-ratio band. These fractions "
+        "and thresholds are empirical and carry no optimality claim. The "
+        "effective factor is the whole-solve geometric mean residual "
+        "contraction; the tail factor uses at most the last 32 cycles.");
     report.add_table(
         "All two-grid cases",
         {"Axis", "1/h", "1/H", "Contrast", "Topology", "Method",

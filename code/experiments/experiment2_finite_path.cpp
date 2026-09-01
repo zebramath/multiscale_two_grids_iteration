@@ -112,14 +112,15 @@ int main(int argc, char** argv) {
         {"Version", std::string(tgi::version)},
         {"Threads", std::to_string(base.threads)},
         {"Cases", std::to_string(cases.size())},
-        {"Checkpoints", "m/(1/h)=0,1/16,...,1/2 and reference"},
+        {"Checkpoints", "m/(1/h)=0,1/16,...,1/2 and global-reference"},
         {"Solve tolerance", "1e-6"},
-        {"Maximum cycles", "finite/reference 20000; geometric 30000"}});
+        {"Maximum cycles", "finite/global-reference 20000; geometric 30000"}});
     report.add_note(
-        "The three cross-channel cases isolate scale and contrast. Only the "
-        "energy excess, interpolation density and independently measured "
-        "two-grid cycles are retained: energy decreases along the PCG path, "
-        "whereas the iteration count can attain a much better finite minimum.");
+        "The three cross-channel cases isolate scale and contrast. Energy "
+        "excess is normalized by the excess of geometric interpolation over "
+        "the numerical global reference. Along each sampled PCG path, this "
+        "quantity decreases while the independently measured two-grid cycle "
+        "count reaches a finite minimum and then increases.");
     report.add_table(
         "Finite path comparison",
         {"1/h", "1/H", "Topology", "Contrast", "Method", "m",

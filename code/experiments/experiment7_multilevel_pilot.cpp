@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::Report report(
-        "Three-level V-cycle pilot experiment");
+        "Three-level V-cycle feasibility study");
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Mode", quick ? "quick" : "full"},
@@ -202,11 +202,12 @@ int main(int argc, char** argv) {
         {"Setup threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"}});
     report.add_note(
-        "This is a deliberately secondary multilevel pilot. The same "
-        "transfer construction is applied independently on both Galerkin "
-        "transitions. Exact two-grid cycles with the first transfer provide "
-        "a controlled reference for the cost of replacing that exact coarse "
-        "solve by one recursive V-cycle; no wall-clock claim is made.");
+        "This secondary experiment applies the same interpolation construction "
+        "independently on both Galerkin transitions. Exact two-grid cycles "
+        "with the first interpolation provide a controlled reference for "
+        "replacing the exact coarse solve by one recursive V-cycle. The two "
+        "finite hierarchies establish feasibility only; no wall-clock, "
+        "arbitrary-level or asymptotic-complexity claim is made.");
     report.add_table(
         "Exact two-grid versus recursive V-cycle",
         {"Case", "Levels", "Method", "Level params", "P density %",

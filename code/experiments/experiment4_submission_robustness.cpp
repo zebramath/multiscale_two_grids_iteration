@@ -287,7 +287,7 @@ int main(int argc, char** argv) {
                 : "--"});
     }
 
-    experiment_support::progress("submission RHS transfer");
+    experiment_support::progress("RHS robustness");
     const auto transfer_problem = experiment_support::make_problem(
         grid, cross, config, 1);
     const auto transfer_geometric = tgi::build_geometric_interpolation(grid);
@@ -385,7 +385,7 @@ int main(int argc, char** argv) {
         timing_row("adaptive", adaptive_timings),
         timing_row("global-reference", reference_timings)};
     experiment_support::Report report(
-        "Submission-focused robustness checks");
+        "Robustness and repeated-timing checks");
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Grid", "64/16"},
@@ -394,16 +394,16 @@ int main(int argc, char** argv) {
         {"Topology", "cross-channel"},
         {"Threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"},
-        {"Maximum cycles", "adaptive/reference 20000; geometric 30000"}});
+        {"Maximum cycles", "adaptive/global-reference 20000; geometric 30000"}});
     report.add_note(
-        "This single compact experiment adds only the three checks needed "
-        "before submission: five coefficient seeds and six right-hand sides "
-        "evaluated with the same matrix-dependent interpolation. The "
-        "single timing question is the central 128/16 cross-channel case: "
-        "adaptive and the global energy reference are "
-        "measured in five post-warmup repetitions with rotating order after "
-        "both pass the formal convergence criterion. Q1, median and Q3 "
-        "replace a single wall-clock observation.");
+        "Five coefficient seeds and six right-hand sides test robustness; "
+        "the latter reuse each method's matrix-dependent interpolation. "
+        "Timing is restricted to the central 128/16 cross-channel case. "
+        "Adaptive and global-reference are measured in five post-warmup "
+        "repetitions with rotating order after both satisfy the formal "
+        "convergence criterion. Setup includes interpolation, Galerkin "
+        "assembly and cycle construction; solve starts from zero. Q1, median "
+        "and Q3 summarize wall-clock variability.");
     report.add_table(
         "Coefficient-seed stability",
         {"Seed", "Method", "Parameter", "Cycles", "Effective factor",
@@ -415,7 +415,7 @@ int main(int argc, char** argv) {
          "Mean converged", "Worst converged"},
         {18, 13, 19, 14, 15}, seed_summary);
     report.add_table(
-        "Right-hand-side transfer (fixed interpolation)",
+        "Right-hand-side robustness (fixed interpolation)",
         {"Evaluation RHS", "Method", "m", "Cycles", "Effective factor",
          "Status"},
         {18, 18, 7, 8, 16, 10}, rhs_rows, true);

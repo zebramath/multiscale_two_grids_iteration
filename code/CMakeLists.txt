@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 7.3.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 7.4.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)

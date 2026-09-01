@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::Report report(
-        "Adaptive PCG versus a window-restricted offline step-two oracle");
+        "Empirical selector versus a window-restricted offline step-two oracle");
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Threads", std::to_string(threads)},
@@ -155,19 +155,17 @@ int main(int argc, char** argv) {
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
-        "The window-restricted step-two oracle is evaluation-only and does "
-        "not claim the optimum over the complete PCG path. It is a descriptive "
-        "benchmark, not evidence that the adaptive rule is optimal or near-oracle. "
-        "Adaptive is a theory-informed lightweight empirical selector and uses "
-        "(1/h)/8 when "
-        "1/H<=8; otherwise it maps the matrix diagonal ratio to (1/h)/4, "
-        "(1/h)/3 or (1/h)/2. It uses matrix and grid information but no "
-        "contrast or topology label. Its normalized fractions and diagonal-ratio "
-        "thresholds are empirical. Oracle candidates are screened to 6000 cycles; a "
-        "candidate still above tolerance at that point cannot beat any "
-        "reported oracle minimum. The final three cases are a post-freeze "
-        "validation split with unseen resolutions and topology/contrast "
-        "combinations.");
+        "The step-two oracle is an evaluation-only minimum over the stated "
+        "finite window, not over the complete PCG path. It neither establishes "
+        "parameter optimality nor supports a near-oracle claim. Adaptive is a "
+        "theory-informed lightweight empirical selector: it uses (1/h)/8 when "
+        "1/H<=8 and otherwise maps the matrix diagonal ratio to (1/h)/4, "
+        "(1/h)/3 or (1/h)/2. The fractions and thresholds are empirical; no "
+        "contrast or topology label is used. Oracle candidates are screened "
+        "for 6000 cycles; any candidate still above tolerance cannot improve "
+        "the reported converged minimum. The final three cases form a "
+        "post-freeze validation split with unseen resolution and "
+        "topology/contrast combinations.");
     report.add_table(
         "Representative oracle gaps", headers,
         {10, 5, 5, 10, 20, 10, 9, 8, 11, 10, 9, 16, 14, 13, 13, 8}, rows,
