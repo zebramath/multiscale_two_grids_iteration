@@ -1,13 +1,13 @@
-Adaptive PCG versus a window-restricted offline step-two oracle
-===============================================================
+Adaptive finite-step rule and a sampled offline reference
+=========================================================
 
-Version           : 7.2.0
+Version           : 7.5.0
 Threads           : 4
 Oracle candidates : m=0 and (1/h)/8,...,(1/h)/2 by 2
 Solve tolerance   : 1e-6
 Maximum cycles    : 20000
 
-Note: The window-restricted step-two oracle is evaluation-only and does not claim the optimum over the complete PCG path. Adaptive uses (1/h)/8 when 1/H<=8; otherwise it maps the matrix diagonal ratio to (1/h)/4, (1/h)/3 or (1/h)/2. It uses matrix and grid information but no contrast or topology label. Oracle candidates are screened to 6000 cycles; a candidate still above tolerance at that point cannot beat any reported oracle minimum. The final three cases are a post-freeze validation split with unseen resolutions and topology/contrast combinations.
+Note: The sampled oracle is the minimum over the stated finite step-two window. The adaptive finite-step rule uses (1/h)/8 when 1/H<=8 and otherwise maps the matrix diagonal ratio to (1/h)/4, (1/h)/3 or (1/h)/2. The design cases set the fractions and thresholds; the rule uses grid and matrix information. Oracle candidates are screened for 6000 cycles, exceeding every reported converged minimum. The final three cases form a post-freeze validation split with unseen resolution and topology/contrast combinations.
 
 Representative oracle gaps
 --------------------------

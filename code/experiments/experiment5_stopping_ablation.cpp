@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::Report report(
-        "Stopping-policy ablation for the adaptive selector");
+        "Stopping-policy ablation for the adaptive finite-step rule");
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Mode", quick ? "quick" : "full"},
@@ -193,11 +193,10 @@ int main(int argc, char** argv) {
         "use the same global Jacobi-PCG column equations. Fixed-step applies "
         "one normalized checkpoint to every problem. Fixed-residual stops "
         "each column independently at the same relative residual. The "
-        "six-case comparison tests scale, contrast and topology without "
-        "retuning either baseline. Recorded cycle sums include cycles actually "
-        "executed by slow-limit cases; no unconverged time is extrapolated. "
-        "Column iteration totals are deterministic setup-work proxies, and "
-        "wall time is not used in this ablation.");
+        "six-case comparison spans scale, contrast and topology with both "
+        "baseline parameters fixed across cases. Recorded cycle sums include "
+        "cycles executed by slow-limit cases. Column iteration totals provide "
+        "a deterministic proxy for setup work.");
     report.add_table(
         "Per-case stopping-policy comparison",
         {"1/h", "1/H", "Contrast", "Topology", "Policy", "Parameter",

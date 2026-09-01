@@ -1,14 +1,14 @@
-Cross-problem two-grid interpolation comparison
-===============================================
+Two-grid comparison across scale, contrast and topology
+=======================================================
 
-Version         : 7.2.0
+Version         : 7.5.0
 Cases           : 13
 Mode            : full
 Threads         : 4
 Solve tolerance : 1e-6
-Maximum cycles  : adaptive/reference 20000; geometric 30000
+Maximum cycles  : adaptive/global-reference 20000; geometric 30000
 
-Note: The matrix varies fine/coarse scale, contrast and six channel topologies. The two 256/16 extensions test cross-channel and winding-ring coefficients at the largest scale. Adaptive uses (1/h)/8 when 1/H<=8; otherwise it uses (1/h)/4, (1/h)/3 or (1/h)/2 in the low, intermediate or high diagonal-ratio band. Effective factor is the whole-solve geometric mean contraction; tail factor uses the last 32 cycles.
+Note: The matrix varies fine/coarse scale, contrast and six channel topologies. The two 256/16 extensions test cross-channel and winding-ring coefficients at the largest scale. The adaptive finite-step rule uses (1/h)/8 when 1/H<=8; otherwise it uses (1/h)/4, (1/h)/3 or (1/h)/2 in the low, intermediate or high diagonal-ratio band. The design cases set these fractions and thresholds. The effective factor is the whole-solve geometric mean residual contraction; the tail factor uses at most the last 32 cycles.
 
 All two-grid cases
 ------------------

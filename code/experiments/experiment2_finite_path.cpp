@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::Report report(
-        "Finite-PCG path evidence for nonmonotone two-grid behavior");
+        "Finite-PCG paths and nonmonotone two-grid behavior");
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Threads", std::to_string(base.threads)},

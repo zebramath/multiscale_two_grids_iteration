@@ -9,8 +9,6 @@
 #include <exception>
 #include <limits>
 #include <mutex>
-#include <stdexcept>
-#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -34,10 +32,6 @@ public:
 
     double iterate(const Vector& rhs, Vector& solution, Vector& residual,
                    Workspace& workspace) const;
-    void solve_coarse_system(const Vector& rhs, Vector& solution,
-                             Vector& work) const {
-        coarse_solver_.solve(rhs, solution, work);
-    }
     const SparseMatrix& coarse_matrix() const { return coarse_matrix_; }
     const CoarseSetupReport& setup_report() const { return setup_report_; }
 
@@ -66,15 +60,9 @@ enum class StationaryIterationStatus {
 };
 
 inline const char* stationary_status_name(StationaryIterationStatus status) {
-    switch (status) {
-        case StationaryIterationStatus::Converged:
-            return "converged";
-        case StationaryIterationStatus::SlowAtLimit:
-            return "slow-limit";
-        case StationaryIterationStatus::Diverged:
-            return "diverged";
-    }
-    return "unknown";
+    if (status == StationaryIterationStatus::Converged) return "converged";
+    if (status == StationaryIterationStatus::SlowAtLimit) return "slow-limit";
+    return "diverged";
 }
 
 struct StationaryIterationResult {
@@ -95,7 +83,7 @@ inline StationaryIterationResult solve_two_grid(
 template <class Cycle>
 inline StationaryIterationResult solve_stationary_cycles(
     const Vector& rhs, const Cycle& cycle, double relative_tolerance,
-    int max_cycles, const char* method_name);
+    int max_cycles);
 
 namespace two_grid_solver_detail {
 
@@ -154,7 +142,6 @@ inline std::vector<int> coarse_ordering(const SparseMatrix& matrix) {
     const int size = matrix.rows();
     const int side = static_cast<int>(
         std::llround(std::sqrt(static_cast<double>(size))));
-    if (side * side != size) return {};
     int separator_width = 1;
     for (int row = 0; row < size; ++row) {
         const int row_x = row % side;
@@ -355,21 +342,8 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
     const SparseMatrix& lhs, const SparseMatrix& rhs,
     double drop_tolerance, int thread_count,
     bool upper_triangle_only) {
-    if (lhs.cols() != rhs.rows() || !(drop_tolerance >= 0.0) ||
-        !std::isfinite(drop_tolerance)) {
-        throw std::invalid_argument(
-            "invalid dimensions or drop tolerance in sparse product");
-    }
-    if (upper_triangle_only && lhs.rows() != rhs.cols()) {
-        throw std::invalid_argument(
-            "upper-triangle sparse product must be square");
-    }
-    unsigned int requested = thread_count > 0
-        ? static_cast<unsigned int>(thread_count)
-        : std::thread::hardware_concurrency();
-    if (requested == 0U) requested = 1U;
     const int worker_count = std::max(
-        1, std::min(lhs.rows(), static_cast<int>(requested)));
+        1, std::min(lhs.rows(), thread_count));
     const bool use_dense_upper_path = upper_triangle_only;
 
     struct RowBlockProduct {
@@ -611,12 +585,6 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
 inline SparseMatrix galerkin_coarse_operator(
     const SparseMatrix& fine_matrix, const SparseMatrix& prolongation,
     int setup_threads = 1) {
-    if (fine_matrix.rows() != fine_matrix.cols() ||
-        fine_matrix.rows() != prolongation.rows() ||
-        prolongation.cols() <= 0) {
-        throw std::invalid_argument(
-            "incompatible dimensions in Galerkin coarse operator");
-    }
     const SparseMatrix restriction =
         prolongation.transpose(setup_threads);
     const SparseMatrix action =
@@ -629,11 +597,6 @@ inline SparseMatrix galerkin_coarse_operator(
 inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
                                   int smoothing_steps, int setup_threads)
     : a_(a), p_(p), smoothing_steps_(smoothing_steps) {
-    if (a_.rows() <= 0 || a_.rows() != a_.cols() ||
-        p_.rows() != a_.rows() || p_.cols() <= 0 ||
-        smoothing_steps_ <= 0) {
-        throw std::invalid_argument("invalid two-grid hierarchy");
-    }
     inverse_diagonal_.resize(static_cast<std::size_t>(a_.rows()));
     diagonal_position_.resize(static_cast<std::size_t>(a_.rows()));
     for (int row = 0; row < a_.rows(); ++row) {
@@ -644,16 +607,8 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
                a_.col_idx()[static_cast<std::size_t>(position)] < row) {
             ++position;
         }
-        if (position == end ||
-            a_.col_idx()[static_cast<std::size_t>(position)] != row) {
-            throw std::runtime_error("fine matrix is missing a diagonal entry");
-        }
         const double diagonal =
             a_.values()[static_cast<std::size_t>(position)];
-        if (!(diagonal > 0.0)) {
-            throw std::runtime_error(
-                "fine matrix has nonpositive diagonal");
-        }
         inverse_diagonal_[i] = 1.0 / diagonal;
         diagonal_position_[i] = position;
     }
@@ -670,10 +625,6 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
     const std::vector<int> ordering =
         two_grid_solver_detail::coarse_ordering(coarse_matrix_);
     coarse_solver_.factorize(coarse_matrix_, ordering);
-    unsigned int requested = setup_threads > 0
-        ? static_cast<unsigned int>(setup_threads)
-        : std::thread::hardware_concurrency();
-    if (requested == 0U) requested = 1U;
 #if defined(_OPENMP)
     constexpr std::size_t parallel_threshold = 40000U;
 #else
@@ -682,7 +633,7 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
     application_threads_ = p_.nnz() >= parallel_threshold
         ? std::max(
               1, std::min(
-                     {8, static_cast<int>(requested),
+                     {8, setup_threads,
                       p_.rows(), p_.cols()}))
         : 1;
 }
@@ -724,10 +675,6 @@ inline void TwoGridCycle::restrict_fine_residual(
 inline double TwoGridCycle::iterate(
     const Vector& rhs, Vector& solution, Vector& residual,
     Workspace& workspace) const {
-    if (rhs.size() != static_cast<std::size_t>(a_.rows()) ||
-        solution.size() != rhs.size()) {
-        throw std::invalid_argument("invalid two-grid iterate dimensions");
-    }
     for (int step = 0; step < smoothing_steps_; ++step) {
         solve_gauss_seidel_sweep(rhs, true, solution);
     }
@@ -758,12 +705,7 @@ inline double TwoGridCycle::iterate(
 template <class Cycle>
 inline StationaryIterationResult solve_stationary_cycles(
     const Vector& rhs, const Cycle& cycle, double relative_tolerance,
-    int max_cycles, const char* method_name) {
-    if (!(relative_tolerance > 0.0) ||
-        !(relative_tolerance < 1.0) || max_cycles <= 0) {
-        throw std::invalid_argument(
-            std::string("invalid ") + method_name + " stopping criteria");
-    }
+    int max_cycles) {
     constexpr int tail_window = 32;
     StationaryIterationResult result;
     result.solution.assign(rhs.size(), 0.0);
@@ -772,15 +714,6 @@ inline StationaryIterationResult solve_stationary_cycles(
     std::array<double, static_cast<std::size_t>(tail_window + 1)>
         recent_residuals{};
     const double initial_norm = norm2(residual);
-    if (initial_norm == 0.0) {
-        result.converged = true;
-        result.relative_residual = 0.0;
-        result.best_relative_residual = 0.0;
-        result.effective_factor = 0.0;
-        result.tail_factor = 0.0;
-        result.status = StationaryIterationStatus::Converged;
-        return result;
-    }
     recent_residuals[0] = 1.0;
     for (int iteration = 0; iteration < max_cycles; ++iteration) {
         const double residual_squared =
@@ -848,7 +781,7 @@ inline StationaryIterationResult solve_two_grid(
     const Vector& rhs, const TwoGridCycle& cycle,
     double relative_tolerance, int max_cycles) {
     return solve_stationary_cycles(
-        rhs, cycle, relative_tolerance, max_cycles, "two-grid");
+        rhs, cycle, relative_tolerance, max_cycles);
 }
 
 }

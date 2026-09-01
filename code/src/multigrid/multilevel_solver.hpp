@@ -4,15 +4,11 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
 namespace tgi {
 
-// Symmetric V-cycle with one forward/backward Gauss--Seidel sweep and an
-// exact solve on the coarsest level. Matrices and transfers are owned so that
-// the hierarchy remains valid independently of its builder.
 class MultilevelVCycle {
 public:
     struct Workspace {
@@ -28,10 +24,6 @@ public:
 
     double iterate(const Vector& rhs, Vector& solution, Vector& residual,
                    Workspace& workspace) const;
-    int levels() const { return static_cast<int>(matrices_.size()); }
-    const SparseMatrix& level_matrix(int level) const {
-        return matrices_.at(static_cast<std::size_t>(level));
-    }
     const SparseMatrix& prolongation(int level) const {
         return prolongations_.at(static_cast<std::size_t>(level));
     }
@@ -61,26 +53,12 @@ inline MultilevelVCycle::MultilevelVCycle(
     : matrices_(std::move(level_matrices)),
       prolongations_(std::move(prolongations)),
       smoothing_steps_(smoothing_steps) {
-    if (matrices_.size() < 2U ||
-        prolongations_.size() + 1U != matrices_.size() ||
-        smoothing_steps_ <= 0) {
-        throw std::invalid_argument("invalid multilevel hierarchy");
-    }
-
     restrictions_.reserve(prolongations_.size());
     inverse_diagonal_.resize(matrices_.size() - 1U);
     diagonal_position_.resize(matrices_.size() - 1U);
     for (std::size_t level = 0; level < prolongations_.size(); ++level) {
         const SparseMatrix& matrix = matrices_[level];
         const SparseMatrix& interpolation = prolongations_[level];
-        const SparseMatrix& coarse = matrices_[level + 1U];
-        if (matrix.rows() != matrix.cols() ||
-            interpolation.rows() != matrix.rows() ||
-            interpolation.cols() != coarse.rows() ||
-            coarse.rows() != coarse.cols()) {
-            throw std::invalid_argument(
-                "incompatible dimensions in multilevel hierarchy");
-        }
         restrictions_.push_back(interpolation.transpose(setup_threads));
         Vector& inverse = inverse_diagonal_[level];
         std::vector<int>& positions = diagonal_position_[level];
@@ -94,17 +72,8 @@ inline MultilevelVCycle::MultilevelVCycle(
                    matrix.col_idx()[static_cast<std::size_t>(position)] < row) {
                 ++position;
             }
-            if (position == end ||
-                matrix.col_idx()[static_cast<std::size_t>(position)] != row) {
-                throw std::runtime_error(
-                    "level matrix is missing a diagonal entry");
-            }
             const double diagonal =
                 matrix.values()[static_cast<std::size_t>(position)];
-            if (!(diagonal > 0.0)) {
-                throw std::runtime_error(
-                    "level matrix has nonpositive diagonal");
-            }
             inverse[index] = 1.0 / diagonal;
             positions[index] = position;
         }
@@ -169,10 +138,6 @@ inline void MultilevelVCycle::apply_level(
 inline double MultilevelVCycle::iterate(
     const Vector& rhs, Vector& solution, Vector& residual,
     Workspace& workspace) const {
-    if (rhs.size() != static_cast<std::size_t>(matrices_.front().rows()) ||
-        solution.size() != rhs.size()) {
-        throw std::invalid_argument("invalid multilevel iterate dimensions");
-    }
     prepare_workspace(workspace);
     apply_level(0, rhs, solution, workspace);
     return matrices_.front().residual_squared(solution, rhs, residual);
@@ -198,7 +163,7 @@ inline StationaryIterationResult solve_multilevel(
     const Vector& rhs, const MultilevelVCycle& cycle,
     double relative_tolerance = 1e-8, int max_cycles = 40000) {
     return solve_stationary_cycles(
-        rhs, cycle, relative_tolerance, max_cycles, "multilevel");
+        rhs, cycle, relative_tolerance, max_cycles);
 }
 
-}  // namespace tgi
+}

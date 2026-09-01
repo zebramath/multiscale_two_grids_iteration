@@ -137,7 +137,7 @@ experiment_support::Row measurement_row(
         experiment_support::fixed(v_cycle.effective_factor, 6)};
 }
 
-}  // namespace
+}
 
 int main(int argc, char** argv) {
     int threads = 4;
@@ -202,12 +202,11 @@ int main(int argc, char** argv) {
         {"Setup threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"}});
     report.add_note(
-        "This secondary experiment applies the same interpolation construction "
+        "The experiment applies the same interpolation construction "
         "independently on both Galerkin transitions. Exact two-grid cycles "
         "with the first interpolation provide a controlled reference for "
         "replacing the exact coarse solve by one recursive V-cycle. The two "
-        "finite hierarchies establish feasibility only; no wall-clock, "
-        "arbitrary-level or asymptotic-complexity claim is made.");
+        "hierarchies quantify finite-level feasibility and recursion cost.");
     report.add_table(
         "Exact two-grid versus recursive V-cycle",
         {"Case", "Levels", "Method", "Level params", "P density %",

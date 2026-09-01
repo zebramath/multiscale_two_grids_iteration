@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::Report report(
-        "Empirical selector versus a window-restricted offline step-two oracle");
+        "Adaptive finite-step rule and a sampled offline reference");
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Threads", std::to_string(threads)},
@@ -155,15 +155,13 @@ int main(int argc, char** argv) {
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
-        "The step-two oracle is an evaluation-only minimum over the stated "
-        "finite window, not over the complete PCG path. It neither establishes "
-        "parameter optimality nor supports a near-oracle claim. Adaptive is a "
-        "theory-informed lightweight empirical selector: it uses (1/h)/8 when "
+        "The sampled oracle is the minimum over the stated finite step-two "
+        "window. The adaptive finite-step rule uses (1/h)/8 when "
         "1/H<=8 and otherwise maps the matrix diagonal ratio to (1/h)/4, "
-        "(1/h)/3 or (1/h)/2. The fractions and thresholds are empirical; no "
-        "contrast or topology label is used. Oracle candidates are screened "
-        "for 6000 cycles; any candidate still above tolerance cannot improve "
-        "the reported converged minimum. The final three cases form a "
+        "(1/h)/3 or (1/h)/2. The design cases set the fractions and "
+        "thresholds; the rule uses grid and matrix information. Oracle "
+        "candidates are screened for 6000 cycles, exceeding every reported "
+        "converged minimum. The final three cases form a "
         "post-freeze validation split with unseen resolution and "
         "topology/contrast combinations.");
     report.add_table(

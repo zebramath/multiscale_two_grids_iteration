@@ -1,7 +1,7 @@
-Ablation of adaptive versus simple early-stopping policies
+Stopping-policy ablation for the adaptive finite-step rule
 ==========================================================
 
-Version                       : 7.2.0
+Version                       : 7.5.0
 Mode                          : full
 Cases                         : 6
 Threads                       : 4
@@ -11,7 +11,7 @@ Solve tolerance               : 1e-6
 Adaptive <= fixed-step cycles : 5/6
 Adaptive <= residual cycles   : 6/6
 
-Note: All three policies start from the same geometric interpolation and use the same global Jacobi-PCG column equations. Fixed-step applies one normalized checkpoint to every problem. Fixed-residual stops each column independently at the same relative residual. The comparison is intentionally compact and tests transfer across scale, contrast and topology without retuning either baseline. Column iteration totals are deterministic setup-work counts; wall time is not used in this ablation.
+Note: All three policies start from the same geometric interpolation and use the same global Jacobi-PCG column equations. Fixed-step applies one normalized checkpoint to every problem. Fixed-residual stops each column independently at the same relative residual. The six-case comparison spans scale, contrast and topology with both baseline parameters fixed across cases. Recorded cycle sums include cycles executed by slow-limit cases. Column iteration totals provide a deterministic proxy for setup work.
 
 Per-case stopping-policy comparison
 -----------------------------------

@@ -60,31 +60,24 @@ build_direct() {
     if "$cxx" -fopenmp -x c++ -E /dev/null >/dev/null 2>&1; then
         common="$common -fopenmp"
     fi
-    # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment1_two_grid_comparison.cpp \
         -o "$build_dir/experiment1_two_grid_comparison"
-    # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment2_finite_path.cpp \
         -o "$build_dir/experiment2_finite_path"
-    # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment3_oracle_validation.cpp \
         -o "$build_dir/experiment3_oracle_validation"
-    # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment4_submission_robustness.cpp \
         -o "$build_dir/experiment4_submission_robustness"
-    # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment5_stopping_ablation.cpp \
         -o "$build_dir/experiment5_stopping_ablation"
-    # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment6_fixed_physical_refinement.cpp \
         -o "$build_dir/experiment6_fixed_physical_refinement"
-    # shellcheck disable=SC2086
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment7_multilevel_pilot.cpp \
         -o "$build_dir/experiment7_multilevel_pilot"

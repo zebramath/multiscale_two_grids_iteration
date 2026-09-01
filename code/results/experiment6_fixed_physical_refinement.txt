@@ -1,7 +1,7 @@
 Fixed-physical coefficient under nested grid refinement
 =======================================================
 
-Version                       : 7.2.0
+Version                       : 7.5.0
 Mode                          : full
 Levels                        : 3
 Fine/coarse pairs             : 32/4, 64/8, 128/16
@@ -14,7 +14,7 @@ Shared-node mismatches        : 0
 Threads                       : 4
 Solve tolerance               : 1e-6
 
-Note: The channel width, channel centerlines, random-block partition and seed are defined in physical coordinates and held fixed while both fine and coarse meshes are dyadically refined. Equality on all shared nested-grid nodes is checked before solving. This experiment is separate from the cell-count-defined coefficient families used in experiments 1--5.
+Note: The channel width, channel centerlines, random-block partition and seed are defined in physical coordinates and held fixed while both fine and coarse meshes are dyadically refined. Equality on all shared nested-grid nodes is checked before solving. This three-level sequence complements the cell-count-defined coefficient families in experiments 1--5 and quantifies finite-grid refinement behavior.
 
 Nested-refinement comparison
 ----------------------------

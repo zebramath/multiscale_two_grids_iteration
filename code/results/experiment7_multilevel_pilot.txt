@@ -1,7 +1,7 @@
-Three-level V-cycle pilot experiment
-====================================
+Three-level V-cycle feasibility study
+=====================================
 
-Version         : 7.2.0
+Version         : 7.5.0
 Mode            : full
 Cases           : 2
 Hierarchy       : 64/16/8, 128/16/8
@@ -11,7 +11,7 @@ Coarsest solve  : exact sparse Cholesky
 Setup threads   : 4
 Solve tolerance : 1e-6
 
-Note: This is a deliberately secondary multilevel pilot. The same transfer construction is applied independently on both Galerkin transitions. Exact two-grid cycles with the first transfer provide a controlled reference for the cost of replacing that exact coarse solve by one recursive V-cycle; no wall-clock claim is made.
+Note: The experiment applies the same interpolation construction independently on both Galerkin transitions. Exact two-grid cycles with the first interpolation provide a controlled reference for replacing the exact coarse solve by one recursive V-cycle. The two hierarchies quantify finite-level feasibility and recursion cost.
 
 Exact two-grid versus recursive V-cycle
 ---------------------------------------

@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -79,16 +78,7 @@ inline SparseMatrix assemble_diffusion(const StructuredGrid& grid,
 
 inline StructuredGrid::StructuredGrid(int fine_interior_points, int coarsening_ratio)
     : fine_n_(fine_interior_points), ratio_(coarsening_ratio),
-      coarse_n_(0) {
-    if (fine_interior_points <= 0 || coarsening_ratio < 2 ||
-        (fine_interior_points + 1) % coarsening_ratio != 0 ||
-        (fine_interior_points + 1) / coarsening_ratio < 2) {
-        throw std::invalid_argument(
-            "StructuredGrid requires a positive grid with an exactly "
-            "divisible coarsening ratio and at least one interior C-point");
-    }
-    coarse_n_ = (fine_n_ + 1) / ratio_ - 1;
-}
+      coarse_n_((fine_interior_points + 1) / coarsening_ratio - 1) {}
 
 inline std::pair<int, int> StructuredGrid::fine_coords(int id) const {
     return {id % fine_n_, id / fine_n_};
@@ -184,27 +174,19 @@ inline bool is_high_conductivity_topology(
              (std::abs(y - upper) <= 0.5 * width ||
               std::abs(y - lower) <= 0.5 * width));
     }
-    if (distribution == CoefficientDistribution::WindingRingBinary) {
-        const double dx = x - 0.50;
-        const double dy = y - 0.50;
-        const double angle = std::atan2(dy, dx);
-        const double radius = std::sqrt(dx * dx + dy * dy);
-        const double target = 0.29 + 0.035 *
-            std::sin(5.0 * angle + phase);
-        return std::abs(radius - target) <= 0.5 * width;
-    }
-    return false;
+    const double dx = x - 0.50;
+    const double dy = y - 0.50;
+    const double angle = std::atan2(dy, dx);
+    const double radius = std::sqrt(dx * dx + dy * dy);
+    const double target = 0.29 + 0.035 *
+        std::sin(5.0 * angle + phase);
+    return std::abs(radius - target) <= 0.5 * width;
 }
 
 }
 
 inline CoefficientField make_coefficient(const StructuredGrid& grid,
                                   const CoefficientOptions& options) {
-    if (!(options.contrast >= 1.0) || !std::isfinite(options.contrast) ||
-        options.channel_background_block_size <= 0 ||
-        options.channel_width_fine_cells <= 0) {
-        throw std::invalid_argument("invalid coefficient-field options");
-    }
     CoefficientField field;
     field.values.resize(static_cast<std::size_t>(grid.fine_size()));
     const double width =
@@ -240,13 +222,6 @@ inline CoefficientField make_coefficient(const StructuredGrid& grid,
 inline CoefficientField make_fixed_physical_coefficient(
     const StructuredGrid& grid,
     const FixedPhysicalCoefficientOptions& options) {
-    if (!(options.contrast >= 1.0) || !std::isfinite(options.contrast) ||
-        options.background_blocks_per_direction <= 0 ||
-        !(options.channel_width > 0.0 && options.channel_width < 1.0) ||
-        !std::isfinite(options.channel_width)) {
-        throw std::invalid_argument(
-            "invalid fixed-physical coefficient-field options");
-    }
     CoefficientField field;
     field.values.resize(static_cast<std::size_t>(grid.fine_size()));
     for (int id = 0; id < grid.fine_size(); ++id) {
@@ -283,17 +258,6 @@ inline CoefficientField make_fixed_physical_coefficient(
 
 inline SparseMatrix assemble_diffusion(const StructuredGrid& grid,
                                 const Vector& coefficient) {
-    if (coefficient.size() !=
-        static_cast<std::size_t>(grid.fine_size()) ||
-        std::any_of(
-            coefficient.begin(), coefficient.end(),
-            [](double value) {
-                return !(value > 0.0) || !std::isfinite(value);
-            })) {
-        throw std::invalid_argument(
-            "diffusion coefficient must have one positive finite value "
-            "per fine-grid node");
-    }
     const double inverse_h2 = 1.0 / (grid.h() * grid.h());
     std::vector<int> row_ptr(
         static_cast<std::size_t>(grid.fine_size()) + 1U, 0);
