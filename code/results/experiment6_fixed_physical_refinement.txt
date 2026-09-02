@@ -1,7 +1,7 @@
 Fixed-physical coefficient under nested grid refinement
 =======================================================
 
-Version                       : 7.5.0
+Version                       : 7.6.0
 Mode                          : full
 Levels                        : 3
 Fine/coarse pairs             : 32/4, 64/8, 128/16

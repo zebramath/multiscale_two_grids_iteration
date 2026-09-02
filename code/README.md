@@ -1,4 +1,4 @@
-# two_grids_iteration v7.5.0
+# two_grids_iteration v7.6.0
 
 ## 实现
 
@@ -35,17 +35,17 @@ auto result = tgi::build_adaptive_global_pcg_interpolation(
 的三个代表问题；`supplemental` 运行实验 5--6；`multilevel` 运行实验 7；`full` 运行
 七组正式实验。
 
-## 实验
+## 四个数值主题与七个实验入口
 
-| 入口 | 内容 |
-|---|---|
-| `experiment1_two_grid_comparison` | 尺度、对比度、六类拓扑和 256/16 扩展问题 |
-| `experiment2_finite_path` | 能量下降与两网格循环数非单调变化 |
-| `experiment3_oracle_validation` | 设计组与冻结验证组上的窗口受限 sampled oracle |
-| `experiment4_submission_robustness` | 五个 seed、六类 RHS 与中心问题重复计时 |
-| `experiment5_stopping_ablation` | 自适应有限步、固定步数与固定列残量消融 |
-| `experiment6_fixed_physical_refinement` | 固定物理系数场的三层嵌套加密 |
-| `experiment7_multilevel_pilot` | 三层 V-cycle 与首层精确两网格配对 |
+| 主题 | 入口 | 内容 |
+|---|---|---|
+| 两网格性能与有限路径 | `experiment1_two_grid_comparison` | 尺度、对比度、六类拓扑和 256/16 扩展问题 |
+| 两网格性能与有限路径 | `experiment2_finite_path` | 能量下降与两网格循环数非单调变化 |
+| 规则质量、稳健性与代价 | `experiment3_oracle_validation` | 设计组与冻结验证组上的窗口受限离线采样参考 |
+| 规则质量、稳健性与代价 | `experiment4_submission_robustness` | 五个 seed、六类 RHS 与中心问题重复计时 |
+| 规则质量、稳健性与代价 | `experiment5_stopping_ablation` | 自适应有限步、固定步数与固定列残量消融 |
+| 固定物理系数场加密 | `experiment6_fixed_physical_refinement` | 固定物理系数场的三层嵌套加密 |
+| 多层初步验证 | `experiment7_multilevel_pilot` | 三层 V-cycle 与首层精确两网格配对 |
 
 正式求解从零初值开始，相对欧氏残量容差为 `1e-6`。adaptive 和 global-reference 的
 循环上限为 20000，geometric 为 30000。结果报告循环数、最终残量、全程有效收敛因子、

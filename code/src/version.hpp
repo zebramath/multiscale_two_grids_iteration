@@ -5,8 +5,8 @@
 namespace tgi {
 
 inline constexpr int version_major = 7;
-inline constexpr int version_minor = 5;
+inline constexpr int version_minor = 6;
 inline constexpr int version_patch = 0;
-inline constexpr std::string_view version = "7.5.0";
+inline constexpr std::string_view version = "7.6.0";
 
 }

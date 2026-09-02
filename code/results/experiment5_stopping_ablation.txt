@@ -1,7 +1,7 @@
 Stopping-policy ablation for the adaptive finite-step rule
 ==========================================================
 
-Version                       : 7.5.0
+Version                       : 7.6.0
 Mode                          : full
 Cases                         : 6
 Threads                       : 4
