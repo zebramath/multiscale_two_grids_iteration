@@ -1,4 +1,4 @@
-# multiscale_two_grids_iteration v7.7
+# multiscale_two_grids_iteration v7.8
 
 本项目研究高对比扩散问题中的有限 Krylov 能量插值。固定粗点与磨光器后，能量极小化
 路径和两网格收敛目标可以呈现不同的变化规律：插值能量沿 PCG 路径持续下降，而两网格
@@ -37,8 +37,8 @@ $$
 | `research_report.md` | 研究定位、实验设计、完整数值结果和结论 |
 | `theory.tex` | 定理、命题、证明、假设和参考文献 |
 | `code/` | C++17 实现、七个实验入口和运行脚本 |
-| `code/results/` | v7.7 完整复跑结果、逐步扫描数据和曲线 |
-| `VALIDATION_v7.7.md` | 源码精简、构建、文稿和完整运行验证记录 |
+| `code/results/` | v7.7 沿用结果与 v7.8 收敛率扫描数据、曲线 |
+| `VALIDATION_v7.8.md` | 源码、文稿和增量运行验证记录 |
 
 快速验证：
 

@@ -1,86 +1,16 @@
-Central finite-PCG step scan
-============================
+Central finite-PCG convergence-factor scan
+==========================================
 
-Version                           : 7.7.0
+Version                           : 7.8.0
 Problem                           : 128/16 cross-channel, contrast 1e4
-Scanned steps                     : m=1,...,64
+Scanned steps                     : m=1,...,128
 Threads                           : 4
 Solve tolerance                   : 1e-6
-Cycle cap                         : 12000
-Best converged m                  : 38
-Best cycles                       : 231
-Best effective factor             : 0.9417637
-Global-reference cycles           : 3227
+Minimum-factor m                  : 38
+Minimum effective factor          : 0.9417637
+Adaptive m                        : 43
+Adaptive effective factor         : 0.9444069
 Global-reference effective factor : 0.9957271
 
-Note: Every integer finite-PCG step count in the stated interval is evaluated on one fixed central problem. Cycle counts at the cap are reported as slow-limit. The complete scan, rather than sparse path checkpoints, resolves the nonmonotone dependence of two-grid convergence on interpolation work.
-
-Complete step scan
-------------------
-m      P density %    Cycles      Status   Final relres  Effective factor   Tail factor
------  -----------  --------  ----------  -------------  ----------------  ------------
-1           1.7191     12000  slow-limit      1.615e-01         0.9998481     0.9997284
-2           2.0431     12000  slow-limit      6.132e-02         0.9997674     0.9996451
-3           2.4335     12000  slow-limit      7.783e-03         0.9995954     0.9994812
-4           2.8455     12000  slow-limit      2.372e-04         0.9993047     0.9991858
-5           3.2791     12000  slow-limit      1.281e-05         0.9990616     0.9988708
-6           3.7344     12000  slow-limit      2.432e-06         0.9989233     0.9987250
-7           4.2112     11158   converged      9.988e-07         0.9987625     0.9985420
-8           4.7096      9058   converged      9.994e-07         0.9984759     0.9981910
-9           5.2065      8053   converged      9.996e-07         0.9982858     0.9979543
-10          5.6586      7260   converged      9.993e-07         0.9980987     0.9977270
-11          6.1909      6810   converged      9.997e-07         0.9979733     0.9975895
-12          6.7417      5523   converged      9.997e-07         0.9975016     0.9969938
-13          7.3110      5291   converged      9.984e-07         0.9973920     0.9968489
-14          7.8988      4516   converged      9.996e-07         0.9969454     0.9962944
-15          8.5051      3447   converged      9.994e-07         0.9959999     0.9955256
-16          9.1300      4043   converged      9.983e-07         0.9965883     0.9963772
-17          9.7502      3873   converged      9.980e-07         0.9964387     0.9962260
-18         10.3088      3291   converged      9.978e-07         0.9958102     0.9955499
-19         10.9585      2541   converged      9.971e-07         0.9945766     0.9942063
-20         11.6236      1861   converged      9.941e-07         0.9926006     0.9920061
-21         12.3044      1433   converged      9.927e-07         0.9904003     0.9894813
-22         13.0007      1148   converged      9.942e-07         0.9880327     0.9866784
-23         13.7125      1022   converged      9.991e-07         0.9865720     0.9849605
-24         14.4398       926   converged      9.972e-07         0.9851882     0.9834854
-25         15.1596       789   converged      9.964e-07         0.9826377     0.9808404
-26         15.8038       644   converged      9.832e-07         0.9787501     0.9767919
-27         16.5473       520   converged      9.928e-07         0.9737679     0.9714598
-28         17.3034       441   converged      9.840e-07         0.9691224     0.9664998
-29         18.0722       384   converged      9.993e-07         0.9646597     0.9616572
-30         18.8537       336   converged      9.942e-07         0.9596997     0.9559998
-31         19.6478       327   converged      9.936e-07         0.9586121     0.9543535
-32         20.4547       347   converged      9.668e-07         0.9608744     0.9565222
-33         21.2510       368   converged      9.662e-07         0.9630638     0.9589083
-34         21.9609       367   converged      9.966e-07         0.9630464     0.9588641
-35         22.7754       327   converged      9.736e-07         0.9585523     0.9537210
-36         23.5999       268   converged      9.691e-07         0.9496447     0.9436207
-37         24.4342       232   converged      9.918e-07         0.9421552     0.9408033
-38         25.2786       231   converged      9.563e-07         0.9417637     0.9465164
-39         26.1328       233   converged      9.737e-07         0.9423220     0.9479263
-40         26.9969       234   converged      9.903e-07         0.9426292     0.9482007
-41         27.8478       235   converged      9.580e-07         0.9427333     0.9481327
-42         28.6040       238   converged      9.740e-07         0.9434999     0.9482267
-43         29.4678       242   converged      9.739e-07         0.9444069     0.9488686
-44         30.3389       244   converged      9.938e-07         0.9449281     0.9493717
-45         31.2172       247   converged      9.907e-07         0.9455665     0.9489131
-46         32.1029       252   converged      9.780e-07         0.9465688     0.9479297
-47         32.9958       254   converged      9.902e-07         0.9470244     0.9476527
-48         33.8960       256   converged      9.680e-07         0.9473433     0.9479338
-49         34.7803       259   converged      9.569e-07         0.9478946     0.9484627
-50         35.5642       263   converged      9.776e-07         0.9487438     0.9493713
-51         36.4563       269   converged      9.944e-07         0.9499181     0.9507371
-52         37.3532       276   converged      9.890e-07         0.9511380     0.9524231
-53         38.2548       283   converged      9.553e-07         0.9522004     0.9542568
-54         39.1612       288   converged      9.636e-07         0.9530392     0.9562348
-55         40.0723       288   converged      9.978e-07         0.9531547     0.9581224
-56         40.9881       276   converged      9.955e-07         0.9511605     0.9597315
-57         41.8855       283   converged      9.837e-07         0.9522992     0.9610410
-58         42.6795       324   converged      9.994e-07         0.9582541     0.9624436
-59         43.5799       346   converged      9.895e-07         0.9608281     0.9632805
-60         44.4826       360   converged      9.668e-07         0.9622603     0.9637483
-61         45.3876       366   converged      9.713e-07         0.9628796     0.9638553
-62         46.2950       364   converged      9.638e-07         0.9626590     0.9634388
-63         47.2047       351   converged      9.817e-07         0.9613535     0.9604855
-64         48.1166       366   converged      9.623e-07         0.9628552     0.9600832
+Note: Every integer finite-PCG step count is evaluated on the same central problem. The CSV and figure contain only the effective convergence factor, exposing its nonmonotone dependence on m.
 

@@ -1,12 +1,12 @@
-# v7.7 完整数值结果
+# v7.8 数值结果
 
-全部结果由 v7.7.0 最终源码以 `full` 模式、4 线程生成。常规两网格相对残量容差为
-`1e-6`，循环上限为 20000；Exp2 的 64 点逐步扫描使用 12000 的循环上限。
+Exp2 由 v7.8.0 源码以 4 线程重新运行。Exp1 和 Exp3--7 的算法、算例与输出均未改变，
+因此沿用 v7.7.0 的正式结果，不重复计算。
 
 | 主题 | 结果摘要 |
 |---|---|
 | 主比较 | adaptive/global-reference 均为 13/13 收敛，循环和 4459/28972 |
-| 中心扫描 | `m=1,...,64`；最小值为 `m=38`、231 次、有效因子 0.9417637 |
+| 中心扫描 | `m=1,...,128`；最小有效收敛因子为 0.9417637，对应 `m=38` |
 | 离线采样参考 | 设计组平均/最大 gap 8.93%/29.65%，验证组 27.34%/54.20% |
 | 稳健性与计时 | seed 和 RHS 均全部收敛；平均总时间 523.477/6518.831 ms |
 | 停止消融 | adaptive/fixed-step/fixed-residual 收敛数为 6/6、5/6、5/6 |
@@ -18,14 +18,14 @@
 | 实验 | 文件 |
 |---|---|
 | Exp1 | `experiment1_two_grid_comparison.txt` |
-| Exp2 完整表 | `experiment2_step_scan.txt` |
-| Exp2 结构化数据 | `experiment2_central_step_scan.csv` |
-| Exp2 曲线 | `experiment2_central_step_scan.png` |
+| Exp2 摘要 | `experiment2_step_scan.txt` |
+| Exp2 全部 128 个收敛率 | `experiment2_central_step_scan.csv` |
+| Exp2 非单调曲线 | `experiment2_central_step_scan.png` |
 | Exp3 | `experiment3_oracle_validation.txt` |
 | Exp4 | `experiment4_submission_robustness.txt` |
 | Exp5 | `experiment5_stopping_ablation.txt` |
 | Exp6 | `experiment6_fixed_physical_refinement.txt` |
 | Exp7 | `experiment7_multilevel_pilot.txt` |
 
-TXT 结果给出逐例循环数、收敛状态和有效收敛因子；Exp1、Exp2 与 Exp6 还给出尾部因子。
-Exp4 的墙钟时间是双方预热后五次交替顺序测量的算术平均值。
+Exp2 的 CSV 和曲线只包含步数与有效收敛因子，不报告逐步循环数或扫描表格。其他 TXT
+保留各自实验所需的循环数、收敛状态、有效收敛因子及辅助指标。
