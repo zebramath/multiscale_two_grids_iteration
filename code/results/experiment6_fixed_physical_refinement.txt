@@ -1,7 +1,7 @@
 Fixed-physical coefficient under nested grid refinement
 =======================================================
 
-Version                       : 7.6.0
+Version                       : 7.7.0
 Mode                          : full
 Levels                        : 3
 Fine/coarse pairs             : 32/4, 64/8, 128/16
@@ -22,13 +22,10 @@ Nested-refinement comparison
 -----  -----  -----  ------------------  ----------------------  -------------  -----------  --------  ----------  ------------  -----------  -----------
 32         4      8            adaptive          m=4; m/n=0.125     7.4131e+07      40.4324       122   converged      9.33e-07     0.892425     0.904094
 32         4      8    global-reference               tol=1e-10     4.6749e+07      99.1675       193   converged      9.65e-07     0.930748     0.932926
-32         4      8           geometric                     P_G     1.4252e+08      23.4131       186   converged      9.94e-07     0.928382     0.931824
 
 64         8      8            adaptive          m=8; m/n=0.125     1.4625e+09      17.8614       119   converged      9.66e-07     0.890129     0.884815
 64         8      8    global-reference               tol=1e-10     1.3025e+09      98.7906       242   converged      9.58e-07     0.944342     0.949772
-64         8      8           geometric                     P_G     3.0875e+09       5.6689       178   converged      9.83e-07     0.925229     0.924296
 
 128       16      8            adaptive         m=43; m/n=0.336     2.7051e+10      29.4678       145   converged      9.95e-07     0.909090     0.904260
 128       16      8    global-reference               tol=1e-10     2.7051e+10      97.7751       151   converged      9.96e-07     0.912544     0.923550
-128       16      8           geometric                     P_G     5.6014e+10       1.3950       187   converged      9.73e-07     0.928648     0.924885
 

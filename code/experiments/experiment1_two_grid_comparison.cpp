@@ -104,11 +104,11 @@ int main(int argc, char** argv) {
         const auto problem = experiment_support::make_problem(
             grid, item.field, config);
 
-        const auto geometric = tgi::build_geometric_interpolation(grid);
+        const auto initial = tgi::build_geometric_interpolation(grid);
         std::vector<Measurement> case_measurements;
 
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
-            grid, problem.matrix, geometric.prolongation, threads);
+            grid, problem.matrix, initial.prolongation, threads);
         case_measurements.push_back(measure(
             "adaptive", "m=" + std::to_string(adaptive.report.selected_steps),
             *adaptive.prolongation, *adaptive.cycle, problem.rhs,
@@ -123,13 +123,6 @@ int main(int argc, char** argv) {
             reference_cycle, problem.rhs,
             experiment_support::maximum_two_grid_cycles));
 
-        const tgi::TwoGridCycle geometric_cycle(
-            problem.matrix, geometric.prolongation, 1, threads);
-        case_measurements.push_back(measure(
-            "geometric", "P_G", geometric.prolongation,
-            geometric_cycle, problem.rhs,
-            experiment_support::maximum_geometric_cycles));
-
         for (const auto& measurement : case_measurements) {
             rows.push_back(measurement_row(item, measurement));
             accumulate(aggregates[measurement.method], measurement);
@@ -137,8 +130,7 @@ int main(int argc, char** argv) {
     }
 
     experiment_support::Rows convergence_rows;
-    for (const std::string method :
-         {"adaptive", "global-reference", "geometric"}) {
+    for (const std::string method : {"adaptive", "global-reference"}) {
         const Aggregate& value = aggregates[method];
         convergence_rows.push_back({
             method,
@@ -158,7 +150,7 @@ int main(int argc, char** argv) {
         {"Mode", quick ? "quick" : "full"},
         {"Threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"},
-        {"Maximum cycles", "adaptive/global-reference 20000; geometric 30000"}});
+        {"Maximum cycles", "20000"}});
     report.add_note(
         "The matrix varies fine/coarse scale, contrast and six channel "
         "topologies. The two 256/16 extensions test cross-channel and "

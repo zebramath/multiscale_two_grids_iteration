@@ -12,7 +12,7 @@
 
 namespace {
 
-enum class TransferMethod { Adaptive, GlobalReference, Geometric };
+enum class TransferMethod { Adaptive, GlobalReference };
 
 struct MultilevelCase {
     std::string name;
@@ -33,8 +33,6 @@ const char* method_name(TransferMethod method) {
             return "adaptive";
         case TransferMethod::GlobalReference:
             return "global-reference";
-        case TransferMethod::Geometric:
-            return "geometric";
     }
     return "unknown";
 }
@@ -49,14 +47,14 @@ Hierarchy build_hierarchy(
         const int coarse_intervals = item.intervals[level + 1U];
         const tgi::StructuredGrid grid(
             fine_intervals - 1, fine_intervals / coarse_intervals);
-        const auto geometric = tgi::build_geometric_interpolation(grid);
+        const auto initial = tgi::build_geometric_interpolation(grid);
         tgi::SparseMatrix prolongation;
         std::string parameter;
         if (method == TransferMethod::Adaptive) {
             const int steps = tgi::adaptive_global_pcg_detail::select_steps(
                 grid, hierarchy.matrices.back());
             tgi::GlobalEnergyPcgPath path(
-                grid, hierarchy.matrices.back(), geometric.prolongation,
+                grid, hierarchy.matrices.back(), initial.prolongation,
                 threads);
             path.advance_to(steps);
             prolongation = path.prolongation();
@@ -66,9 +64,6 @@ Hierarchy build_hierarchy(
                 grid, hierarchy.matrices.back(), threads);
             prolongation = reference.prolongation;
             parameter = "tol=1e-10";
-        } else {
-            prolongation = geometric.prolongation;
-            parameter = "P_G";
         }
         hierarchy.level_parameters.push_back(parameter);
         hierarchy.prolongations.push_back(std::move(prolongation));
@@ -101,18 +96,14 @@ experiment_support::Row measurement_row(
         hierarchy.matrices[0], hierarchy.prolongations[0], 1, threads);
     const auto two_grid = tgi::solve_two_grid(
         rhs, exact_two_grid, 1.0e-6,
-        method == TransferMethod::Geometric
-            ? experiment_support::maximum_geometric_cycles
-            : experiment_support::maximum_two_grid_cycles);
+        experiment_support::maximum_two_grid_cycles);
 
     const tgi::MultilevelVCycle multilevel(
         std::move(hierarchy.matrices),
         std::move(hierarchy.prolongations), 1, threads);
     const auto v_cycle = tgi::solve_multilevel(
         rhs, multilevel, 1.0e-6,
-        method == TransferMethod::Geometric
-            ? experiment_support::maximum_geometric_cycles
-            : experiment_support::maximum_two_grid_cycles);
+        experiment_support::maximum_two_grid_cycles);
     const double cycle_ratio = two_grid.cycles > 0
         ? static_cast<double>(v_cycle.cycles) /
               static_cast<double>(two_grid.cycles)
@@ -176,8 +167,7 @@ int main(int argc, char** argv) {
             fine_grid, field, config);
         for (const TransferMethod method : {
                  TransferMethod::Adaptive,
-                 TransferMethod::GlobalReference,
-                 TransferMethod::Geometric}) {
+                 TransferMethod::GlobalReference}) {
             experiment_support::progress(
                 "multilevel " + std::to_string(case_index + 1U) + "/" +
                 std::to_string(case_count) + ": " + item.name + ", " +

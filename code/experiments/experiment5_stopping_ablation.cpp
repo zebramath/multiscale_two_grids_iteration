@@ -84,12 +84,12 @@ int main(int argc, char** argv) {
         const tgi::StructuredGrid grid = experiment_support::make_grid(config);
         const auto problem = experiment_support::make_problem(
             grid, item.field, config);
-        const auto geometric = tgi::build_geometric_interpolation(grid);
+        const auto initial = tgi::build_geometric_interpolation(grid);
 
         std::array<Measurement, 3> measurements;
 
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
-            grid, problem.matrix, geometric.prolongation, threads);
+            grid, problem.matrix, initial.prolongation, threads);
         measurements[0] = measure(
             "adaptive",
             "m=" + std::to_string(adaptive.report.selected_steps),
@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
             tgi::adaptive_global_pcg_detail::scaled_checkpoint(
                 item.fine, 1, 4);
         tgi::GlobalEnergyPcgPath fixed_path(
-            grid, problem.matrix, geometric.prolongation, threads);
+            grid, problem.matrix, initial.prolongation, threads);
         fixed_path.advance_to(fixed_steps);
         auto fixed_prolongation = std::make_shared<tgi::SparseMatrix>(
             fixed_path.prolongation());
@@ -111,7 +111,7 @@ int main(int argc, char** argv) {
             *fixed_prolongation, fixed_cycle, problem.rhs);
 
         tgi::GlobalEnergyPcgPath residual_path(
-            grid, problem.matrix, geometric.prolongation, threads);
+            grid, problem.matrix, initial.prolongation, threads);
         const auto residual_report =
             residual_path.advance_until_relative_residual(
                 residual_tolerance);
@@ -189,7 +189,7 @@ int main(int argc, char** argv) {
          std::to_string(adaptive_cycle_wins_residual) + "/" +
              std::to_string(case_count)}});
     report.add_note(
-        "All three policies start from the same geometric interpolation and "
+        "All three policies start from the same interpolation and "
         "use the same global Jacobi-PCG column equations. Fixed-step applies "
         "one normalized checkpoint to every problem. Fixed-residual stops "
         "each column independently at the same relative residual. The "

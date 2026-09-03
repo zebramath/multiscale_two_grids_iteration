@@ -117,10 +117,10 @@ int main(int argc, char** argv) {
             tgi::assemble_diffusion(grid, coefficient.values);
         const tgi::Vector rhs(
             static_cast<std::size_t>(grid.fine_size()), 1.0);
-        const auto geometric = tgi::build_geometric_interpolation(grid);
+        const auto initial = tgi::build_geometric_interpolation(grid);
 
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
-            grid, matrix, geometric.prolongation, threads);
+            grid, matrix, initial.prolongation, threads);
         rows.push_back(measurement_row(
             level.fine, level.coarse, "adaptive",
             "m=" + std::to_string(adaptive.report.selected_steps) +
@@ -139,12 +139,6 @@ int main(int argc, char** argv) {
             reference.prolongation, reference_cycle, rhs,
             experiment_support::maximum_two_grid_cycles));
 
-        const tgi::TwoGridCycle geometric_cycle(
-            matrix, geometric.prolongation, 1, threads);
-        rows.push_back(measurement_row(
-            level.fine, level.coarse, "geometric", "P_G",
-            geometric.prolongation, geometric_cycle, rhs,
-            experiment_support::maximum_geometric_cycles));
     }
 
     experiment_support::Report report(

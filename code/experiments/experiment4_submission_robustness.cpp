@@ -67,13 +67,6 @@ SolveResult measure_solve(
         solved.status, solved.converged};
 }
 
-tgi::AdaptiveGlobalPcgResult build_adaptive(
-    const tgi::StructuredGrid& grid, const tgi::SparseMatrix& matrix,
-    const tgi::SparseMatrix& geometric, int threads) {
-    return tgi::build_adaptive_global_pcg_interpolation(
-        grid, matrix, geometric, threads);
-}
-
 void add_aggregate(
     CycleAggregate& aggregate, const SolveResult& measurement) {
     if (measurement.converged) {
@@ -139,16 +132,6 @@ std::vector<RhsCase> make_rhs_cases(const tgi::StructuredGrid& grid) {
     return cases;
 }
 
-double quantile(std::vector<double> values, double probability) {
-    std::sort(values.begin(), values.end());
-    const double position = probability *
-        static_cast<double>(values.size() - 1U);
-    const std::size_t lower = static_cast<std::size_t>(std::floor(position));
-    const std::size_t upper = static_cast<std::size_t>(std::ceil(position));
-    const double weight = position - static_cast<double>(lower);
-    return (1.0 - weight) * values[lower] + weight * values[upper];
-}
-
 TimingSample timing_sample(
     const tgi::StructuredGrid& grid, const tgi::SparseMatrix& matrix,
     const tgi::Vector& rhs, TimingMethod method, int threads,
@@ -164,9 +147,9 @@ TimingSample timing_sample(
             rhs, cycle, maximum_cycles);
         return {setup_ms, solved.milliseconds, solved.cycles};
     }
-    const auto geometric = tgi::build_geometric_interpolation(grid);
-    const auto adaptive = build_adaptive(
-        grid, matrix, geometric.prolongation, threads);
+    const auto initial = tgi::build_geometric_interpolation(grid);
+    const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
+        grid, matrix, initial.prolongation, threads);
     const double setup_ms = elapsed_ms(setup_begin, Clock::now());
     const SolveResult solved = measure_solve(
         rhs, *adaptive.cycle, maximum_cycles);
@@ -175,28 +158,21 @@ TimingSample timing_sample(
 
 experiment_support::Row timing_row(
     const std::string& policy, const std::vector<TimingSample>& samples) {
-    std::vector<double> setup;
-    std::vector<double> solve;
-    std::vector<double> total;
-    std::vector<double> cycles;
+    double setup = 0.0;
+    double solve = 0.0;
+    double cycles = 0.0;
     for (const auto& sample : samples) {
-        setup.push_back(sample.setup_ms);
-        solve.push_back(sample.solve_ms);
-        total.push_back(sample.setup_ms + sample.solve_ms);
-        cycles.push_back(static_cast<double>(sample.cycles));
+        setup += sample.setup_ms;
+        solve += sample.solve_ms;
+        cycles += static_cast<double>(sample.cycles);
     }
+    const double count = static_cast<double>(samples.size());
     return {
         policy, std::to_string(samples.size()),
-        experiment_support::fixed(quantile(setup, 0.50)),
-        experiment_support::fixed(quantile(setup, 0.25)),
-        experiment_support::fixed(quantile(setup, 0.75)),
-        experiment_support::fixed(quantile(solve, 0.50)),
-        experiment_support::fixed(quantile(solve, 0.25)),
-        experiment_support::fixed(quantile(solve, 0.75)),
-        experiment_support::fixed(quantile(total, 0.50)),
-        experiment_support::fixed(quantile(total, 0.25)),
-        experiment_support::fixed(quantile(total, 0.75)),
-        experiment_support::fixed(quantile(cycles, 0.50), 0)};
+        experiment_support::fixed(setup / count),
+        experiment_support::fixed(solve / count),
+        experiment_support::fixed((setup + solve) / count),
+        experiment_support::fixed(cycles / count, 0)};
 }
 
 }
@@ -227,9 +203,9 @@ int main(int argc, char** argv) {
             "submission seed " + std::to_string(seed));
         const auto problem = experiment_support::make_problem(
             grid, cross, config, seed);
-        const auto geometric = tgi::build_geometric_interpolation(grid);
-        const auto adaptive = build_adaptive(
-            grid, problem.matrix, geometric.prolongation, threads);
+        const auto initial = tgi::build_geometric_interpolation(grid);
+        const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
+            grid, problem.matrix, initial.prolongation, threads);
         const SolveResult adaptive_solved = measure_solve(
             problem.rhs, *adaptive.cycle, maximum_cycles);
         add_aggregate(seed_aggregates["adaptive"], adaptive_solved);
@@ -281,14 +257,12 @@ int main(int argc, char** argv) {
     experiment_support::progress("RHS robustness");
     const auto transfer_problem = experiment_support::make_problem(
         grid, cross, config, 1);
-    const auto transfer_geometric = tgi::build_geometric_interpolation(grid);
-    const auto adaptive = build_adaptive(
-        grid, transfer_problem.matrix, transfer_geometric.prolongation,
+    const auto transfer_initial = tgi::build_geometric_interpolation(grid);
+    const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
+        grid, transfer_problem.matrix, transfer_initial.prolongation,
         threads);
     const auto reference = experiment_support::build_global_reference(
         grid, transfer_problem.matrix, threads);
-    const tgi::TwoGridCycle geometric_cycle(
-        transfer_problem.matrix, transfer_geometric.prolongation, 1, threads);
     const tgi::TwoGridCycle reference_cycle(
         transfer_problem.matrix, reference.prolongation, 1, threads);
     const std::vector<RhsCase> rhs_cases = make_rhs_cases(grid);
@@ -298,13 +272,9 @@ int main(int argc, char** argv) {
         for (const auto& method : {
                  std::pair<const char*, const tgi::TwoGridCycle*>{
                      "adaptive", adaptive.cycle.get()},
-                 {"global-reference", &reference_cycle},
-                 {"geometric", &geometric_cycle}}) {
-            const int cycle_limit = method.first == std::string("geometric")
-                ? experiment_support::maximum_geometric_cycles
-                : maximum_cycles;
+                 {"global-reference", &reference_cycle}}) {
             const SolveResult solved = measure_solve(
-                rhs_case.values, *method.second, cycle_limit);
+                rhs_case.values, *method.second, maximum_cycles);
             add_aggregate(rhs_aggregates[method.first], solved);
             rhs_rows.push_back({
                 rhs_case.name, method.first,
@@ -317,8 +287,7 @@ int main(int argc, char** argv) {
         }
     }
     experiment_support::Rows rhs_summary;
-    for (const std::string method : {
-             "adaptive", "global-reference", "geometric"}) {
+    for (const std::string method : {"adaptive", "global-reference"}) {
         const auto& aggregate = rhs_aggregates[method];
         rhs_summary.push_back({
             method,
@@ -385,7 +354,7 @@ int main(int argc, char** argv) {
         {"Topology", "cross-channel"},
         {"Threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"},
-        {"Maximum cycles", "adaptive/global-reference 20000; geometric 30000"}});
+        {"Maximum cycles", "20000"}});
     report.add_note(
         "Five coefficient seeds and six right-hand sides test robustness; "
         "the latter reuse each method's matrix-dependent interpolation. "
@@ -393,8 +362,8 @@ int main(int argc, char** argv) {
         "Adaptive and global-reference are measured in five post-warmup "
         "repetitions with rotating order after both satisfy the formal "
         "convergence criterion. Setup includes interpolation, Galerkin "
-        "assembly and cycle construction; solve starts from zero. Q1, median "
-        "and Q3 summarize wall-clock variability.");
+        "assembly and cycle construction; solve starts from zero. Only the "
+        "arithmetic mean of the post-warmup measurements is reported.");
     report.add_table(
         "Coefficient-seed stability",
         {"Seed", "Method", "Parameter", "Cycles", "Effective factor",
@@ -417,10 +386,9 @@ int main(int argc, char** argv) {
         {18, 13, 19, 14, 15}, rhs_summary);
     report.add_table(
         "Central 128/16 repeated wall-clock comparison",
-        {"Policy", "Runs", "Setup med ms", "Setup Q1", "Setup Q3",
-         "Solve med ms", "Solve Q1", "Solve Q3", "Total med ms", "Total Q1",
-         "Total Q3", "Cycles med"},
-        {16, 6, 11, 10, 10, 10, 9, 9, 10, 9, 9, 11}, timing_rows);
+        {"Policy", "Runs", "Setup mean ms", "Solve mean ms",
+         "Total mean ms", "Mean cycles"},
+        {16, 6, 13, 13, 13, 11}, timing_rows);
     report.save("experiment4_submission_robustness");
     return 0;
 }

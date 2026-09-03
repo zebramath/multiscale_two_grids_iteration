@@ -47,6 +47,36 @@ inline double interpolation_density_percent(
     return 100.0 * static_cast<double>(prolongation.nnz()) / entries;
 }
 
+inline std::filesystem::path results_directory() {
+    const char* runtime_directory = std::getenv("TGI_RESULTS_DIR");
+    const std::filesystem::path directory =
+        runtime_directory != nullptr && runtime_directory[0] != '\0'
+            ? runtime_directory
+            : TGI_RESULTS_DIR;
+    std::filesystem::create_directories(directory);
+    return directory;
+}
+
+inline void save_csv(
+    const std::string& name, const Row& headers, const Rows& rows) {
+    const std::filesystem::path path =
+        results_directory() / (name + ".csv");
+    std::ofstream stream(path);
+    auto write_row = [&stream](const Row& row) {
+        for (std::size_t index = 0; index < row.size(); ++index) {
+            if (index != 0U) stream << ',';
+            stream << row[index];
+        }
+        stream << '\n';
+    };
+    write_row(headers);
+    for (const Row& row : rows) write_row(row);
+    if (!stream) {
+        throw std::runtime_error(
+            "cannot write result file " + path.string());
+    }
+}
+
 class Report {
 public:
     explicit Report(const std::string& title) {
@@ -94,13 +124,8 @@ public:
     }
 
     void save(const std::string& name) const {
-        const char* runtime_directory = std::getenv("TGI_RESULTS_DIR");
-        const std::filesystem::path directory =
-            runtime_directory != nullptr && runtime_directory[0] != '\0'
-                ? runtime_directory
-                : TGI_RESULTS_DIR;
-        std::filesystem::create_directories(directory);
-        const std::filesystem::path path = directory / (name + ".txt");
+        const std::filesystem::path path =
+            results_directory() / (name + ".txt");
         std::ofstream stream(path);
         if (!stream || !(stream << text_.str())) {
             throw std::runtime_error(

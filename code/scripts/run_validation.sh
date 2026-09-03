@@ -64,8 +64,8 @@ build_direct() {
         experiments/experiment1_two_grid_comparison.cpp \
         -o "$build_dir/experiment1_two_grid_comparison"
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
-        experiments/experiment2_finite_path.cpp \
-        -o "$build_dir/experiment2_finite_path"
+        experiments/experiment2_step_scan.cpp \
+        -o "$build_dir/experiment2_step_scan"
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment3_oracle_validation.cpp \
         -o "$build_dir/experiment3_oracle_validation"
@@ -114,9 +114,14 @@ else
     run_step experiment1-two-grid \
         env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment1_two_grid_comparison" --threads="$threads"
-    run_step experiment2-finite-path \
+    run_step experiment2-step-scan \
         env TGI_RESULTS_DIR="$results_dir" \
-        "$build_dir/experiment2_finite_path" --threads="$threads"
+        "$build_dir/experiment2_step_scan" --threads="$threads"
+    run_step experiment2-plot \
+        env MPLCONFIGDIR="$build_dir/matplotlib" \
+        python3 scripts/plot_central_step_scan.py \
+        "$results_dir/experiment2_central_step_scan.csv" \
+        "$results_dir/experiment2_central_step_scan.png"
     run_step experiment3-oracle \
         env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment3_oracle_validation" --threads="$threads"

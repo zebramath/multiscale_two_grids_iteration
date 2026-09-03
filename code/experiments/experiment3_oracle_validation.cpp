@@ -88,14 +88,12 @@ int main(int argc, char** argv) {
         const tgi::StructuredGrid grid = experiment_support::make_grid(config);
         const auto problem = experiment_support::make_problem(
             grid, item.field, config);
-        const auto geometric = tgi::build_geometric_interpolation(grid);
+        const auto initial = tgi::build_geometric_interpolation(grid);
 
         int oracle_steps = 0;
-        CycleMeasurement oracle = cycles_for(
-            problem.matrix, problem.rhs, geometric.prolongation,
-            threads, maximum_cycles);
+        CycleMeasurement oracle;
         tgi::GlobalEnergyPcgPath path(
-            grid, problem.matrix, geometric.prolongation, threads);
+            grid, problem.matrix, initial.prolongation, threads);
         int first_oracle_step = std::max(2, item.fine / 8);
         if (first_oracle_step % 2 != 0) ++first_oracle_step;
         for (int steps = first_oracle_step;
@@ -113,7 +111,7 @@ int main(int argc, char** argv) {
         }
 
         const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
-            grid, problem.matrix, geometric.prolongation, threads);
+            grid, problem.matrix, initial.prolongation, threads);
         const CycleMeasurement adaptive_cycles = cycles_for(
             problem.rhs, *adaptive.cycle, maximum_cycles);
         const double gap = adaptive_cycles.converged && oracle.converged
@@ -151,7 +149,7 @@ int main(int argc, char** argv) {
     report.add_summary({
         {"Version", std::string(tgi::version)},
         {"Threads", std::to_string(threads)},
-        {"Oracle candidates", "m=0 and (1/h)/8,...,(1/h)/2 by 2"},
+        {"Oracle candidates", "(1/h)/8,...,(1/h)/2 by 2"},
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", std::to_string(maximum_cycles)}});
     report.add_note(
