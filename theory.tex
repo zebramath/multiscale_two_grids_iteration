@@ -1,1057 +1,608 @@
-\documentclass[11pt]{ctexart}
+\documentclass{ctexart}
 
-\usepackage[a4paper,margin=2.35cm]{geometry}
-\usepackage{amsmath,amssymb,amsthm,bm,booktabs}
-\usepackage[hidelinks]{hyperref}
+\usepackage{packages}
+\usepackage{mathstyle}
+\usepackage{reportstyle}
 
-\newtheorem{theorem}{定理}[section]
-\newtheorem{proposition}[theorem]{命题}
-\newtheorem{corollary}[theorem]{推论}
-
-\DeclareMathOperator{\tr}{tr}
-\DeclareMathOperator{\diag}{diag}
-\DeclareMathOperator{\Ran}{Ran}
-\DeclareMathOperator{\cond}{cond}
-\newcommand{\R}{\mathbb R}
-\newcommand{\norm}[1]{\left\lVert #1\right\rVert}
-\newcommand{\abs}[1]{\left\lvert #1\right\rvert}
-\newcommand{\Sc}{\bm S}
-\newcommand{\rhoTG}{\rho_{\rm TG}}
-
-\title{有限 Krylov 能量插值、两网格选择与递归扩展：理论分析 v7.8}
-\author{崔正平}
-\date{}
+\setinfo{理论分析}{崔正平}
 
 \begin{document}
+
 \maketitle
 
-\begin{abstract}
-本文研究全局能量下降与两网格收敛目标之间的非单调关系：对固定粗点和固定磨光器，
-有限步 Krylov 插值可能比能量极小终点产生更小的两网格收敛因子。
-理论主线与当前实现逐项对应。首先，有限 PCG 对能量极小插值具有精确的正交误差账本。
-其次，引入归一化误差
-\[
- \bm Z=\bm B^{1/2}(\bm W-\bm W^\ast)\Sc^{-1/2},
-\]
-它同时刻画插值能量、Galerkin 粗矩阵增量和粗空间主角。由此得到对称两网格谱半径的
-精确投影表达式，以及其对粗空间扰动和插值能量误差的全局稳定界。再次，在能量终点
-附近，即使主导奇异值具有重数，两网格目标的一阶变化仍可由主导奇异子空间上的对称
-压缩刻画；本文给出有利方向存在的充要条件，并进一步求解固定插值能量预算下的局部
-最优问题，得到尖锐的一阶 Pareto 常数、唯一最优方向及秩退化时的一阶失效。在显式
-余项控制下，本文给出可在有限 PCG 路径逐步核验的严格反单调充分条件。
-最后，当标准 Jacobi--PCG 条件数具有 $O(h^{-2})$ 上界时，本文证明把能量误差降低到
-任意固定比例只需 $m=O(h^{-1})$ 步。基于这一尺度信息，本文提出自适应有限步规则，
-按粗网格分辨率和矩阵对角尺度比选取单个路径位置。归一化步数和尺度比阈值由数值试验
-标定。
-此外，本文给出精确两网格与递归 V--cycle 之间的误差传播恒等式及能量范数界，
-从而明确有限步传递算子向多层层次结构递归时新增误差的唯一来源。
+\section{问题设置与记号}
+\label{sec:setup}
 
-这些结论构成“为何在有限 Krylov 路径上选点”的理论依据。数值验证采用二维规则网格、
-高对比扩散、固定粗点和两网格结构，以受控方式检验这一机制。
-\end{abstract}
-
-\section{问题设置与研究边界}
-
-考虑有限维对称正定系统
-\begin{equation}
- \bm A\bm u=\bm b,\qquad
- \bm A=
- \begin{bmatrix}\bm B&\bm C\\ \bm C^T&\bm A_{CC}\end{bmatrix}\succ0,
- \qquad \bm B=\bm A_{FF}\succ0.                       \label{eq:blockA}
-\end{equation}
-固定粗点单位注入后，插值写成
-\begin{equation}
- \bm P(\bm W)=\begin{bmatrix}\bm W\\\bm I\end{bmatrix},
- \qquad \bm W\in\R^{n_F\times n_C}.                  \label{eq:P}
-\end{equation}
-所研究构造从几何插值出发，对各列方程使用 Jacobi--PCG，沿同步检查点生成有限步候选。
-两网格主实验中，每个候选均配合同一前向/后向 Gauss--Seidel 磨光器和精确 Galerkin
-粗解；多层次要实验则在每个非最粗层独立构造同类传递算子，并在最粗层精确求解。
-
-本文区分三个层次：能量极小插值是变分终点；有限 PCG 是生成候选的路径；两网格谱半径
-或代表右端项上的实际循环数才是最终选择目标。把这三个量混为一谈，正是“能量越小，
-两网格必然越好”这一错误直觉的来源。
-
-\subsection{记号、维数与术语}
-
-全文矩阵均为实矩阵。$n_F,n_C$ 分别表示当前层细变量（F--variables）与保留粗变量
-（C--variables）的个数；因此
-$\bm B\in\R^{n_F\times n_F}$、$\bm C\in\R^{n_F\times n_C}$、
-$\bm W\in\R^{n_F\times n_C}$、$\Sc\in\R^{n_C\times n_C}$。
-对 SPD 矩阵 $\bm M$，$\bm M^{1/2}$ 始终指唯一 SPD 平方根，并约定
-\[
- \norm{\bm x}_{\bm M}^2=\bm x^T\bm M\bm x,
- \qquad
- \norm{\bm X}_{\bm M,F}^2=\tr(\bm X^T\bm M\bm X),
- \qquad
- \norm{\bm K}_{\bm M}=\norm{\bm M^{1/2}\bm K\bm M^{-1/2}}_2.
-\]
-$\norm{\cdot}_2$ 与 $\norm{\cdot}_F$ 分别为谱范数和 Frobenius 范数，
-$\sigma_i(\cdot)$ 按非增次序排列；$\Ran(\bm X)$ 表示列空间，$\rho(\bm X)$ 表示谱半径；
-“主角”均指两个子空间之间的 principal angles。
-$\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^T\bm A$ 称为 $\bm G$ 的
-$\bm A$--伴随。``Galerkin 粗算子''专指 $\bm A_c=\bm P^T\bm A\bm P$；
-``对称两网格''专指前磨光为 $\bm G$、后磨光为 $\bm G^{\dagger_{\bm A}}$ 且粗解精确的
-误差传播。PCG 指采用 SPD 预条件器的标准预条件共轭梯度法。
-
-\subsection{结论与假设层级}
-
-全文按代数恒等式、全局界、局部机制和尺度模型四个层次组织假设。
-\begin{center}
-\begin{tabular}{p{0.20\textwidth}p{0.69\textwidth}}
-\toprule
-结论层级 & 明确假设 \\
-\midrule
-代数恒等式 & $\bm A\succ0$、固定粗点单位注入；网格可为一般离散结构 \\
-PCG 能量账本 & 每列方程使用 SPD 预条件的标准 CG，任意迭代区间的尾和按精确算术陈述 \\
-两网格投影公式 & 精确 Galerkin 粗解，后磨光为前磨光的 $\bm A$--伴随 \\
-多层递归分解 & 各层 Galerkin 关系成立；递归粗解误差显式保留，不把 V--cycle 当作精确粗解 \\
-终点一阶与 Pareto 律 & 能量终点处相关最大奇异值为正；允许任意有限重数，$\bm Y$ 的秩决定一阶改善是否存在 \\
-严格反单调有限段 & 进入终点邻域，且所考察的每个相邻有限步满足~\eqref{eq:tailcondition} \\
-固定衰减步数尺度 & 标准 $O(h^{-2})$ 条件数上界；达到固定能量误差比例的充分步数为 $O(h^{-1})$ \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-下文 $\bm W^\ast$ 表示精确能量极小点；数值实验中的 global-reference 是以逐列相对
-欧氏残量 $10^{-10}$ 定义的数值参考，不与精确终点混同。
-
-\section{能量终点与有限 PCG 的精确账本}
-
-定义插值总能量
-\begin{equation}
- J(\bm W)=\frac12\tr\!\left(\bm P(\bm W)^T
-                    \bm A\bm P(\bm W)\right),
- \qquad \norm{\bm X}_{\bm B,F}^2=\tr(\bm X^T\bm B\bm X).
-\end{equation}
-
-\begin{theorem}[能量极小点与精确能量差]\label{thm:energy}
-唯一极小点和对应 Schur 补为
-\begin{equation}
- \bm W^\ast=-\bm B^{-1}\bm C,\qquad
- \Sc=\bm A_{CC}-\bm C^T\bm B^{-1}\bm C\succ0.        \label{eq:Wstar}
-\end{equation}
-令 $\bm\Delta=\bm W-\bm W^\ast$，则
+考虑高对比度多尺度问题, 对其采用有限差分或者有限元格式得到对称正定线性方程组 $\bm A\bm u=\bm b$. 按细点与粗点分块,
 \begin{align}
- J(\bm W)-J(\bm W^\ast)
- &=\frac12\norm{\bm\Delta}_{\bm B,F}^2,              \label{eq:energygap}\\
- \bm P(\bm W)^T\bm A\bm P(\bm W)
- &=\Sc+\bm\Delta^T\bm B\bm\Delta.                   \label{eq:acgap}
+    \bm A&=\begin{bNiceMatrix}
+        \bm B & \bm C\\
+        \bm C^\T & \bm A_{\mathrm{CC}}
+    \end{bNiceMatrix}\succ \mathbf{O},\q \bm B=\bm A_{\mathrm{FF}}\succ \mathbf{O},
+    \label{eq:setup-block-A}
 \end{align}
-\end{theorem}
-
-\begin{proof}
-由分块乘法，
-\[
- 2J(\bm W)=\tr(\bm W^T\bm B\bm W)
- +2\tr(\bm W^T\bm C)+\tr(\bm A_{CC}).
-\]
-其 Fr\'echet 导数为
-$DJ(\bm W)[\bm H]=\tr\{\bm H^T(\bm B\bm W+\bm C)\}$。
-因为 $\bm B\succ0$，驻点唯一且为 $\bm W^\ast=-\bm B^{-1}\bm C$；严格凸性说明它是
-唯一全局极小点。令 $\bm W=\bm W^\ast+\bm\Delta$，则
-\begin{align*}
- 2\{J(\bm W)-J(\bm W^\ast)\}
- &=\tr(\bm\Delta^T\bm B\bm\Delta)
- +2\tr\{\bm\Delta^T(\bm B\bm W^\ast+\bm C)\}\\
- &=\norm{\bm\Delta}_{\bm B,F}^2.
-\end{align*}
-同样展开 $\bm P(\bm W)^T\bm A\bm P(\bm W)$，线性交叉项消失，常数项为
-$\bm A_{CC}-\bm C^T\bm B^{-1}\bm C=\Sc$，故得式~\eqref{eq:acgap}。
-$\Sc\succ0$ 则由 $\bm A\succ0$ 的 Schur 补判据得到。
-\end{proof}
-
-能量极小插值及局部优化插值的经典算法背景可参见
-\cite{WanChanSmith2000,Dohrmann2007,OlsonSchroderTuminaro2011,JannaEtAl2023}。
-这些工作以能量、近核空间再现、局部支撑或并行实现为主要设计准则；本文固定粗点与
-初始插值，由式~\eqref{eq:Wstar} 出发，研究同一全局能量方程的有限 Krylov 路径与
-两网格目标之间的非单调关系。
-相关的粗空间研究还表明，针对算子范数的标准谱空间不必最小化两层迭代的谱半径
-\cite{CiaramellaVanzan2022}；本文则针对能量极小插值的有限 PCG 构造路径，分析
-能量代理与对称两网格目标的错位，并据此设置低成本的自适应有限步规则。
-
-第 $j$ 列满足 $\bm B\bm w_j^\ast=-\bm C\bm e_j$。
-设 $\bm w_{j,m}$ 是从给定初值运行 $m$ 步 PCG 的结果，
-$\bm e_{j,m}=\bm w_j^\ast-\bm w_{j,m}$，
-$\bm s_{j,m}=\bm w_{j,m+1}-\bm w_{j,m}$。
-
-\begin{theorem}[PCG 的精确正交能量尾]\label{thm:pcgtail}
-在精确算术下，对每个尚未收敛的列，
-\begin{equation}
- \norm{\bm e_{j,m}}_{\bm B}^2
- =\norm{\bm e_{j,m+1}}_{\bm B}^2
-  +\norm{\bm s_{j,m}}_{\bm B}^2.                      \label{eq:pcgpyth}
-\end{equation}
-因而对矩阵误差 $\bm\Delta_m=\bm W_m-\bm W^\ast$，
-\begin{equation}
- \norm{\bm\Delta_m}_{\bm B,F}^2
- =\norm{\bm\Delta_{m+1}}_{\bm B,F}^2
-  +\norm{\bm W_{m+1}-\bm W_m}_{\bm B,F}^2.           \label{eq:matrixpyth}
-\end{equation}
-更强地，对任意整数 $\ell>m$，
+其中 $n_{\mathrm{F}},n_{\mathrm{C}}$ 分别为细点和粗点的个数. 固定粗点为单位注入后, 插值算子可写成
 \begin{align}
- \norm{\bm\Delta_m}_{\bm B,F}^2
- &=\norm{\bm\Delta_\ell}_{\bm B,F}^2
-   +\sum_{k=m}^{\ell-1}
-     \norm{\bm W_{k+1}-\bm W_k}_{\bm B,F}^2,         \label{eq:pcgtailsum}\\
- J(\bm W_m)-J(\bm W_\ell)
- &=\frac12\sum_{k=m}^{\ell-1}
-     \norm{\bm W_{k+1}-\bm W_k}_{\bm B,F}^2.        \label{eq:pcgenergysum}
+    \bm P(\bm W)&=\begin{bNiceMatrix}
+        \bm W\\
+        \bm I
+    \end{bNiceMatrix},\q \bm W\in\R^{n_{\mathrm{F}}\times n_{\mathrm{C}}}.
+    \label{eq:setup-interpolation}
 \end{align}
-若在精确算术下某个共同终止指标 $M$ 满足 $\bm W_M=\bm W^\ast$，则
-$J(\bm W_m)-J(\bm W^\ast)$ 恰等于式~\eqref{eq:pcgenergysum} 的剩余更新能量和。
-特别地，插值能量沿 PCG 路径单调不增；只要至少一列产生非零 PCG 更新，该步便严格
-下降。
-\end{theorem}
+取前、后磨光子分别为前向、后向 Gauss--Seidel 迭代, 前磨光误差传播算子记为 $\bm G$, 后磨光误差传播算子取其 $\bm A$-伴随, Galerkin 粗解精确求解.
 
-\begin{proof}
-CG 的 Galerkin 条件给出
-$\bm e_{j,m+1}\perp_{\bm B}(\bm w_{j,m+1}-\bm w_{j,m})$。
-对 $\bm e_{j,m}=\bm e_{j,m+1}+\bm s_{j,m}$ 使用勾股恒等式并对列求和，得到
-式~\eqref{eq:matrixpyth}。从 $k=m$ 到 $\ell-1$ 求和后中间误差项望远镜消去，得到
-式~\eqref{eq:pcgtailsum}；再结合定理~\ref{thm:energy} 得到
-式~\eqref{eq:pcgenergysum}。
-这里矩阵路径使用同步检查点：已经收敛的列在后续检查点保持不变，因而其更新向量为零，
-上述列求和仍然严格成立。有限精度实现中的等式可受舍入误差影响，所以代码把它作为
-结构性理论账本，而不以浮点逐步完全相等作为停止条件。
-\end{proof}
-
-该定理刻画路径朝能量终点前进；两网格目标还取决于粗空间方向。两者的差异是后文的
-逻辑起点。PCG 的经典最佳逼近和多项式界可参见~\cite{Greenbaum1997,Saad2003}。
-
-\section{归一化误差统一能量、粗矩阵与粗空间}
-
-令
-\begin{equation}
- \bm Z=\bm B^{1/2}\bm\Delta\Sc^{-1/2}.                 \label{eq:Z}
-\end{equation}
-再定义两个 $\bm A$--正交归一基
-\begin{equation}
- \bm Q_F=\begin{bmatrix}\bm B^{-1/2}\\0\end{bmatrix},
- \qquad
- \bm Q_\ast=\bm P(\bm W^\ast)\Sc^{-1/2}.             \label{eq:bases}
-\end{equation}
-它们满足
-$\bm Q_F^T\bm A\bm Q_F=\bm I$、
-$\bm Q_\ast^T\bm A\bm Q_\ast=\bm I$ 和
-$\bm Q_F^T\bm A\bm Q_\ast=0$。
-记对应的欧氏正交基为
-$\widetilde{\bm Q}_F=\bm A^{1/2}\bm Q_F$ 和
-$\widetilde{\bm Q}_\ast=\bm A^{1/2}\bm Q_\ast$。
-
-\begin{theorem}[归一化误差的三个精确含义]\label{thm:Z}
-对任意 $\bm W$：
+对任意对称正定矩阵 $\bm M$, 记
 \begin{align}
- 2\{J(\bm W)-J(\bm W^\ast)\}
- &=\norm{\bm Z\Sc^{1/2}}_F^2,                         \label{eq:Zenergy}\\
-\bm P(\bm W)^T\bm A\bm P(\bm W)
- &=\Sc^{1/2}(\bm I+\bm Z^T\bm Z)\Sc^{1/2}.          \label{eq:Zcoarse}
+    \norm{\bm x}_{\bm M}&=\sqrt{\bm x^\T\bm M\bm x},
+    \label{eq:notation-vector-energy}\\
+    \norm{\bm X}_{\bm M,\mathrm{F}}&=\sqrt{\tr(\bm X^\T\bm M\bm X)},
+    \label{eq:notation-left-frob}\\
+    \avg{\bm X,\bm Y}_{\bm M,\mathrm{F}}&=\tr(\bm X^\T\bm M\bm Y),
+    \label{eq:notation-left-inner}\\
+    \norm{\bm X}_{\mathrm{F},\bm M}&=\sqrt{\tr(\bm X^\T\bm X\bm M)},
+    \label{eq:notation-right-frob}\\
+    \avg{\bm X,\bm Y}_{\mathrm{F},\bm M}&=\tr(\bm X^\T\bm Y\bm M),
+    \label{eq:notation-right-inner}\\
+    \norm{\bm X}_{\bm M}&=\norm{\bm M^{1/2}\bm X\bm M^{-1/2}}_2.
+    \label{eq:notation-induced-energy}
 \end{align}
-因此归一化 Galerkin 粗矩阵满足
-\begin{equation}
- \Sc^{-1/2}\bm P(\bm W)^T\bm A\bm P(\bm W)\Sc^{-1/2}
- =\bm I+\bm Z^T\bm Z\succeq\bm I,                  \label{eq:coarseloewner}
-\end{equation}
-其非平凡特征值为 $1+\sigma_i(\bm Z)^2$。
-此外，$\Ran(\bm P(\bm W))$ 在
-$\Ran(\bm Q_F)\oplus\Ran(\bm Q_\ast)$ 坐标中是图空间
-\begin{equation}
- \Ran\begin{bmatrix}\bm Z\\\bm I\end{bmatrix}.
-\end{equation}
-若 $\theta_i$ 是该空间与能量极小粗空间的主角，则
-\begin{equation}
- \tan\theta_i=\sigma_i(\bm Z),\qquad
- \sin\theta_{\max}=
- \frac{\norm{\bm Z}_2}{\sqrt{1+\norm{\bm Z}_2^2}}.   \label{eq:angles}
-\end{equation}
-\end{theorem}
+此外, $\lambda_k(\cdot),\sigma_k(\cdot)$ 分别表示矩阵的第 $k$ 大特征值和奇异值, $\Ran(\cdot)$ 表示列空间, $\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^\T\bm A$. PCG 均采用对角预条件共轭梯度法.
 
-\begin{proof}
-由 $\bm\Delta=\bm B^{-1/2}\bm Z\Sc^{1/2}$，有
-$\bm\Delta^T\bm B\bm\Delta=\Sc^{1/2}\bm Z^T\bm Z\Sc^{1/2}$，
-代入式~\eqref{eq:energygap} 与~\eqref{eq:acgap} 即得前两式。
-左右同乘 $\Sc^{-1/2}$ 得式~\eqref{eq:coarseloewner}；再对 $\bm Z$ 作奇异值分解，
-便知 $\bm I+\bm Z^T\bm Z$ 的特征值为 $1+\sigma_i(\bm Z)^2$，不足的维数补 $1$。
+\section{能量极小插值与 PCG 迭代}
+\label{sec:energy-pcg}
 
-另一方面，直接利用 $\bm B\bm W^\ast+\bm C=0$ 可验证
-$\bm Q_F^T\bm A\bm Q_\ast=0$，而两组基各自在 $\bm A$ 内积下正交归一。又有
-\[
- \bm P(\bm W)\Sc^{-1/2}
- =\bm Q_\ast+\bm Q_F\bm Z.
-\]
-故在正交直和坐标
-$[\widetilde{\bm Q}_F,\widetilde{\bm Q}_\ast]$ 中，候选粗空间恰由
-$[\bm Z^T,\bm I]^T$ 的列张成。令
-$\bm Z=\bm U\bm\Sigma\bm V^T$，在相应左右奇异向量二维平面中，图向量为
-$[\sigma_i,1]^T$，与终点粗轴 $[0,1]^T$ 的夹角满足
-$\tan\theta_i=\sigma_i$。取最大值即得式~\eqref{eq:angles}；这也说明结论在
-$\bm Z$ 秩亏或矩形时仍成立。主角公式的标准形式参见~\cite{BjorckGolub1973}。
-\end{proof}
+\subsection{能量极小端点}
+\label{subsec:energy-endpoint}
 
-式~\eqref{eq:Zenergy} 与~\eqref{eq:angles} 说明能量距离和粗空间距离相关但不等价：
-前者是带 $\Sc$ 权的 Frobenius 量，后者由 $\bm Z$ 的最大奇异值决定。
-因此即使总能量严格下降，影响最坏两网格模态的方向仍可能变坏。
+定义插值能量与 Schur 补
+\begin{align}
+    J(\bm W)&=\frac{1}{2}\tr(\bm P(\bm W)^\T\bm A\bm P(\bm W)),
+    \label{eq:energy-functional}\\
+    \bm S&=\bm A_{\mathrm{CC}}-\bm C^\T\bm B^{-1}\bm C\succ \mathbf{O}.
+    \label{eq:schur-complement}
+\end{align}
 
-\section{两网格性能的精确表达与稳定界}
-
-令 $\bm G$ 表示前磨光误差传播算子，后磨光取其 $\bm A$--伴随。
-在欧氏能量坐标中定义
-\begin{equation}
- \bm T=\bm A^{1/2}\bm G\bm A^{-1/2}.
-\end{equation}
-对粗空间 $\mathcal U=\Ran(\bm A^{1/2}\bm P)$，令 $\bm\Pi_{\mathcal U}$ 为
-欧氏正交投影，并定义对应的 $\bm A$--正交粗校正投影
-\begin{equation}
- \bm Q_{\mathcal U}^{\bm A}
- =\bm P(\bm P^T\bm A\bm P)^{-1}\bm P^T\bm A.
-\end{equation}
-再记
-$\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^T\bm A$ 及
-$\bm E_{TG}=\bm G^{\dagger_{\bm A}}
-(\bm I-\bm Q_{\mathcal U}^{\bm A})\bm G$。该对称两网格算子与
-$\bm T^T(\bm I-\bm\Pi_{\mathcal U})\bm T$ 相似，故
-\begin{equation}
- \rhoTG(\mathcal U)=
- \norm{(\bm I-\bm\Pi_{\mathcal U})\bm T}_2^2.         \label{eq:rho}
-\end{equation}
-这一表达是后续分析的固定框架；精确两网格收敛估计、两网格扰动与非精确变体的背景
-可参见~\cite{FalgoutVassilevskiZikatanov2005,Notay2007,XuZhang2022}。
-
-\begin{proposition}[最坏谱因子与给定 RHS 循环数的层级]\label{prop:rhs}
-令
-$\bm K_{\mathcal U}=\bm T^T(\bm I-\bm\Pi_{\mathcal U})\bm T$，并令
-$\bm e_{k+1}=\bm E_{TG}\bm e_k$、$\bm r_k=\bm A\bm e_k$。
-若 $\rhoTG(\mathcal U)<1$，则对任意非零初始误差
-\begin{equation}
- \norm{\bm e_k}_{\bm A}
- \le \rhoTG(\mathcal U)^k\norm{\bm e_0}_{\bm A}.      \label{eq:energycontract}
-\end{equation}
-对应欧氏残量满足
-\begin{equation}
- \frac{\norm{\bm r_k}_2}{\norm{\bm r_0}_2}
- \le \sqrt{\cond_2(\bm A)}\,
-       \rhoTG(\mathcal U)^k.                           \label{eq:residualcontract}
-\end{equation}
-给定 RHS 的实际循环数还取决于初始误差在
-$\bm K_{\mathcal U}$ 各特征方向上的分量；$\rhoTG$ 提供最坏情形控制。
+\begin{proposition}
+\label{prop:energy-minimizer}
+插值能量的唯一极小值点为
+\begin{align}
+    \bm W^{\ast}&=-\bm B^{-1}\bm C.
+    \label{eq:energy-minimizer}
+\end{align}
+令 $\bm\Delta=\bm W-\bm W^{\ast}$, 则
+\begin{align}
+    J(\bm W)-J(\bm W^{\ast})&=\frac{1}{2}\norm{\bm\Delta}_{\bm B,\mathrm{F}}^2,
+    \label{eq:energy-gap}\\
+    \bm P(\bm W)^\T\bm A\bm P(\bm W)&=\bm S+\bm\Delta^\T\bm B\bm\Delta.
+    \label{eq:coarse-matrix-energy-error}
+\end{align}
 \end{proposition}
 
 \begin{proof}
-$\bm A^{1/2}\bm E_{TG}\bm A^{-1/2}=\bm K_{\mathcal U}$，而
-$\bm K_{\mathcal U}$ 对称半正定且
-$\norm{\bm K_{\mathcal U}}_2=\rhoTG(\mathcal U)$，故第一式成立。
-再用
-$\sqrt{\lambda_{\min}(\bm A)}\norm{\bm e}_{\bm A}
-\le\norm{\bm A\bm e}_2
-\le\sqrt{\lambda_{\max}(\bm A)}\norm{\bm e}_{\bm A}$
-作用于分子和分母即可。
+由\cref{eq:setup-block-A,eq:setup-interpolation},
+\begin{align}
+    J(\bm W)&=\frac{1}{2}\bigl(\tr(\bm W^\T\bm B\bm W)+2\tr(\bm W^\T\bm C)+\tr(\bm A_{\mathrm{CC}})\bigr),
+    \label{eq:energy-block-expansion}\\
+    J'(\bm W)[\bm H]&=\tr(\bm H^\T(\bm B\bm W+\bm C)).
+    \label{eq:energy-frechet-derivative}
+\end{align}
+由于 $\bm B\succ\mathbf O$,\cref{eq:energy-frechet-derivative} 的驻点唯一并由\cref{eq:energy-minimizer} 给出, 严格凸性保证其为唯一全局极小值点. 将 $\bm W=\bm W^\ast+\bm\Delta$ 代入\cref{eq:energy-block-expansion}, 并利用 $\bm B\bm W^\ast+\bm C=\mathbf O$, 得到\cref{eq:energy-gap}. 同样对 $\bm P(\bm W)^\T\bm A\bm P(\bm W)$ 展开并利用\cref{eq:schur-complement,eq:energy-minimizer}, 即得\cref{eq:coarse-matrix-energy-error}.
 \end{proof}
 
-命题~\ref{prop:rhs} 区分最坏谱目标与给定载荷上的实际循环数。有限步规则由网格和矩阵
-信息确定，与 RHS 无关；数值实验同时报告循环数和有效收敛因子。
+\subsection{PCG 迭代}
+\label{subsec:pcg-energy-geometry}
 
-\begin{proposition}[由 $\bm Z$ 给出的精确粗投影]\label{prop:projector}
-在基~\eqref{eq:bases} 中，图空间的正交投影为
-\begin{equation}
- \bm\Pi(\bm Z)=
- \begin{bmatrix}\bm Z\\\bm I\end{bmatrix}
- (\bm I+\bm Z^T\bm Z)^{-1}
- \begin{bmatrix}\bm Z^T&\bm I\end{bmatrix}.           \label{eq:projector}
-\end{equation}
-其正交补具有显式正交基
-\begin{equation}
- \bm N(\bm Z)=
- \begin{bmatrix}\bm I\\-\bm Z^T\end{bmatrix}
- (\bm I+\bm Z\bm Z^T)^{-1/2},
- \qquad
- \bm I-\bm\Pi(\bm Z)=\bm N(\bm Z)\bm N(\bm Z)^T.   \label{eq:complement}
-\end{equation}
+对\cref{eq:energy-minimizer} 的第 $j$ 列, 以几何插值为初值进行 PCG. 记
+\begin{align}
+    \bm B\bm w_j^{\ast}&=-\bm C\bm e_j,
+    \label{eq:pcg-column-system}\\
+    \bm e_{j,m}&=\bm w_j^{\ast}-\bm w_{j,m},\q
+    \bm s_{j,m}=\bm w_{j,m+1}-\bm w_{j,m},
+    \label{eq:pcg-column-error-step}\\
+    \bm\Delta_m&=\bm W_m-\bm W^{\ast}.
+    \label{eq:pcg-matrix-error}
+\end{align}
+
+\begin{proposition}
+\label{prop:pcg-exact-identities}
+对任意 PCG 步,
+\begin{align}
+    \norm{\bm\Delta_m}_{\bm B,\mathrm{F}}^2&=\norm{\bm\Delta_{m+1}}_{\bm B,\mathrm{F}}^2+\norm{\bm W_{m+1}-\bm W_m}_{\bm B,\mathrm{F}}^2.
+    \label{eq:pcg-matrix-pythagoras}
+\end{align}
+若 $\bm W_{m+1}\ne\bm W_m$, 则
+\begin{align}
+    J(\bm W_{m+1})&<J(\bm W_m).
+    \label{eq:pcg-energy-strict-decrease}
+\end{align}
+\end{proposition}
+
+\begin{proof}
+PCG 给出逐列的 $\bm B$-正交关系 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$. 对所有列的勾股恒等式求和即得\cref{eq:pcg-matrix-pythagoras}; 再由\cref{eq:energy-gap} 得到\cref{eq:pcg-energy-strict-decrease}.
+\end{proof}
+
+\section{归一化误差与粗空间}
+\label{sec:normalized-geometry}
+
+令
+\begin{align}
+    \bm Z&=\bm B^{1/2}\bm\Delta\bm S^{-1/2},
+    \label{eq:normalized-error}\\
+    \bm Q_{\mathrm{F}}&=\begin{bNiceMatrix}
+        \bm B^{-1/2}\\
+        \mathbf{O}
+    \end{bNiceMatrix},\q
+    \bm Q_{\ast}=\bm P(\bm W^{\ast})\bm S^{-1/2}.
+    \label{eq:A-orthonormal-basis}
+\end{align}
+由\cref{eq:setup-block-A,eq:energy-minimizer,eq:coarse-matrix-energy-error} 可得
+\begin{align}
+    \begin{bNiceMatrix}\bm Q_{\mathrm F}&\bm Q_\ast\end{bNiceMatrix}^\T
+    \bm A
+    \begin{bNiceMatrix}\bm Q_{\mathrm F}&\bm Q_\ast\end{bNiceMatrix}
+    &=\bm I.
+    \label{eq:A-orthonormal-combined}
+\end{align}
+因此 $\Ran(\bm Q_{\mathrm{F}})\oplus\Ran(\bm Q_{\ast})$ 构成一组 $\bm A$-单位正交基. 再令
+\begin{align}
+    \ti{\bm Q}_{\mathrm{F}}&=\bm A^{1/2}\bm Q_{\mathrm{F}},\q
+    \ti{\bm Q}_{\ast}=\bm A^{1/2}\bm Q_{\ast},
+    \label{eq:euclidean-orthonormal-basis}
+\end{align}
+则 $\begin{bNiceMatrix}\ti{\bm Q}_{\mathrm{F}}&\ti{\bm Q}_{\ast}\end{bNiceMatrix}$ 为欧氏正交矩阵.
+
+\begin{proposition}
+\label{prop:normalized-geometry}
+对任意 $\bm W$,
+\begin{align}
+    J(\bm W)-J(\bm W^{\ast})&=\frac{1}{2}\norm{\bm Z}_{\mathrm{F},\bm S}^2,
+    \label{eq:normalized-energy-gap}\\
+    \bm P(\bm W)^\T\bm A\bm P(\bm W)&=\bm S^{1/2}(\bm I+\bm Z^\T\bm Z)\bm S^{1/2},
+    \label{eq:normalized-coarse-matrix}\\
+    \bm P(\bm W)&=\begin{bNiceMatrix}
+        \bm Q_{\mathrm{F}} & \bm Q_{\ast}
+    \end{bNiceMatrix}
+    \begin{bNiceMatrix}
+        \bm Z\\
+        \bm I
+    \end{bNiceMatrix}\bm S^{1/2}.
+    \label{eq:interpolation-graph-factorization}
+\end{align}
+若 $\theta_k$ 为 $\Ran(\bm P(\bm W))$ 与能量极小粗空间 $\Ran(\bm P(\bm W^\ast))$ 关于 $\bm A$-内积的主角, 等价地, 为其 $\bm A^{1/2}$ 映像之间的欧氏主角, 则
+\begin{align}
+    \tan\theta_k&=\sigma_k(\bm Z).
+    \label{eq:principal-angle-tangent}
+\end{align}
+\end{proposition}
+
+\begin{proof}
+由\cref{eq:normalized-error} 有 $\bm\Delta=\bm B^{-1/2}\bm Z\bm S^{1/2}$. 代入\cref{eq:energy-gap,eq:coarse-matrix-energy-error} 即得\cref{eq:normalized-energy-gap,eq:normalized-coarse-matrix};\cref{eq:interpolation-graph-factorization} 直接由\cref{eq:A-orthonormal-basis,eq:energy-minimizer} 得到. 因而在 $\bm A$-单位正交坐标下, 粗空间是 $\Ran\begin{bNiceMatrix}\bm Z\\\bm I\end{bNiceMatrix}$ 的图空间, 主角公式给出\cref{eq:principal-angle-tangent}.
+\end{proof}
+
+\section{两网格收敛率}
+\label{sec:tg-objective}
+
+\subsection{能量坐标与 Gauss--Seidel 迭代}
+\label{subsec:energy-coordinate-tg}
+
+定义前磨光子在 $\bm A$-能量坐标下的表示与粗空间
+\begin{align}
+    \bm T&=\bm A^{1/2}\bm G\bm A^{-1/2},
+    \label{eq:smoother-energy-coordinate}\\
+    \mathcal U&=\Ran(\bm A^{1/2}\bm P(\bm W)).
+    \label{eq:energy-coordinate-coarse-space}
+\end{align}
+到 $\Ran(\bm P(\bm W))$ 的 $\bm A$-正交投影记为
+\begin{align}
+    \bm Q_{\mathcal U}^{\bm A}&=\bm P(\bm W)(\bm P(\bm W)^\T\bm A\bm P(\bm W))^{-1}\bm P(\bm W)^\T\bm A,
+    \label{eq:A-projector}
+\end{align}
+并令
+\begin{align}
+    \bm\Pi_{\mathcal U}&=\bm A^{1/2}\bm Q_{\mathcal U}^{\bm A}\bm A^{-1/2},
+    \label{eq:energy-coordinate-projector}
+\end{align}
+则 $\bm\Pi_{\mathcal U}$ 为到 $\mathcal U$ 的欧氏正交投影. 两网格误差传播算子满足
+\begin{align}
+    \bm E_{\mathrm{TG}}&=\bm G^{\dagger_{\bm A}}(\bm I-\bm Q_{\mathcal U}^{\bm A})\bm G,
+    \label{eq:tg-error-propagator}\\
+    \bm A^{1/2}\bm E_{\mathrm{TG}}\bm A^{-1/2}&=\bm T^\T(\bm I-\bm\Pi_{\mathcal U})\bm T.
+    \label{eq:tg-energy-coordinate}
+\end{align}
+由于 $\bm I-\bm\Pi_{\mathcal U}$ 为正交投影,\cref{eq:tg-energy-coordinate} 对称半正定, 因而
+\begin{align}
+    \rho(\bm E_{\mathrm{TG}})&=\norm{(\bm I-\bm\Pi_{\mathcal U})\bm T}_2^2=: \rho_{\mathrm{TG}}(\mathcal U).
+    \label{eq:tg-objective-exact}
+\end{align}
+
+\begin{lemma}
+\label{lem:gs-nonexpansive}
+前向 Gauss--Seidel 满足
+\begin{align}
+    \norm{\bm T}_2&=\norm{\bm G}_{\bm A}\le 1.
+    \label{eq:gs-nonexpansive}
+\end{align}
+\end{lemma}
+
+\begin{proof}
+一次坐标修正为
+\begin{align}
+    \bm e'&=\bm e-\frac{\bm\eps_i^\T\bm A\bm e}{a_{ii}}\bm\eps_i,
+    \label{eq:gs-coordinate-update}
+\end{align}
+且
+\begin{align}
+    \norm{\bm e'}_{\bm A}^2&=\norm{\bm e}_{\bm A}^2-\frac{(\bm\eps_i^\T\bm A\bm e)^2}{a_{ii}}\le\norm{\bm e}_{\bm A}^2.
+    \label{eq:gs-coordinate-energy}
+\end{align}
+一次前向 Gauss--Seidel 迭代是\cref{eq:gs-coordinate-update} 的连续复合, 故 $\norm{\bm G\bm e}_{\bm A}\le\norm{\bm e}_{\bm A}$; 结合\cref{eq:notation-induced-energy,eq:smoother-energy-coordinate} 即得\cref{eq:gs-nonexpansive}.
+\end{proof}
+
+\subsection{图空间表示}
+\label{subsec:graph-projector-stability}
+
+在\cref{eq:euclidean-orthonormal-basis} 的正交基底下, 定义
+\begin{align}
+    \begin{bNiceMatrix}
+        \bm T_{\mathrm F}\\
+        \bm T_\ast
+    \end{bNiceMatrix}
+    &=\begin{bNiceMatrix}
+        \ti{\bm Q}_{\mathrm F}^\T\\
+        \ti{\bm Q}_{\ast}^\T
+    \end{bNiceMatrix}\bm T.
+    \label{eq:T-block-coordinates}
+\end{align}
+由\cref{eq:gs-nonexpansive} 有 $\norm{\bm T_{\mathrm F}}_2,\norm{\bm T_\ast}_2\le1$.
+
+\begin{proposition}
+\label{prop:graph-projector}
+在\cref{eq:euclidean-orthonormal-basis} 的坐标下, 图空间 $\Ran\begin{bNiceMatrix}\bm Z\\\bm I\end{bNiceMatrix}$ 的正交补具有欧氏单位正交基
+\begin{align}
+    \bm N(\bm Z)&=\begin{bNiceMatrix}
+        \bm I\\
+        -\bm Z^\T
+    \end{bNiceMatrix}(\bm I+\bm Z\bm Z^\T)^{-1/2}.
+    \label{eq:graph-complement-basis}
+\end{align}
 因此
-\begin{equation}
- \rhoTG(\bm W)=
- \norm{(\bm I-\bm\Pi(\bm Z))\bm T}_2^2
- =\norm{(\bm I+\bm Z\bm Z^T)^{-1/2}
-        \begin{bmatrix}\bm I&-\bm Z\end{bmatrix}\bm T}_2^2. \label{eq:rhoZ}
-\end{equation}
-其中 $\bm T$ 也写在同一能量正交坐标中。
-此外，
-\begin{equation}
- \norm{\bm\Pi(\bm Z)-\bm\Pi(0)}_2
- =\frac{\norm{\bm Z}_2}{\sqrt{1+\norm{\bm Z}_2^2}}.          \label{eq:projectordist2}
-\end{equation}
+\begin{align}
+    \rho_{\mathrm{TG}}(\bm Z)&=\norm*{(\bm I+\bm Z\bm Z^\T)^{-1/2}
+    (\bm T_{\mathrm F}-\bm Z\bm T_\ast)}_2^2.
+    \label{eq:tg-objective-graph}
+\end{align}
 \end{proposition}
 
 \begin{proof}
-令 $\bm Y=[\bm Z^T,\bm I]^T$。图空间的欧氏正交投影为
-$\bm Y(\bm Y^T\bm Y)^{-1}\bm Y^T$，且
-$\bm Y^T\bm Y=\bm I+\bm Z^T\bm Z$，故得式~\eqref{eq:projector}；再代入
-式~\eqref{eq:rho} 即得式~\eqref{eq:rhoZ}。直接验证
-$\bm N(\bm Z)^T\bm N(\bm Z)=\bm I$ 及
-$\bm N(\bm Z)^T[\bm Z^T,\bm I]^T=0$，便得到
-式~\eqref{eq:complement}。等维投影之差的谱范数等于最大主角的正弦；结合
-式~\eqref{eq:angles} 即得式~\eqref{eq:projectordist2}。
-\end{proof}
-
-\begin{theorem}[固定磨光器下的最佳同维粗空间]\label{thm:globalopt}
-在所有维数为 $n_C$ 的粗空间中，
-\begin{equation}
- \min_{\dim\mathcal U=n_C}\rhoTG(\mathcal U)
- =\sigma_{n_C+1}(\bm T)^2.                             \label{eq:bestspace}
-\end{equation}
-一个最优空间由 $\bm T$ 的前 $n_C$ 个左奇异向量张成。
-\end{theorem}
-
-\begin{proof}
-这是矩阵最佳秩 $n_C$ 逼近的投影形式：在秩为 $n_C$ 的欧氏正交投影中，
-$\min_{\bm\Pi^T=\bm\Pi^2=\bm\Pi,\,\operatorname{rank}\bm\Pi=n_C}
-\norm{(\bm I-\bm\Pi)\bm T}_2
-=\sigma_{n_C+1}(\bm T)$。
-\end{proof}
-
-定理~\ref{thm:globalopt} 给出固定磨光器下的理论最优空间。直接以两网格收敛率定义
-最优插值的相关研究可参见~\cite{BrannickEtAl2018}。能量极小粗空间一般与该最优空间
-不同，因而有限步候选优于能量终点在结构上完全可能。
-式~\eqref{eq:bestspace} 在全部 $n_C$ 维子空间上取最小，因此构成固定粗点单位注入所允许
-图空间族的绝对下界。左奇异子空间与 F--变量子空间横截且粗坐标块可逆时，可写成
-$\Ran[\bm W^T,\bm I]^T$，从而属于当前可行族。该定理据此区分无约束最优空间与可行
-图空间，并精确说明能量终点和两网格最优点的结构差异。
-
-\begin{theorem}[谱半径平方根的全局稳定性]\label{thm:lipschitz}
-对任意两个同维粗空间 $\mathcal U,\mathcal V$，
+记 $\ti{\bm Q}=\begin{bNiceMatrix}\ti{\bm Q}_{\mathrm F}&\ti{\bm Q}_\ast\end{bNiceMatrix}$. 直接验证 $\begin{bNiceMatrix}\bm Z^\T&\bm I\end{bNiceMatrix}\bm N(\bm Z)=\mathbf O$ 且 $\bm N(\bm Z)^\T\bm N(\bm Z)=\bm I$, 故能量坐标下图空间正交补的投影为 $\ti{\bm Q}\bm N(\bm Z)\bm N(\bm Z)^\T\ti{\bm Q}^\T$. 由\cref{eq:tg-objective-exact,eq:T-block-coordinates},
 \begin{align}
- \abs{\sqrt{\rhoTG(\mathcal U)}-
-       \sqrt{\rhoTG(\mathcal V)}}
- &\le \norm{\bm T}_2\,
-       \norm{\bm\Pi_{\mathcal U}-\bm\Pi_{\mathcal V}}_2
- =\norm{\bm T}_2\sin\theta_{\max}(\mathcal U,\mathcal V),       \label{eq:lipschitz}\\
- \abs{\rhoTG(\mathcal U)-\rhoTG(\mathcal V)}
- &\le \bigl(\sqrt{\rhoTG(\mathcal U)}+
-              \sqrt{\rhoTG(\mathcal V)}\bigr)
-       \norm{\bm T}_2\sin\theta_{\max}(\mathcal U,\mathcal V). \label{eq:rholipschitz}
+    \rho_{\mathrm{TG}}(\bm Z)&=\norm{\bm N(\bm Z)^\T\ti{\bm Q}^\T\bm T}_2^2.
+    \label{eq:tg-objective-coordinate-projection}
 \end{align}
-特别地，对 $\bm W$ 与 $\bm W^\ast$，右端最后一项可由
-式~\eqref{eq:angles} 精确写成 $\bm Z$ 的函数。
-进一步，对任意两个图空间 $\bm Z,\bm Y$，
+再代入\cref{eq:graph-complement-basis} 即得\cref{eq:tg-objective-graph}.
+\end{proof}
+
+\section{能量极小值点附近的局部谱分析}
+\label{sec:local-spectral-analysis}
+
+\subsection{最大奇异值的二阶扰动界}
+\label{subsec:singular-value-perturbation}
+
+\begin{lemma}
+\label{lem:singular-value-perturbation}
+设
 \begin{align}
- \norm{\bm\Pi(\bm Z)-\bm\Pi(\bm Y)}_2
- &\le \min\left\{
- \norm{(\bm Z-\bm Y)(\bm I+\bm Z^T\bm Z)^{-1/2}}_2,
- \norm{(\bm Z-\bm Y)(\bm I+\bm Y^T\bm Y)^{-1/2}}_2
- \right\}                                                        \notag\\
- &\le\norm{\bm Z-\bm Y}_2.                          \label{eq:graphlipschitz}
+    \sigma&=\sigma_1(\bm M)>\sigma_2(\bm M),\q
+    \dt=\sigma_1(\bm M)-\sigma_2(\bm M)>0,
+    \label{eq:sv-gap}\\
+    \bm M\bm v&=\sigma\bm u,\q \bm M^\T\bm u=\sigma\bm v,
+    \label{eq:sv-singular-vectors}
 \end{align}
-因此 $\abs{\sqrt{\rhoTG(\bm Z)}-\sqrt{\rhoTG(\bm Y)}}
-\le\norm{\bm T}_2\norm{\bm Z-\bm Y}_2$。
-\end{theorem}
-
-\begin{proof}
-记 $f_{\mathcal U}=\norm{(\bm I-\bm\Pi_{\mathcal U})\bm T}_2$。
-谱范数的逆三角不等式给出
-\[
- \abs{f_{\mathcal U}-f_{\mathcal V}}
- \le\norm{(\bm\Pi_{\mathcal U}-\bm\Pi_{\mathcal V})\bm T}_2
- \le\norm{\bm\Pi_{\mathcal U}-\bm\Pi_{\mathcal V}}_2\norm{\bm T}_2.
-\]
-等维子空间满足
-$\norm{\bm\Pi_{\mathcal U}-\bm\Pi_{\mathcal V}}_2
-=\sin\theta_{\max}(\mathcal U,\mathcal V)$；参见~\cite{Bhatia1997}，故得
-式~\eqref{eq:lipschitz}。再由
-$\abs{f_{\mathcal U}^2-f_{\mathcal V}^2}
-=(f_{\mathcal U}+f_{\mathcal V})\abs{f_{\mathcal U}-f_{\mathcal V}}$
-得到式~\eqref{eq:rholipschitz}。与常用的
-$2\norm{\bm T}_2^2\sin\theta_{\max}$ 上界相比，式~\eqref{eq:rholipschitz}
-保留了两个粗空间自身的实际收敛因子，因而在二者都较好时更紧。
-为证式~\eqref{eq:graphlipschitz}，令
-$\bm Q(\bm Z)=[\bm Z^T,\bm I]^T(\bm I+\bm Z^T\bm Z)^{-1/2}$。
-等维投影满足
-$\norm{\bm\Pi(\bm Z)-\bm\Pi(\bm Y)}_2
-=\norm{(\bm I-\bm\Pi(\bm Y))\bm Q(\bm Z)}_2$。利用
-$(\bm I-\bm\Pi(\bm Y))[\bm Y^T,\bm I]^T=0$ 得到第一个上界；交换
-$\bm Z,\bm Y$ 得到第二个上界。最后用
-$\norm{(\bm I+\bm Z^T\bm Z)^{-1/2}}_2\le1$。
-\end{proof}
-
-\begin{corollary}[能量误差到两网格性能的显式传递]\label{cor:energytransfer}
-令 $\delta_J=J(\bm W)-J(\bm W^\ast)$、$f_\ast=\sqrt{\rhoTG(\bm W^\ast)}$，并定义
-\begin{equation}
- \beta(\delta_J)=\norm{\bm T}_2
- \sqrt{\frac{2\delta_J}{\lambda_{\min}(\Sc)+2\delta_J}}.
-                                                                    \label{eq:beta}
-\end{equation}
-则
+其中 $\bm u,\bm v$ 为单位奇异向量. 若 $\norm{\bm E}_2\le\dt/4$, 则
 \begin{align}
- \abs{\sqrt{\rhoTG(\bm W)}-f_\ast}&\le\beta(\delta_J),          \label{eq:energytof}\\
- \abs{\rhoTG(\bm W)-\rhoTG(\bm W^\ast)}
- &\le\bigl(\sqrt{\rhoTG(\bm W)}+f_\ast\bigr)\beta(\delta_J). \label{eq:energytorho}
+    \abs*{\sigma_1(\bm M+\bm E)-\sigma-\bm u^\T\bm E\bm v}
+    &\le\frac{2}{\dt}\norm{\bm E}_2^2.
+    \label{eq:sv-second-order-bound}
 \end{align}
-若 $\bar f=f_\ast+\beta(\delta_J)<1$，则该候选必为收敛的对称两网格方法；把任意
-初始误差的能量范数降低到比例 $\varepsilon\in(0,1)$ 时，循环数上界为
-\begin{equation}
- k_{\rm cert}=\left\lceil
- \frac{\log(1/\varepsilon)}{-2\log\bar f}\right\rceil.           \label{eq:cyclecertificate}
-\end{equation}
-即运行 $k_{\rm cert}$ 个循环必已达到该能量误差比例。
-\end{corollary}
+\end{lemma}
 
 \begin{proof}
-由式~\eqref{eq:Zenergy}，
-$\norm{\bm Z}_2\le\norm{\bm Z}_F
-\le\sqrt{2\delta_J/\lambda_{\min}(\Sc)}$。代入
-式~\eqref{eq:angles} 和定理~\ref{thm:lipschitz}，并利用
-$x/\sqrt{1+x^2}$ 的单调性，即得式~\eqref{eq:energytof}；平方差分解给出
-式~\eqref{eq:energytorho}。最后
-$\rhoTG(\bm W)\le\bar f^2<1$，命题~\ref{prop:rhs} 的能量收缩式给出
-$\norm{\bm e_k}_{\bm A}/\norm{\bm e_0}_{\bm A}\le\bar f^{2k}$，整理即得
-式~\eqref{eq:cyclecertificate}。
-\end{proof}
-
-\begin{corollary}[固定性能增益需要非零能量距离]\label{cor:barrier}
-若某候选相对能量终点满足
-$\sqrt{\rhoTG(\bm W^\ast)}-\sqrt{\rhoTG(\bm W)}\ge\gamma>0$，则
-\begin{equation}
- \norm{\bm Z}_2\ge
- \frac{\gamma}{\sqrt{\norm{\bm T}_2^2-\gamma^2}},
- \qquad 0<\gamma<\norm{\bm T}_2,                       \label{eq:barrier}
-\end{equation}
-并且相应插值能量超额满足
-\begin{equation}
- J(\bm W)-J(\bm W^\ast)
- \ge \frac{\lambda_{\min}(\Sc)}{2}
- \frac{\gamma^2}{\norm{\bm T}_2^2-\gamma^2}.          \label{eq:energybarrier}
-\end{equation}
-\end{corollary}
-
-\begin{proof}
-由定理~\ref{thm:lipschitz} 和式~\eqref{eq:angles}，
-$\gamma\le\norm{\bm T}_2\norm{\bm Z}_2/\sqrt{1+\norm{\bm Z}_2^2}$。
-平方并整理即得式~\eqref{eq:barrier}。再由式~\eqref{eq:Zenergy}，
-\[
- J(\bm W)-J(\bm W^\ast)
- =\tfrac12\norm{\bm Z\Sc^{1/2}}_F^2
- \ge\tfrac12\lambda_{\min}(\Sc)\norm{\bm Z}_F^2
- \ge\tfrac12\lambda_{\min}(\Sc)\norm{\bm Z}_2^2,
-\]
-代入式~\eqref{eq:barrier} 即得式~\eqref{eq:energybarrier}。
-\end{proof}
-
-这两个下界把固定幅度的两网格优势同时转化为严格正的粗空间距离和插值能量超额，
-定量刻画有限步候选与能量终点之间的必要间隔。
-
-\section{从精确两网格到递归 V--cycle}
-
-为解释次要多层实验，下面把“精确粗解”被“下一层一次 V--cycle”替代所引入的误差
-单独分离。设层编号为 $\ell=0,\ldots,L$，$\ell=L$ 为最粗层，并满足 Galerkin 关系
-\begin{equation}
- \bm A_{\ell+1}=\bm P_\ell^T\bm A_\ell\bm P_\ell.
- \label{eq:multigalerkin}
-\end{equation}
-令 $\bm B_{\ell+1}^{V}$ 表示从零初值施加下一层一次 V--cycle 所得到的线性近似逆，
-并定义其粗层误差传播
-\begin{equation}
- \bm E_{\ell+1}^{V}=\bm I-\bm B_{\ell+1}^{V}\bm A_{\ell+1}.
- \label{eq:coarseVerror}
-\end{equation}
-在层 $\ell$，前磨光误差传播为 $\bm G_\ell$，后磨光取
-$\bm G_\ell^{\dagger_{\bm A_\ell}}$。记
+作对称扩张
 \begin{align}
- \bm E_\ell^{V}
- &=\bm G_\ell^{\dagger_{\bm A_\ell}}
-   (\bm I-\bm P_\ell\bm B_{\ell+1}^{V}
-                   \bm P_\ell^T\bm A_\ell)\bm G_\ell,       \label{eq:EV}\\
- \bm E_\ell^{TG}
- &=\bm G_\ell^{\dagger_{\bm A_\ell}}
-   (\bm I-\bm Q_\ell)\bm G_\ell,\qquad
- \bm Q_\ell=\bm P_\ell\bm A_{\ell+1}^{-1}
-                   \bm P_\ell^T\bm A_\ell.                   \label{eq:ETGlevel}
+    \bm M_0&=\begin{bNiceMatrix}
+        \mathbf O & \bm M\\
+        \bm M^\T & \mathbf O
+    \end{bNiceMatrix},\q
+    \bm E_0=\begin{bNiceMatrix}
+        \mathbf O & \bm E\\
+        \bm E^\T & \mathbf O
+    \end{bNiceMatrix},\q
+    \bm q=\frac{1}{\sqrt2}\begin{bNiceMatrix}
+        \bm u\\
+        \bm v
+    \end{bNiceMatrix}.
+    \label{eq:sv-symmetric-dilation}
 \end{align}
-其中 $\bm E_\ell^{TG}$ 使用精确的层 $\ell+1$ 粗解。
-
-\begin{theorem}[递归粗解误差的精确分解与稳定界]
-\label{thm:multileveldecomposition}
-对每个 $0\le\ell<L$，有恒等式
-\begin{equation}
- \boxed{
- \bm E_\ell^{V}=\bm E_\ell^{TG}
- +\bm G_\ell^{\dagger_{\bm A_\ell}}
-  \bm P_\ell\bm E_{\ell+1}^{V}\bm A_{\ell+1}^{-1}
-  \bm P_\ell^T\bm A_\ell\bm G_\ell.}
- \label{eq:multilevelidentity}
-\end{equation}
-因而
-\begin{equation}
- \norm{\bm E_\ell^{V}-\bm E_\ell^{TG}}_{\bm A_\ell}
- \le \norm{\bm G_\ell}_{\bm A_\ell}^{2}
-       \norm{\bm E_{\ell+1}^{V}}_{\bm A_{\ell+1}}.            \label{eq:multilevelbound}
-\end{equation}
-若 $\bm E_{\ell+1}^{V}$ 关于 $\bm A_{\ell+1}$ 自伴，则
-$\bm E_\ell^{V}$ 关于 $\bm A_\ell$ 自伴。特别地，下一层粗解精确时
-$\bm E_{\ell+1}^{V}=0$，递归 V--cycle 在本层严格退化为精确两网格算子。
-\end{theorem}
-
-\begin{proof}
-由式~\eqref{eq:coarseVerror} 右乘 $\bm A_{\ell+1}^{-1}$ 得
-\[
- \bm B_{\ell+1}^{V}
- =(\bm I-\bm E_{\ell+1}^{V})\bm A_{\ell+1}^{-1}.
-\]
-把它代入式~\eqref{eq:EV}，中间粗校正可逐项写成
-\begin{align*}
- \bm I-\bm P_\ell\bm B_{\ell+1}^{V}
-                  \bm P_\ell^T\bm A_\ell
- &=\bm I-\bm P_\ell\bm A_{\ell+1}^{-1}
-                  \bm P_\ell^T\bm A_\ell\\
- &\quad+\bm P_\ell\bm E_{\ell+1}^{V}
-                  \bm A_{\ell+1}^{-1}
-                  \bm P_\ell^T\bm A_\ell.
-\end{align*}
-前一行第一项经前后磨光后正是 $\bm E_\ell^{TG}$，故得
-式~\eqref{eq:multilevelidentity}。
-
-再令
-$\bm R_\ell=\bm A_{\ell+1}^{-1}\bm P_\ell^T\bm A_\ell$。
-Galerkin 关系给出
-\begin{equation*}
- \norm{\bm P_\ell\bm y}_{\bm A_\ell}=\norm{\bm y}_{\bm A_{\ell+1}},
- \qquad
- \norm{\bm R_\ell\bm x}_{\bm A_{\ell+1}}
- =\norm{\bm Q_\ell\bm x}_{\bm A_\ell}
- \le\norm{\bm x}_{\bm A_\ell}.
-\end{equation*}
-即 $\bm P_\ell$ 是能量等距嵌入，$\bm R_\ell$ 是其能量伴随且为压缩；同时
-$\norm{\bm G_\ell^{\dagger_{\bm A_\ell}}}_{\bm A_\ell}
-=\norm{\bm G_\ell}_{\bm A_\ell}$。对式~\eqref{eq:multilevelidentity} 的第二项
-逐因子取诱导范数便得到式~\eqref{eq:multilevelbound}。
-若 $\bm E_{\ell+1}^{V}$ 在粗层能量内积下自伴，则
-$\bm P_\ell\bm E_{\ell+1}^{V}\bm R_\ell$ 在细层能量内积下自伴；再由
-$\bm G_\ell^{\dagger_{\bm A_\ell}}(\cdot)\bm G_\ell$ 的夹心结构得到最后结论。
+则 $\lambda_1(\bm M_0)=\sigma$, $\lambda_2(\bm M_0)=\sigma_2(\bm M)$, $\norm{\bm E_0}_2=\norm{\bm E}_2$, 且 $\lambda_1(\bm M_0+\bm E_0)=\sigma_1(\bm M+\bm E)=:\sigma'$. 将 $\sigma'$ 的单位特征向量写成
+\begin{align}
+    \bm q'&=\gamma\bm q+\bm z_\perp,\q \bm z_\perp\perp\bm q.
+    \label{eq:sv-eigenvector-decomposition}
+\end{align}
+由 Weyl 不等式 $\sigma'\ge\sigma-\norm{\bm E}_2$. 将特征方程投影到 $\bm q^\perp$ 后, 由\cref{eq:sv-gap} 得
+\begin{align}
+    (\dt-\norm{\bm E}_2)\norm{\bm z_\perp}_2
+    &\le \norm{\bm E}_2\bigl(\abs\gamma+\norm{\bm z_\perp}_2\bigr).
+    \label{eq:sv-eigenvector-prebound}
+\end{align}
+若 $\gamma=0$, 则 $\norm{\bm z_\perp}_2=1$, \cref{eq:sv-eigenvector-prebound} 推出 $\dt\le2\norm{\bm E}_2$, 与 $\norm{\bm E}_2\le\dt/4$ 矛盾. 因而 $\gamma\ne0$, 且
+\begin{align}
+    \frac{\norm{\bm z_\perp}_2}{\abs\gamma}
+    &\le\frac{\norm{\bm E}_2}{\dt-2\norm{\bm E}_2}.
+    \label{eq:sv-eigenvector-tilt}
+\end{align}
+再将特征方程左乘 $\bm q^\T$,
+\begin{align}
+    \sigma'-\sigma-\bm q^\T\bm E_0\bm q
+    &=\frac{1}{\gamma}\bm q^\T\bm E_0\bm z_\perp,\q
+    \bm q^\T\bm E_0\bm q=\bm u^\T\bm E\bm v.
+    \label{eq:sv-top-eigenvalue-expansion}
+\end{align}
+结合\cref{eq:sv-eigenvector-tilt,eq:sv-top-eigenvalue-expansion} 与 $\norm{\bm E}_2\le\dt/4$ 即得\cref{eq:sv-second-order-bound}.
 \end{proof}
 
-\begin{corollary}[多层误差的逐层展开]
-\label{cor:multilevelrecursion}
-若最粗层精确求解，即 $\bm E_L^{V}=0$，则对 $0\le\ell<L$，
-\begin{equation}
- \norm{\bm E_\ell^{V}}_{\bm A_\ell}
- \le \norm{\bm E_\ell^{TG}}_{\bm A_\ell}
- +\norm{\bm G_\ell}_{\bm A_\ell}^{2}
-  \norm{\bm E_{\ell+1}^{V}}_{\bm A_{\ell+1}}.                \label{eq:multilevelrecursion}
-\end{equation}
-递归展开得到
-\begin{equation}
- \norm{\bm E_0^{V}}_{\bm A_0}
- \le\sum_{j=0}^{L-1}
- \left(\prod_{i=0}^{j-1}\norm{\bm G_i}_{\bm A_i}^{2}\right)
- \norm{\bm E_j^{TG}}_{\bm A_j},                               \label{eq:multilevelsum}
-\end{equation}
-其中空乘积取 $1$。
-\end{corollary}
-
-\begin{proof}
-式~\eqref{eq:multilevelrecursion} 由定理~\ref{thm:multileveldecomposition}、三角不等式
-直接得到。从 $\ell=L-1$ 向 $0$ 反向代入，并使用 $\bm E_L^V=0$，即得
-式~\eqref{eq:multilevelsum}。
-\end{proof}
-
-该分解将递归后新增的影响精确归结为下一层 V--cycle 的粗解误差。实验 7 同时报告首层
-精确两网格循环数与三层 V--cycle 循环数，以直接量化递归代价；一般层数下的复杂度与
-网格无关收敛性留作后续研究。
-
-\section{有限步优于能量终点的局部机制}
+\subsection{能量极小值点处的局部展开}
+\label{subsec:endpoint-local-expansion}
 
 记
-\begin{equation}
- f(\bm Z)=\sqrt{\rhoTG(\bm Z)}
- =\norm{(\bm I-\bm\Pi(\bm Z))\bm T}_2.
-\end{equation}
-设 $\bm Z=0$ 时最大奇异值 $\sigma=f(0)>0$ 的重数为 $r$。取对应的正交左右
-奇异子空间基 $\bm U,\bm V$，使
-$ (\bm I-\bm\Pi(0))\bm T\bm V=\sigma\bm U$ 与
-$\bm T^T(\bm I-\bm\Pi(0))\bm U=\sigma\bm V$。在式~\eqref{eq:bases} 的
-欧氏能量坐标中定义
-\begin{equation}
- \bm U_F=\widetilde{\bm Q}_F^T\bm U,
- \qquad
- \bm Y=\widetilde{\bm Q}_\ast^T\bm T\bm V,
- \qquad \operatorname{sym}(\bm X)=\tfrac12(\bm X+\bm X^T).       \label{eq:ua}
-\end{equation}
-由于 $\bm U$ 属于 $\Ran(\bm I-\bm\Pi(0))$，其粗空间坐标为零，并且
-$\bm U_F^T\bm U_F=\bm I_r$。
-
-\begin{theorem}[能量终点处的一阶有利方向]\label{thm:firstorder}
-对任意方向 $\bm H$，
-\begin{equation}
- f'(0;\bm H)=
- -\lambda_{\min}\!\left(
-   \operatorname{sym}(\bm U_F^T\bm H\bm Y)\right).   \label{eq:derivative}
-\end{equation}
-这里无需最大奇异值为单。若
-$\lambda_{\min}(\operatorname{sym}(\bm U_F^T\bm H\bm Y))>0$，则存在
-$\varepsilon>0$，使
-$0<t<\varepsilon$ 时
-\begin{equation}
- \rhoTG(t\bm H)<\rhoTG(0),
- \qquad
- J(\bm W^\ast+\bm B^{-1/2}t\bm H\Sc^{1/2})>J(\bm W^\ast).
-                                                                    \label{eq:finitebetter}
-\end{equation}
-即一个能量上更差的有限误差可产生更好的两网格因子。
-而且，存在满足上述严格正定条件的方向 $\bm H$，当且仅当
-\begin{equation}
- \operatorname{rank}(\bm Y)=r.                                    \label{eq:rankiff}
-\end{equation}
-当式~\eqref{eq:rankiff} 成立时，一个显式有利方向为
-\begin{equation}
- \bm H_0=\bm U_F(\bm Y^T\bm Y)^{-1}\bm Y^T,                    \label{eq:H0}
-\end{equation}
-它满足 $\bm U_F^T\bm H_0\bm Y=\bm I_r$ 和 $f'(0;\bm H_0)=-1$。
-\end{theorem}
-
-\begin{proof}
-由~\eqref{eq:projector}，
-\[
- \bm\Pi'(0)[\bm H]=
- \begin{bmatrix}0&\bm H\\\bm H^T&0\end{bmatrix}.
-\]
-令 $\bm F(\bm Z)=(\bm I-\bm\Pi(\bm Z))\bm T$，则
-$\bm F'(0)[\bm H]=-\bm\Pi'(0)[\bm H]\bm T$。重最大奇异值的方向导数公式
-（参见~\cite{Bhatia1997}）给出
-\[
- f'(0;\bm H)=\lambda_{\max}\!\left(
- \operatorname{sym}(\bm U^T\bm F'(0)[\bm H]\bm V)\right).
-\]
-又因 $\widetilde{\bm Q}_\ast^T\bm U=0$，分块相乘得到
-$\bm U^T\bm F'(0)[\bm H]\bm V=-\bm U_F^T\bm H\bm Y$，从而得到
-式~\eqref{eq:derivative}。所给矩阵正定时方向导数严格为负，故第一结论成立；第二结论
-由~\eqref{eq:Zenergy} 得到，因为其能量超额为
-$t^2\norm{\bm H\Sc^{1/2}}_F^2/2>0$。
-由 $\bm U$ 的正交性及其粗坐标为零，已有 $\bm U_F^T\bm U_F=\bm I_r$。
-若 $\bm Y$ 不满列秩，取非零 $\bm x$ 使 $\bm Y\bm x=0$，则
-$\bm x^T\operatorname{sym}(\bm U_F^T\bm H\bm Y)\bm x=0$，故对任意 $\bm H$
-均不可能严格正定。反之，若 $\bm Y$ 满列秩，式~\eqref{eq:H0} 有定义，直接相乘得到
-$\bm U_F^T\bm H_0\bm Y=\bm I_r$。这证明了充要性和显式构造。
-\end{proof}
-
-当 $r=1$ 时，式~\eqref{eq:derivative} 退化为
-$f'(0;\bm H)=-\bm u_F^T\bm H\bm y$；当 $r>1$ 时，正定条件作用于整个主导奇异
-子空间，因而不依赖非唯一奇异向量基的选择。
-
-\subsection{局部最优权衡与有限 PCG 的严格反单调段}
-
-令 $\bm Z_m=\bm B^{1/2}\bm\Delta_m\Sc^{-1/2}$，并记
-\begin{equation}
- g(\bm Z)=\lambda_{\min}\!\left(
- \operatorname{sym}(\bm U_F^T\bm Z\bm Y)\right).     \label{eq:gZ}
-\end{equation}
-最大奇异值的完整重数为 $r$，故该主导簇与其余奇异值分离。结合谱范数的重奇异值
-扰动展开~\cite{Bhatia1997} 和投影~\eqref{eq:projector} 的解析性，存在邻域
-$\norm{\bm Z}_F\le r_0$ 与常数 $K>0$，使
-\begin{equation}
- f(\bm Z)=f(0)-g(\bm Z)+R(\bm Z),
- \qquad \abs{R(\bm Z)}\le K\norm{\bm Z}_F^2.          \label{eq:taylor}
-\end{equation}
-
-\begin{theorem}[固定能量预算下的尖锐局部 Pareto 律]\label{thm:pareto}
-对 $\varepsilon\ge0$，定义能量预算内可实现的最佳两网格改善
-\begin{equation}
- \mathcal G(\varepsilon)=f(0)-
- \min\left\{f(\bm Z):
- \frac12\norm{\bm Z\Sc^{1/2}}_F^2\le\varepsilon\right\}.        \label{eq:Gepsilon}
-\end{equation}
-若 $\operatorname{rank}(\bm Y)=r$，令
 \begin{align}
- \alpha_E&=\left[\tr\left(
-   (\bm Y^T\Sc^{-1}\bm Y)^{-1}\right)\right]^{-1/2},            \label{eq:alphaE}\\
- \widehat{\bm H}_E&=\alpha_E\bm U_F
- (\bm Y^T\Sc^{-1}\bm Y)^{-1}\bm Y^T\Sc^{-1}.                  \label{eq:HE}
+    f(\bm Z)&=\sqrt{\rho_{\mathrm{TG}}(\bm Z)}.
+    \label{eq:local-f-definition}
 \end{align}
-则 $\norm{\widehat{\bm H}_E\Sc^{1/2}}_F=1$，并且
-\begin{equation}
- \sup_{\bm H\ne0}
- \frac{g(\bm H)}{\norm{\bm H\Sc^{1/2}}_F}=\alpha_E.           \label{eq:sharpslope}
-\end{equation}
-单位能量方向中，$\widehat{\bm H}_E$ 是达到该尖锐常数的唯一方向。进一步，存在与
-$\varepsilon$ 无关的常数 $C_-,C_+>0$，使充分小的 $\varepsilon>0$ 满足
-\begin{equation}
- \alpha_E\sqrt{2\varepsilon}-C_-\varepsilon
- \le\mathcal G(\varepsilon)
- \le\alpha_E\sqrt{2\varepsilon}+C_+\varepsilon.                \label{eq:paretobounds}
-\end{equation}
-特别地，
-\begin{equation}
- \mathcal G(\varepsilon)=\alpha_E\sqrt{2\varepsilon}
- +O(\varepsilon),\qquad\varepsilon\downarrow0.                 \label{eq:paretoasymptotic}
-\end{equation}
-反之，若 $\operatorname{rank}(\bm Y)<r$，则存在 $C_0>0$ 使
-\begin{equation}
- 0\le\mathcal G(\varepsilon)\le C_0\varepsilon                 \label{eq:rankdeficient}
-\end{equation}
-对充分小的 $\varepsilon$ 成立。故满秩情形具有严格的 $\sqrt\varepsilon$ 级最优改善，
-秩退化情形则不存在任何一阶改善。
-\end{theorem}
-
-\begin{proof}
-先证明式~\eqref{eq:sharpslope} 的尖锐性。记
-$\bm X=\bm H\Sc^{1/2}$、$\bm R_E=\Sc^{-1/2}\bm Y$ 和
-$\bm K=\bm U_F^T\bm X$。若 $g(\bm H)=t>0$，则
-\begin{equation}
- \operatorname{sym}(\bm K\bm R_E)\succeq t\bm I_r.             \label{eq:semidefiniteconstraint}
-\end{equation}
-对任意满足 $\operatorname{sym}(\bm K\bm R_E)\succeq\bm I_r$ 的 $\bm K$，令
-$\bm R_E^\dagger=(\bm R_E^T\bm R_E)^{-1}\bm R_E^T$ 和
-$\bm D=\bm K-\bm R_E^\dagger$。于是
-$\operatorname{sym}(\bm D\bm R_E)\succeq0$，并且
-\begin{align*}
- \norm{\bm K}_F^2
- &=\norm{\bm R_E^\dagger}_F^2+2\langle\bm R_E^\dagger,\bm D\rangle_F
-   +\norm{\bm D}_F^2,\\
- \langle\bm R_E^\dagger,\bm D\rangle_F
- &=\tr\left((\bm R_E^T\bm R_E)^{-1}
-             \operatorname{sym}(\bm D\bm R_E)\right)\ge0.
-\end{align*}
-因此 $\bm R_E^\dagger$ 是该半正定约束下唯一的最小 Frobenius 范数解，且其范数平方为
-$\tr((\bm Y^T\Sc^{-1}\bm Y)^{-1})=\alpha_E^{-2}$。由
-$\norm{\bm X}_F\ge\norm{\bm U_F^T\bm X}_F=\norm{\bm K}_F$，把
-式~\eqref{eq:semidefiniteconstraint} 除以 $t$，得到
-$t\le\alpha_E\norm{\bm H\Sc^{1/2}}_F$。式~\eqref{eq:HE} 直接达到等号。反过来，
-等号迫使 $\bm K=t\bm R_E^\dagger$ 且
-$\bm X=\bm U_F\bm K$；单位能量约束再迫使 $t=\alpha_E$，故等号方向唯一。
-
-预算集合紧且 $f$ 连续，式~\eqref{eq:Gepsilon} 的最小值存在。由
-式~\eqref{eq:taylor}、式~\eqref{eq:sharpslope} 和
-$\norm{\bm Z}_F^2\le2\varepsilon/\lambda_{\min}(\Sc)$，任意可行 $\bm Z$ 满足
-\[
- f(0)-f(\bm Z)\le\alpha_E\sqrt{2\varepsilon}
- +\frac{2K}{\lambda_{\min}(\Sc)}\varepsilon.
-\]
-取 $\bm Z=\sqrt{2\varepsilon}\,\widehat{\bm H}_E$，同一余项界给出匹配的下界，
-从而得到式~\eqref{eq:paretobounds}--\eqref{eq:paretoasymptotic}。
-
-若 $\bm Y$ 秩亏，存在非零 $\bm x$ 使 $\bm Y\bm x=0$。于是对任意 $\bm H$，
-$\bm x^T\operatorname{sym}(\bm U_F^T\bm H\bm Y)\bm x=0$，故 $g(\bm H)\le0$。
-式~\eqref{eq:taylor} 遂给出
-$f(0)-f(\bm Z)\le K\norm{\bm Z}_F^2
-\le2K\varepsilon/\lambda_{\min}(\Sc)$。再由 $\bm Z=0$ 可行得到
-$\mathcal G(\varepsilon)\ge0$，即得式~\eqref{eq:rankdeficient}。
-\end{proof}
-
-\begin{theorem}[有限 PCG 路径上的严格反单调段]\label{thm:antimonotone}
-设连续一段 PCG 候选均落在上述邻域，并且每一步满足
-\begin{equation}
- \eta_m:=g(\bm Z_m)-g(\bm Z_{m+1})
- -K\bigl(\norm{\bm Z_m}_F^2+\norm{\bm Z_{m+1}}_F^2\bigr)>0.       \label{eq:tailcondition}
-\end{equation}
-则在该段上
+由\cref{eq:tg-objective-graph},
 \begin{align}
- J(\bm W_m)-J(\bm W_{m+1})
- &=\frac12\norm{\bm W_{m+1}-\bm W_m}_{\bm B,F}^2>0,              \label{eq:antienergy}\\
- \sqrt{\rhoTG(\bm W_{m+1})}-\sqrt{\rhoTG(\bm W_m)}
- &\ge\eta_m>0,                                                    \label{eq:antifactor}\\
- \rhoTG(\bm W_{m+1})-\rhoTG(\bm W_m)
- &\ge\bigl(f(\bm Z_m)+f(\bm Z_{m+1})\bigr)\eta_m>0.             \label{eq:antimonotone}
+    f(\bm Z)&=\norm{\bm L(\bm Z)}_2,\q
+    \bm L(\bm Z):=(\bm I+\bm Z\bm Z^\T)^{-1/2}(\bm T_{\mathrm F}-\bm Z\bm T_\ast).
+    \label{eq:local-L-definition}
+\end{align}
+假设端点最大奇异值简单,
+\begin{align}
+    \sigma&:=\sigma_1(\bm T_{\mathrm F})>\sigma_2(\bm T_{\mathrm F}),\q
+    \dt:=\sigma_1(\bm T_{\mathrm F})-\sigma_2(\bm T_{\mathrm F})>0,
+    \label{eq:endpoint-singular-gap}
+\end{align}
+并取对应单位左右奇异向量满足
+\begin{align}
+    \bm T_{\mathrm F}\bm v&=\sigma\bm u_{\mathrm F},\q
+    \bm T_{\mathrm F}^\T\bm u_{\mathrm F}=\sigma\bm v,\q
+    \bm y:=\bm T_\ast\bm v.
+    \label{eq:endpoint-singular-vectors}
+\end{align}
+由 $\norm{\bm T_{\mathrm F}}_2\le1$ 还知 $0<\dt\le\sigma\le1$.
+
+\begin{theorem}
+\label{thm:endpoint-local-expansion}
+若
+\begin{align}
+    \norm{\bm Z}_{\mathrm F}&\le\frac{\dt}{8},
+    \label{eq:local-ball-condition}
+\end{align}
+则
+\begin{align}
+    f(\bm Z)&=\sigma-\bm u_{\mathrm F}^\T\bm Z\bm y+R(\bm Z),
+    \label{eq:local-expansion}\\
+    \abs{R(\bm Z)}&\le\left(1+\frac{8}{\dt}\right)\norm{\bm Z}_{\mathrm F}^2.
+    \label{eq:local-remainder-bound}
 \end{align}
 \end{theorem}
 
 \begin{proof}
-条件~\eqref{eq:tailcondition} 意味着
-$g(\bm Z_m)>g(\bm Z_{m+1})$，故 $\bm Z_m\ne\bm Z_{m+1}$，相应 PCG 步非零。
-式~\eqref{eq:antienergy} 由定理~\ref{thm:pcgtail} 的精确账本给出。
-另一方面，由~\eqref{eq:taylor}，
-\begin{align*}
- f(\bm Z_{m+1})-f(\bm Z_m)
- &=g(\bm Z_m)-g(\bm Z_{m+1})+R(\bm Z_{m+1})-R(\bm Z_m)\\
- &\ge g(\bm Z_m)-g(\bm Z_{m+1})
- -K(\norm{\bm Z_m}_F^2+\norm{\bm Z_{m+1}}_F^2)=\eta_m>0.
-\end{align*}
-这给出式~\eqref{eq:antifactor}；再用平方差分解即得式~\eqref{eq:antimonotone}。
+令
+\begin{align}
+    \bm A(\bm Z)&:=(\bm I+\bm Z\bm Z^\T)^{-1/2},\q z:=\norm{\bm Z}_2,
+    \label{eq:local-normalization-matrix}
+\end{align}
+则
+\begin{align}
+    \norm{\bm A(\bm Z)-\bm I}_2&=1-\frac{1}{\sqrt{1+z^2}}\le\frac12z^2.
+    \label{eq:local-normalization-bound}
+\end{align}
+由\cref{eq:local-L-definition}, 写成 $\bm L(\bm Z)=\bm T_{\mathrm F}+\bm E(\bm Z)$, 其中
+\begin{align}
+    \bm E(\bm Z)&=-\bm Z\bm T_\ast+(\bm A(\bm Z)-\bm I)(\bm T_{\mathrm F}-\bm Z\bm T_\ast).
+    \label{eq:local-E-definition}
+\end{align}
+在\cref{eq:local-ball-condition} 下, 由 $\norm{\bm T_{\mathrm F}}_2,\norm{\bm T_\ast}_2\le1$ 和\cref{eq:local-normalization-bound},
+\begin{align}
+    \norm{\bm E(\bm Z)+\bm Z\bm T_\ast}_2&\le z^2,\q
+    \norm{\bm E(\bm Z)}_2\le z+z^2\le2z\le\frac{\dt}{4}.
+    \label{eq:local-E-bounds}
+\end{align}
+由\cref{lem:singular-value-perturbation},\cref{eq:endpoint-singular-vectors,eq:local-E-bounds},
+\begin{align}
+    \abs*{f(\bm Z)-\sigma+\bm u_{\mathrm F}^\T\bm Z\bm y}
+    &\le\left(1+\frac{8}{\dt}\right)\norm{\bm Z}_{\mathrm F}^2,
+    \label{eq:local-expansion-bound-proof}
+\end{align}
+即\cref{eq:local-expansion,eq:local-remainder-bound}.
 \end{proof}
 
-条件~\eqref{eq:tailcondition} 表明：主导子空间上的一阶变化压过二阶余项时，在所考察的
-有限相邻步上形成严格的“能量下降、两网格因子上升”。该条件允许主导奇异值具有重数，
-并可沿有限 PCG 路径逐步核验。
+\section{PCG 迭代的相邻谱半径变化}
+\label{sec:pcg-step-performance}
 
-\section{有限步尺度上界与自适应规则}
+令
+\begin{align}
+    \bm D_m&:=\bm Z_m-\bm Z_{m+1},\q
+    r_m:=\norm{\bm Z_m}_{\mathrm F,\bm S}.
+    \label{eq:path-step-and-radius}
+\end{align}
+由\cref{eq:normalized-error,eq:pcg-matrix-pythagoras,eq:normalized-energy-gap} 可得
+\begin{align}
+    r_m^2&=r_{m+1}^2+\norm{\bm D_m}_{\mathrm F,\bm S}^2,
+    \label{eq:path-radius-pythagoras}\\
+    J(\bm W_m)-J(\bm W_{m+1})&=\frac12\norm{\bm D_m}_{\mathrm F,\bm S}^2.
+    \label{eq:path-energy-decrease}
+\end{align}
 
-令 $n=1/h$ 为每个坐标方向的细网格区间数，并定义可由矩阵直接取得的对角尺度比
-\begin{equation}
- \chi_A=\frac{\max_i A_{ii}}{\min_i A_{ii}}.           \label{eq:diagratio}
-\end{equation}
-
-\subsection{固定能量衰减的 $O(h^{-1})$ 上界}
-
-令 $\bm D_h=\diag(\bm B_h)$ 为当前实现使用的 Jacobi 预条件器，假定
-$\bm W_{0,h}\ne\bm W_h^\ast$，并记
-\begin{equation}
- \kappa_h=\cond_2(\bm D_h^{-1/2}\bm B_h\bm D_h^{-1/2}),\qquad
- d_{m,h}=\frac{\norm{\bm W_{m,h}-\bm W_h^\ast}_{\bm B_h,F}}
- {\norm{\bm W_{0,h}-\bm W_h^\ast}_{\bm B_h,F}}.       \label{eq:dh}
-\end{equation}
-标准 PCG 能量范数估计~\cite{Greenbaum1997,Saad2003} 给出
-\begin{equation}
- d_{m,h}\le 2q_h^m,\qquad
- q_h=\frac{\sqrt{\kappa_h}-1}{\sqrt{\kappa_h}+1}.      \label{eq:cgscale}
-\end{equation}
-
-\begin{proposition}[固定比例能量衰减的线性分辨率步数]
-\label{prop:fixedreduction}
-若某个网格族满足 $\kappa_h\le\kappa_+h^{-2}$，则对任意固定
-$\eta\in(0,1)$，只要
-\begin{equation}
- m\ge \frac12\left(\frac{\sqrt{\kappa_+}}{h}+1\right)
-             \log\frac{2}{\eta},                     \label{eq:fixedreduction}
-\end{equation}
-便有 $d_{m,h}\le\eta$。因此，达到固定能量误差比例的充分步数为 $m=O(h^{-1})$。
-\end{proposition}
+\begin{lemma}
+\label{lem:pcg-one-step-contraction}
+令
+\begin{align}
+    \bm D_{\bm B}&=\diag(\bm B),\q
+    \kappa=\kappa_2(\bm D_{\bm B}^{-1/2}\bm B\bm D_{\bm B}^{-1/2}),
+    \label{eq:jacobi-condition-number}\\
+    c_1&=\frac{\kappa-1}{\kappa+1},\q
+    c_2=\frac{2\sqrt\kappa}{\kappa+1}.
+    \label{eq:pcg-c1-c2}
+\end{align}
+则
+\begin{align}
+    r_{m+1}&\le c_1r_m,
+    \label{eq:pcg-radius-contraction}\\
+    \norm{\bm D_m}_{\mathrm F,\bm S}&\ge c_2r_m.
+    \label{eq:pcg-step-lower-bound}
+\end{align}
+\end{lemma}
 
 \begin{proof}
-由式~\eqref{eq:cgscale} 和不等式
-$q_h\le\exp\{-2/(\sqrt{\kappa_h}+1)\}$ 和条件数假设直接得到
-\[
- d_{m,h}\le
- 2\exp\!\left\{-\frac{2m}{\sqrt{\kappa_h}+1}\right\}
- \le
- 2\exp\!\left\{-\frac{2m}{\sqrt{\kappa_+}/h+1}\right\}.
-\]
-将右端控制在 $\eta$ 以下即得式~\eqref{eq:fixedreduction}，其右端随 $h^{-1}$ 线性增长。
+PCG 不劣于预条件最速下降法, 故逐列有 $\norm{\bm e_{j,m+1}}_{\bm B}\le c_1\norm{\bm e_{j,m}}_{\bm B}$; 对所有列平方求和得到\cref{eq:pcg-radius-contraction}. 再由\cref{eq:path-radius-pythagoras,eq:pcg-c1-c2},
+\begin{align}
+    \norm{\bm D_m}_{\mathrm F,\bm S}^2
+    &\ge(1-c_1^2)r_m^2=c_2^2r_m^2,
+    \label{eq:pcg-step-lower-bound-proof}
+\end{align}
+即\cref{eq:pcg-step-lower-bound}.
 \end{proof}
 
-命题~\ref{prop:fixedreduction} 给出固定能量衰减所需步数的最坏情形充分上界。
-两网格最优路径位置还取决于磨光器、粗空间几何和具体算子；归一化常数与尺度比阈值
-因此由数值标定确定。有限维 PCG 的代数终止上界仍由细点系统维数决定。
+若 $\bm D_m\ne\mathbf O$, 定义一步对齐量与判据常数
+\begin{align}
+    \nu_m&:=\frac{\bm u_{\mathrm F}^\T\bm D_m\bm y}{\norm{\bm D_m}_{\mathrm F,\bm S}},
+    \label{eq:alignment-nu}\\
+    C&:=\frac{(1+8/\dt)(1+c_1^2)}{\lambda_{\min}(\bm S)c_2}.
+    \label{eq:step-criterion-C}
+\end{align}
 
-\subsection{自适应有限步规则}
+\begin{theorem}
+\label{thm:pcg-two-sided-step-criterion}
+设 $\bm D_m\ne\mathbf O$, 且 $\bm Z_m,\bm Z_{m+1}$ 均满足\cref{eq:local-ball-condition}. 则
+\begin{align}
+    J(\bm W_{m+1})&<J(\bm W_m),
+    \label{eq:step-energy-strict-decrease}\\
+    \nu_m>Cr_m&\q\Longrightarrow\q
+    \rho_{\mathrm{TG}}(\bm Z_{m+1})>\rho_{\mathrm{TG}}(\bm Z_m),
+    \label{eq:step-deterioration-condition}\\
+    \nu_m<-Cr_m&\q\Longrightarrow\q
+    \rho_{\mathrm{TG}}(\bm Z_{m+1})<\rho_{\mathrm{TG}}(\bm Z_m).
+    \label{eq:step-improvement-condition}
+\end{align}
+\end{theorem}
 
-令 $r_c=H/h$ 为粗化比，$n_H=1/H=n/r_c$ 为每个坐标方向的粗网格区间数。算法构造
-\begin{equation}
- m_{\rm ad}=
- \begin{cases}
- \operatorname{round}(n/8),&n_H\le8,\\
- \operatorname{round}(n/4),&n_H>8,\ \chi_A<10^3,\\
- \operatorname{round}(n/3),&n_H>8,\ 10^3\le\chi_A<10^5,\\
- \operatorname{round}(n/2),&n_H>8,\ \chi_A\ge10^5.
- \end{cases}                                           \label{eq:adaptive}
-\end{equation}
-该规则使用粗空间分辨率和矩阵对角尺度比：小粗空间采用短路径，其余问题按尺度比的
-三个对数区间选取归一化位置。每个分支均有
-$m_{\rm ad}=\operatorname{round}(\theta/h)$，
-$\theta\in\{1/8,1/4,1/3,1/2\}$，因而按构造
-\begin{equation}
- m_{\rm ad}=O(h^{-1}),\qquad
- \abs{hm_{\rm ad}-\theta}\le h/2.                  \label{eq:adaptivescale}
-\end{equation}
-命题~\ref{prop:fixedreduction} 给出 $O(h^{-1})$ 的尺度依据；
-$1/8,1/4,1/3,1/2$ 以及 $10^3,10^5$ 由当前受控问题族标定。在线阶段据此确定单个候选，
-依次完成一次路径推进、插值组装和粗算子构造。窗口受限离线参考（sampled oracle）
-用于评估该规则在预设候选集内的相对表现。
+\begin{proof}
+由\cref{eq:local-expansion,eq:local-remainder-bound},
+\begin{align}
+    \abs*{f(\bm Z_{m+1})-f(\bm Z_m)-\bm u_{\mathrm F}^\T\bm D_m\bm y}
+    &\le\left(1+\frac8\dt\right)
+    \bigl(\norm{\bm Z_m}_{\mathrm F}^2+\norm{\bm Z_{m+1}}_{\mathrm F}^2\bigr).
+    \label{eq:step-linearization-error}
+\end{align}
+由\cref{eq:notation-right-frob,eq:pcg-radius-contraction},
+\begin{align}
+    \norm{\bm Z_m}_{\mathrm F}^2+\norm{\bm Z_{m+1}}_{\mathrm F}^2
+    &\le\frac{1+c_1^2}{\lambda_{\min}(\bm S)}r_m^2.
+    \label{eq:step-Z-bound-by-r}
+\end{align}
+由\cref{eq:path-energy-decrease} 与 $\bm D_m\ne\mathbf O$ 得到\cref{eq:step-energy-strict-decrease}; 结合\cref{eq:alignment-nu,eq:pcg-step-lower-bound,eq:step-criterion-C,eq:step-linearization-error,eq:step-Z-bound-by-r} 即分别得到\cref{eq:step-deterioration-condition,eq:step-improvement-condition}.
+\end{proof}
 
-\section{结论与适用范围}
+由\cref{eq:pcg-radius-contraction} 可知 $Cr_m$ 沿非终止 PCG 迭代指数衰减, 因而\cref{eq:step-deterioration-condition,eq:step-improvement-condition} 中无法判定符号的区间随 $m$ 收缩.
 
-本文以同一个 $\bm Z$ 坐标把能量极小插值、粗空间几何和固定磨光器下的两网格目标
-闭合到有限 PCG 路径：
-\[
- \boxed{
- \text{PCG 正交能量尾}
- \longrightarrow \bm Z\text{ 的粗空间几何}
- \longrightarrow \rhoTG\text{ 的投影目标}
- \longrightarrow \text{有限步非单调性与自适应规则}
- \longrightarrow \text{递归 V--cycle}.}
-\]
-代数恒等式和全局稳定界适用于有限维 SPD 系统、固定粗点及对称两网格结构；能量误差
-现在还给出两网格因子和循环数的显式证书。终点一阶机制和有限反单调段允许主导奇异值
-具有任意有限重数；主导左奇异模态的细坐标自动正交，有利方向存在性仅由粗响应矩阵
-$\bm Y$ 满列秩完全刻画。固定能量预算下的最优问题进一步给出尖锐 Pareto 常数和唯一
-能量归一方向，并证明秩亏时一阶改善完全消失。严格反单调结论只作为沿有限 PCG 路径
-逐步核验的一组充分条件。标准 $O(h^{-2})$ 条件数上界给出固定能量衰减所需的
-$m=O(h^{-1})$ 充分尺度，而两网格最优路径位置由完整的谱投影目标决定。
-精确两网格到递归 V--cycle 的恒等分解进一步把下一层非精确粗解误差隔离为显式扰动项，
-并给出逐层能量范数上界，为三层试验提供理论接口。一般多层复杂度与网格无关收敛分析
-属于更广的层次结构问题。
-数值部分在二维规则网格与高对比通道族上检验这一主线。adaptive 有限步规则以一次
-PCG 路径构造实现 $O(h^{-1})$ 步数尺度，具体归一化位置和尺度比阈值由设计组确定。
-系数几何按网格单元数定义的尺寸实验刻画受控离散问题族；固定物理几何嵌套加密实验
-检验标准网格细化情形。
+\subsection{判据常数的量级估计}
+\label{subsec:criterion-scaling}
 
-\begin{thebibliography}{99}
+以下考虑固定有界区域上 Dirichlet 扩散问题的标准二维五点差分离散, 采用通常的 $h^{-2}$ 缩放, 并假设扩散系数满足
+\begin{align}
+    0<\alpha&\le a(x)\le\beta,\q
+    \chi:=\frac{\beta}{\alpha}\ge1.
+    \label{eq:coefficient-bounds-and-contrast}
+\end{align}
+由\cref{eq:pcg-c1-c2},
+\begin{align}
+    \frac{1+c_1^2}{c_2}
+    &=\frac{\kappa^2+1}{\sqrt\kappa(\kappa+1)}=\Theta(\sqrt\kappa).
+    \label{eq:pcg-factor-scaling}
+\end{align}
+Schur 补的变分表征给出 $\lambda_{\min}(\bm S)\ge\lambda_{\min}(\bm A)\gtrsim\alpha$. 对五点扩散矩阵, $\bm B\preceq2\bm D_{\bm B}$, $\lambda_{\min}(\bm B)\ge\lambda_{\min}(\bm A)\gtrsim\alpha$, 且 $\lambda_{\max}(\bm D_{\bm B})\lesssim\beta h^{-2}$, 从而
+\begin{align}
+    \lambda_{\min}(\bm S)&\gtrsim\alpha,
+    \label{eq:schur-lambda-lower}\\
+    \kappa&=\O(\chi h^{-2}).
+    \label{eq:kappa-scaling}
+\end{align}
+将\cref{eq:pcg-factor-scaling,eq:schur-lambda-lower,eq:kappa-scaling} 代入\cref{eq:step-criterion-C}, 得
+\begin{align}
+    C&=\O\left(\frac{\sqrt\chi}{\alpha h\dt}\right).
+    \label{eq:C-scaling}
+\end{align}
 
-\bibitem{WanChanSmith2000}
-W.-L. Wan, T. F. Chan, and B. Smith,
-An energy-minimizing interpolation for robust multigrid methods,
-\emph{SIAM Journal on Scientific Computing}, 21(4):1632--1649, 2000,
-\href{https://doi.org/10.1137/S1064827598334277}{doi:10.1137/S1064827598334277}.
+\section{局部判据的渐近可达性}
+\label{sec:asymptotic-entry}
 
-\bibitem{Dohrmann2007}
-C. R. Dohrmann,
-Interpolation operators for algebraic multigrid by local optimization,
-\emph{SIAM Journal on Scientific Computing}, 29(5):2045--2058, 2007,
-\href{https://doi.org/10.1137/06066103X}{doi:10.1137/06066103X}.
+本节继续采用\cref{subsec:criterion-scaling}的标准二维五点差分设置. 对固定有限维问题, 以下 $m$ 均理解为 PCG 精确终止前的非平凡迭代步; 若 PCG 更早精确终止, 则已直接到达 $\bm Z=\mathbf O$.
 
-\bibitem{OlsonSchroderTuminaro2011}
-L. N. Olson, J. B. Schroder, and R. S. Tuminaro,
-A general interpolation strategy for algebraic multigrid using energy minimization,
-\emph{SIAM Journal on Scientific Computing}, 33(2):966--991, 2011,
-\href{https://doi.org/10.1137/100803031}{doi:10.1137/100803031}.
+标准 PCG 估计给出
+\begin{align}
+    c_3&:=\frac{\sqrt\kappa-1}{\sqrt\kappa+1},\q
+    r_m\le2c_3^m r_0.
+    \label{eq:pcg-global-matrix-bound}
+\end{align}
+又由\cref{eq:path-step-and-radius,eq:notation-right-frob,eq:schur-lambda-lower},
+\begin{align}
+    \norm{\bm Z_m}_{\mathrm F}
+    &\le\frac{2r_0}{\sqrt{\lambda_{\min}(\bm S)}}c_3^m.
+    \label{eq:Z-global-exponential-bound}
+\end{align}
 
-\bibitem{JannaEtAl2023}
-C. Janna, A. Franceschini, J. B. Schroder, and L. Olson,
-Parallel energy-minimization prolongation for algebraic multigrid,
-\emph{SIAM Journal on Scientific Computing}, 45(5):A2561--A2584, 2023,
-\href{https://doi.org/10.1137/22M1513794}{doi:10.1137/22M1513794}.
+\begin{assumption}
+\label{ass:polynomial-data}
+沿所考虑的离散问题族, 存在固定 $p\ge0$ 使得
+\begin{align}
+    \dt^{-1}&=\O\bigl((\chi h^{-1})^p\bigr),
+    \label{eq:gap-polynomial-growth}\\
+    \frac{r_0}{\sqrt\alpha}&=\O\bigl((\chi h^{-1})^p\bigr).
+    \label{eq:initial-error-polynomial-growth}
+\end{align}
+\end{assumption}
 
-\bibitem{BrannickEtAl2018}
-J. Brannick, F. Cao, K. Kahl, R. D. Falgout, and X. Hu,
-Optimal interpolation and compatible relaxation in classical algebraic multigrid,
-\emph{SIAM Journal on Scientific Computing}, 40(3):A1473--A1493, 2018,
-\href{https://doi.org/10.1137/17M1123456}{doi:10.1137/17M1123456}.
+\begin{theorem}
+\label{thm:asymptotic-local-entry}
+在\cref{eq:kappa-scaling,eq:schur-lambda-lower} 和\cref{ass:polynomial-data} 下, 存在
+\begin{align}
+    m_0&=\O\bigl(\sqrt\chi\,h^{-1}\log(\chi h^{-1})\bigr)
+    \label{eq:local-entry-scale}
+\end{align}
+使得 PCG 要么在 $m_0$ 前精确终止, 要么对所有 $m\ge m_0$ 的后续非平凡迭代均有
+\begin{align}
+    \norm{\bm Z_m}_{\mathrm F}&\le\frac{\dt}{8}.
+    \label{eq:eventual-local-ball}
+\end{align}
+固定 $\chi$ 时,
+\begin{align}
+    m_0&=\O(h^{-1}\log h^{-1})=o(h^{-2}).
+    \label{eq:fixed-contrast-entry-scale}
+\end{align}
+\end{theorem}
 
-\bibitem{Greenbaum1997}
-A. Greenbaum,
-\emph{Iterative Methods for Solving Linear Systems},
-SIAM, 1997,
-\href{https://doi.org/10.1137/1.9781611970937}{doi:10.1137/1.9781611970937}.
+\begin{proof}
+由\cref{eq:Z-global-exponential-bound}, 只需使 $c_3^m\lesssim\dt\sqrt{\lambda_{\min}(\bm S)}/r_0$. 若 $\kappa=1$, 则 PCG 一步精确终止; 以下设 $\kappa>1$. 此时
+\begin{align}
+    -\log c_3
+    &=\log\frac{\sqrt\kappa+1}{\sqrt\kappa-1}
+    =2\operatorname{artanh}(\kappa^{-1/2})
+    \ge\frac{2}{\sqrt\kappa}.
+    \label{eq:cg-factor-log-lower}
+\end{align}
+结合\cref{eq:kappa-scaling,eq:schur-lambda-lower,eq:cg-factor-log-lower,eq:gap-polynomial-growth,eq:initial-error-polynomial-growth}, 上述条件在\cref{eq:local-entry-scale} 的量级下成立, 从而得到\cref{eq:eventual-local-ball}. 固定 $\chi$ 时\cref{eq:fixed-contrast-entry-scale} 立即成立.
+\end{proof}
 
-\bibitem{Saad2003}
-Y. Saad,
-\emph{Iterative Methods for Sparse Linear Systems}, 2nd ed.,
-SIAM, 2003,
-\href{https://doi.org/10.1137/1.9780898718003}{doi:10.1137/1.9780898718003}.
-
-\bibitem{BjorckGolub1973}
-{\AA}ke Bj\"orck and G. H. Golub,
-Numerical methods for computing angles between linear subspaces,
-\emph{Mathematics of Computation}, 27(123):579--594, 1973,
-\href{https://doi.org/10.1090/S0025-5718-1973-0348991-3}
-{doi:10.1090/S0025-5718-1973-0348991-3}.
-
-\bibitem{Bhatia1997}
-R. Bhatia,
-\emph{Matrix Analysis},
-Springer, 1997,
-\href{https://doi.org/10.1007/978-1-4612-0653-8}
-{doi:10.1007/978-1-4612-0653-8}.
-
-\bibitem{FalgoutVassilevskiZikatanov2005}
-R. D. Falgout, P. S. Vassilevski, and L. T. Zikatanov,
-On two-grid convergence estimates,
-\emph{Numerical Linear Algebra with Applications}, 12(5--6):471--494, 2005,
-\href{https://doi.org/10.1002/nla.437}{doi:10.1002/nla.437}.
-
-\bibitem{Notay2007}
-Y. Notay,
-Convergence analysis of perturbed two-grid and multigrid methods,
-\emph{SIAM Journal on Numerical Analysis}, 45(3):1035--1044, 2007,
-\href{https://doi.org/10.1137/060652312}{doi:10.1137/060652312}.
-
-\bibitem{XuZhang2022}
-X. Xu and C.-S. Zhang,
-Convergence analysis of inexact two-grid methods: A theoretical framework,
-\emph{SIAM Journal on Numerical Analysis}, 60(1):133--156, 2022,
-\href{https://doi.org/10.1137/20M1356075}{doi:10.1137/20M1356075}.
-
-\bibitem{CiaramellaVanzan2022}
-G. Ciaramella and T. Vanzan,
-Spectral coarse spaces for the substructured parallel Schwarz method,
-\emph{Journal of Scientific Computing}, 91:69, 2022,
-\href{https://doi.org/10.1007/s10915-022-01840-9}
-{doi:10.1007/s10915-022-01840-9}.
-
-\end{thebibliography}
+在固定比例的 C/F 划分下, 二维细点数满足 $n_{\mathrm F}(h)=\Theta(h^{-2})$, 故\cref{eq:fixed-contrast-entry-scale} 还给出 $m_0/n_{\mathrm F}(h)=\O(h\log h^{-1})\to0$. 因此, \cref{thm:endpoint-local-expansion,thm:pcg-two-sided-step-criterion} 虽然在粗空间坐标中是局部结果, 但沿 PCG 路径在一个相对于二维代数终止尺度为低阶的初始过渡段之后均可适用.
 
 \end{document}

@@ -1,17 +1,17 @@
-# v7.8 数值结果
+# v8.1 数值结果
 
-Exp2 由 v7.8.0 源码以 4 线程重新运行。Exp1 和 Exp3--7 的算法、算例与输出均未改变，
-因此沿用 v7.7.0 的正式结果，不重复计算。
+全部七组实验均由 v8.1.0 最终源码以 4 线程重新运行。正式求解容差为相对欧氏残量
+`1e-6`；`global-reference` 的列相对残量容差为 `1e-10`。
 
 | 主题 | 结果摘要 |
 |---|---|
-| 主比较 | adaptive/global-reference 均为 13/13 收敛，循环和 4459/28972 |
-| 中心扫描 | `m=1,...,128`；最小有效收敛因子为 0.9417637，对应 `m=38` |
-| 离线采样参考 | 设计组平均/最大 gap 8.93%/29.65%，验证组 27.34%/54.20% |
-| 稳健性与计时 | seed 和 RHS 均全部收敛；平均总时间 523.477/6518.831 ms |
+| 主比较 | adaptive/global-reference 均为 13/13 收敛，循环和为 4459/28972 |
+| 完整路径扫描 | cross 与 winding-ring 分别在扫描区间的 `m=38`、`m=53` 取得最小 $\rho_{\mathrm{eff}}$；两条能量路径均单调下降 |
+| 离线采样参考 | 设计组平均/最大 gap 为 8.93%/29.65%，验证组为 27.34%/54.20% |
+| 稳健性与计时 | seed 和 RHS 均全部收敛；warm-start 重复计时总时间为 852.797±237.914 / 11446.680±1430.207 ms |
 | 停止消融 | adaptive/fixed-step/fixed-residual 收敛数为 6/6、5/6、5/6 |
-| 固定物理加密 | adaptive 循环数 122/119/145，有效因子 0.892425/0.890129/0.909090 |
-| 三层初试 | adaptive V-cycle 为 101/237 次，有效因子 0.870836/0.943331 |
+| 固定物理加密 | adaptive 循环数为 122/119/145，$\rho_{\mathrm{eff}}$ 为 0.892425/0.890129/0.909090 |
+| 三层初试 | adaptive V-cycle 为 101/237 次，$\rho_{\mathrm{eff}}$ 为 0.870836/0.943331 |
 
 ## 文件
 
@@ -19,13 +19,16 @@ Exp2 由 v7.8.0 源码以 4 线程重新运行。Exp1 和 Exp3--7 的算法、�
 |---|---|
 | Exp1 | `experiment1_two_grid_comparison.txt` |
 | Exp2 摘要 | `experiment2_step_scan.txt` |
-| Exp2 全部 128 个收敛率 | `experiment2_central_step_scan.csv` |
-| Exp2 非单调曲线 | `experiment2_central_step_scan.png` |
+| Exp2 cross 全部 128 点 | `experiment2_cross_channel_path.csv` |
+| Exp2 cross 双面板图 | `experiment2_cross_channel_path.png` |
+| Exp2 winding-ring 全部 128 点 | `experiment2_winding_ring_path.csv` |
+| Exp2 winding-ring 双面板图 | `experiment2_winding_ring_path.png` |
 | Exp3 | `experiment3_oracle_validation.txt` |
 | Exp4 | `experiment4_submission_robustness.txt` |
 | Exp5 | `experiment5_stopping_ablation.txt` |
 | Exp6 | `experiment6_fixed_physical_refinement.txt` |
 | Exp7 | `experiment7_multilevel_pilot.txt` |
 
-Exp2 的 CSV 和曲线只包含步数与有效收敛因子，不报告逐步循环数或扫描表格。其他 TXT
-保留各自实验所需的循环数、收敛状态、有效收敛因子及辅助指标。
+Exp2 的 CSV 列为步数、$J(W_m)=\tfrac12\operatorname{tr}(P_m^\top A_hP_m)$、归一化
+能量差和实际残量历程得到的 $\rho_{\mathrm{eff}}$。这里的 $\rho_{\mathrm{eff}}$ 与理论
+能量范数两网格因子 $\rho_{\mathrm{TG}}$ 严格区分。

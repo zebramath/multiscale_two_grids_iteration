@@ -117,11 +117,18 @@ else
     run_step experiment2-step-scan \
         env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment2_step_scan" --threads="$threads"
-    run_step experiment2-plot \
+    run_step experiment2-cross-plot \
         env MPLCONFIGDIR="$build_dir/matplotlib" \
-        python3 scripts/plot_central_step_scan.py \
-        "$results_dir/experiment2_central_step_scan.csv" \
-        "$results_dir/experiment2_central_step_scan.png"
+        python3 scripts/plot_path_scan.py \
+        "$results_dir/experiment2_cross_channel_path.csv" \
+        "$results_dir/experiment2_cross_channel_path.png" \
+        "Cross-channel: 128/16, contrast 1e4" 43
+    run_step experiment2-ring-plot \
+        env MPLCONFIGDIR="$build_dir/matplotlib" \
+        python3 scripts/plot_path_scan.py \
+        "$results_dir/experiment2_winding_ring_path.csv" \
+        "$results_dir/experiment2_winding_ring_path.png" \
+        "Winding-ring: 128/16, contrast 1e4" 43
     run_step experiment3-oracle \
         env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment3_oracle_validation" --threads="$threads"

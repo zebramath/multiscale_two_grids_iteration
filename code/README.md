@@ -1,4 +1,4 @@
-# two_grids_iteration v7.8.0
+# two_grids_iteration v8.1.0
 
 ## 实现
 
@@ -42,17 +42,19 @@ auto result = tgi::build_adaptive_global_pcg_interpolation(
 | 主题 | 入口 | 内容 |
 |---|---|---|
 | 两网格性能与逐步扫描 | `experiment1_two_grid_comparison` | 尺度、对比度、六类拓扑和 256/16 扩展问题 |
-| 两网格性能与逐步扫描 | `experiment2_step_scan` | 中心问题上逐一扫描 `m=1,...,128`，输出有效收敛因子曲线 |
+| 两网格性能与逐步扫描 | `experiment2_step_scan` | cross 与 winding-ring 上逐一扫描 `m=1,...,128`，输出归一化能量与 $\rho_{\mathrm{eff}}$ |
 | 规则质量、稳健性与代价 | `experiment3_oracle_validation` | 设计组与冻结验证组上的窗口受限离线采样参考 |
-| 规则质量、稳健性与代价 | `experiment4_submission_robustness` | 五个 seed、六类 RHS 与中心问题平均计时 |
+| 规则质量、稳健性与代价 | `experiment4_submission_robustness` | 五个 seed、六类 RHS 与中心问题重复计时 |
 | 规则质量、稳健性与代价 | `experiment5_stopping_ablation` | 自适应有限步、固定步数与固定列残量消融 |
 | 固定物理系数场加密 | `experiment6_fixed_physical_refinement` | 固定物理系数场的三层嵌套加密 |
 | 多层初步验证 | `experiment7_multilevel_pilot` | 三层 V-cycle 与首层精确两网格配对 |
 
 正式求解从零初值开始，相对欧氏残量容差为 `1e-6`。常规循环上限为 20000；Exp2
-逐步扫描使用固定的内部观测上限。常规结果报告循环数、最终残量、有效收敛因子、末端
-因子、插值密度和收敛状态；Exp2 只生成逐步有效收敛因子的 CSV 与非单调曲线。Exp4
-的计时表只报告五次预热后测量的算术平均值。
+逐步扫描使用固定的内部观测上限。常规结果报告循环数、最终残量、经验有效收敛因子
+$\rho_{\mathrm{eff}}$、末端因子、插值密度和收敛状态。Exp2 同时记录
+$J(W)=\tfrac12\operatorname{tr}(P^\top A P)$ 与 $\rho_{\mathrm{eff}}$；前者沿路径单调，
+后者是实际残量历程指标，不等同于理论能量范数因子 $\rho_{TG}$。Exp4 的计时比较由几何
+插值出发，双方采用同一 Jacobi--PCG 路径，报告五次预热后测量的均值与样本标准差。
 
 实验 5 以列迭代总数衡量确定性 setup 工作量。实验 6 固定物理通道宽度和背景分区，并
 逐点核对嵌套网格共享节点。实验 7 在两个 Galerkin 转移上独立构造插值，报告

@@ -619,7 +619,7 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
     coarse_matrix_ = two_grid_solver_detail::multiply_sparse_matrices(
         p_transpose_, ap, 0.0, setup_threads, true);
     for (double value : coarse_matrix_.diagonal()) {
-        setup_report_.interpolation_energy += value;
+        setup_report_.interpolation_energy += 0.5 * value;
     }
 
     const std::vector<int> ordering =

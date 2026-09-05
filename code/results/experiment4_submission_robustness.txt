@@ -1,7 +1,7 @@
 Robustness and repeated-timing checks
 =====================================
 
-Version         : 7.7.0
+Version         : 8.1.0
 Grid            : 64/16
 Timing grid     : 128/16
 Contrast        : 1e4
@@ -10,7 +10,7 @@ Threads         : 4
 Solve tolerance : 1e-6
 Maximum cycles  : 20000
 
-Note: Five coefficient seeds and six right-hand sides test robustness; the latter reuse each method's matrix-dependent interpolation. Timing is restricted to the central 128/16 cross-channel case. Adaptive and global-reference are measured in five post-warmup repetitions with rotating order after both satisfy the formal convergence criterion. Setup includes interpolation, Galerkin assembly and cycle construction; solve starts from zero. Only the arithmetic mean of the post-warmup measurements is reported.
+Note: Five coefficient seeds and six right-hand sides test robustness; the latter reuse each method's matrix-dependent interpolation. Timing is restricted to the central 128/16 cross-channel case. Adaptive and global-reference are measured in five post-warmup repetitions with alternating order. Both start from the geometric interpolation and use the same Jacobi-PCG path; global-reference continues until every column reaches relative residual 1e-10. Setup includes interpolation, Galerkin assembly and cycle construction; solve starts from zero. Means and sample standard deviations summarize the post-warmup measurements.
 
 Coefficient-seed stability
 --------------------------
@@ -69,8 +69,8 @@ global-reference            6/0/0                 1507          251.17          
 
 Central 128/16 repeated wall-clock comparison
 ---------------------------------------------
-Policy              Runs  Setup mean ms  Solve mean ms  Total mean ms  Mean cycles
-----------------  ------  -------------  -------------  -------------  -----------
-adaptive               5        358.102        165.375        523.477          242
-global-reference       5       1637.871       4880.959       6518.831         3227
+Policy              Runs   Setup mean   Setup SD  Solve mean  Solve SD  Total mean  Total SD  Mean cycles
+----------------  ------  -----------  ---------  ----------  --------  ----------  --------  -----------
+adaptive               5      495.928     33.231     356.869   226.063     852.797   237.914          242
+global-reference       5     2596.774    292.274    8849.906  1471.671   11446.680  1430.207         3227
 

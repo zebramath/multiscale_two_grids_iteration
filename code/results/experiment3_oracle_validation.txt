@@ -1,7 +1,7 @@
 Adaptive finite-step rule and a sampled offline reference
 =========================================================
 
-Version           : 7.7.0
+Version           : 8.1.0
 Threads           : 4
 Oracle candidates : (1/h)/8,...,(1/h)/2 by 2
 Solve tolerance   : 1e-6

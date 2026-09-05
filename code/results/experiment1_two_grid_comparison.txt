@@ -1,7 +1,7 @@
 Two-grid comparison across scale, contrast and topology
 =======================================================
 
-Version         : 7.7.0
+Version         : 8.1.0
 Cases           : 13
 Mode            : full
 Threads         : 4

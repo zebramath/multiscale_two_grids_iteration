@@ -1,16 +1,19 @@
-Central finite-PCG convergence-factor scan
-==========================================
+Finite-PCG energy and effective-factor path scans
+=================================================
 
-Version                           : 7.8.0
-Problem                           : 128/16 cross-channel, contrast 1e4
-Scanned steps                     : m=1,...,128
-Threads                           : 4
-Solve tolerance                   : 1e-6
-Minimum-factor m                  : 38
-Minimum effective factor          : 0.9417637
-Adaptive m                        : 43
-Adaptive effective factor         : 0.9444069
-Global-reference effective factor : 0.9957271
+Version                    : 8.1.0
+Problems                   : 128/16, contrast 1e4
+Scanned interval           : m=1,...,128
+Threads                    : 4
+Solve tolerance            : 1e-6
+Reference column tolerance : 1e-10
 
-Note: Every integer finite-PCG step count is evaluated on the same central problem. The CSV and figure contain only the effective convergence factor, exposing its nonmonotone dependence on m.
+Path-scan summary
+-----------------
+Topology          Min m  Min rho_eff  Adaptive m  Adaptive rho_eff  Reference rho_eff     Reference J     Max delta J  J monotone
+---------------  ------  -----------  ----------  ----------------  -----------------  --------------  --------------  ----------
+cross-channel        38    0.9417637          43         0.9444069          0.9957271   8.4192718e+09  -2.9954302e+01         yes
+winding-ring         53    0.9410121          43         0.9431693          0.9821588   8.9845960e+09  -1.1524200e-02         yes
+
+Note: For each topology, every integer m in the scanned interval is evaluated on one Jacobi-PCG path. J(W)=0.5 tr(P^T A P), and the normalized energy excess is (J(W_m)-J(W_ref))/(J(W_1)-J(W_ref)). rho_eff is computed from the observed residual history and is distinct from the energy-norm two-grid factor rho_TG. Minima are minima only within m=1,...,128. Max delta J is max_m [J(W_{m+1})-J(W_m)].
 
