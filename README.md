@@ -1,4 +1,4 @@
-# multiscale_two_grids_iteration v8.1
+# multiscale_two_grids_iteration v8.2
 
 本项目研究高对比扩散问题中的有限 Krylov 能量插值。系数场由随机板块背景叠加高导通道
 构成。固定粗点与磨光器后，插值能量沿 PCG 路径下降，而实际两网格性能对路径位置可以
@@ -23,8 +23,8 @@ $$
 - PCG 正交能量账本与归一化插值误差，能量统一记为
   $J(W)=\tfrac12\operatorname{tr}(P^\top A P)$；
 - Galerkin 粗矩阵、粗空间主角和两网格投影的统一表达；
-- 重主导奇异值下的一阶有利方向、局部 Pareto 律和有限步反单调条件；
-- 能量误差到两网格性能的稳定界与递归 V-cycle 误差分解；
+- 最大奇异值简单情形下的 endpoint 局部谱展开与显式二阶余项；
+- PCG 相邻步两网格性能双向判据、判据尺度与局部区域的渐近可达性；
 - 四个数值主题、七个独立实验，覆盖两网格主结果、两类拓扑的完整路径扫描、自适应规则
   评估、固定物理场加密和三层 V-cycle pilot。
 
@@ -36,7 +36,7 @@ $$
 | 文件或目录 | 内容 |
 |---|---|
 | `research_report.md` | 研究定位、实验设计、完整数值结果和结论 |
-| `theory.tex` | 定理、命题、证明、假设和参考文献 |
+| `theory.tex` | 定理、命题、证明和假设 |
 | `packages.sty`、`mathstyle.sty`、`reportstyle.sty` | 理论稿调用的自定义样式库 |
 | `code/` | C++17 实现、七个实验入口和运行脚本 |
 | `code/results/` | 由 v8.1 最终源码完整重算的文本、CSV 与曲线 |
