@@ -1,8 +1,8 @@
-# multiscale_two_grids_iteration v8.1 验证记录
+# multiscale_two_grids_iteration v8.3 验证记录
 
-验证日期：2026-09-05  
-代码版本：8.1.0  
-正式运行线程数：4
+验证日期：2026-09-06  
+代码版本：8.3.0  
+新增实验线程数：4
 
 ## 文件完整性
 
@@ -21,14 +21,15 @@
 
 - 编译器：GCC 13.3.0，C++17，`-O3 -DNDEBUG`。
 - 启用 `-Wall -Wextra -Wpedantic -Werror`、shadow、conversion、sign-conversion、
-  duplicated-condition、logical、null-dereference 和 format 检查；七个实验入口全部通过。
+  duplicated-condition、logical、null-dereference 和 format 检查；八个实验入口全部通过。
 - `run_validation.sh` 通过 `sh -n`。
-- `plot_path_scan.py` 通过 Python 3.12.13 字节码检查；绘图使用 Matplotlib 3.10.8。
-- quick 回归的 3 个代表问题全部收敛，结果写入临时构建目录，未覆盖正式结果。
+- `plot_path_scan.py` 已在 v8.1 完整复算中通过 Python 3.12.13 字节码检查，绘图使用
+  Matplotlib 3.10.8；v8.3 未改动该脚本。
+- v8.3 仅执行新增 Exp8；其余实验结果文件经逐文件比较保持不变。
 
-## 完整数值复算
+## 原有数值结果
 
-七组正式实验均由 v8.1.0 可执行文件重新运行；`code/results/` 不含沿用的旧版实验数据。
+Exp1--7 保留 v8.1.0 可执行文件的完整重算结果，v8.3 未重复运行这些实验。
 
 | 实验 | 完整性检查 |
 |---|---|
@@ -39,6 +40,21 @@
 | Exp5 | 6 个问题、3 种停止策略全部完成 |
 | Exp6 | 3 层固定物理加密完成，共享节点系数失配数为 0 |
 | Exp7 | 2 个三层层次、2 种插值方法全部完成 |
+
+## v8.3 新增中心问题对照
+
+Exp8 采用 128/16 网格、对比度 $10^4$、cross-channel、seed 1 和常数右端项。几何插值
+与能量极小插值共用矩阵、粗点、Galerkin 构造、对称 Gauss--Seidel、零初值及
+$10^{-6}$ 相对残量停止标准，仅插值矩阵不同。两种方法均单次运行至收敛，不设循环数
+上限或脚本超时。
+
+| 插值 | 循环数 | 最终相对残量 | 有效收敛因子 |
+|---|---:|---:|---:|
+| 几何插值 | 85524 | $9.99896215\times10^{-7}$ | 0.999838472 |
+| 能量极小插值 | 3227 | $9.97423567\times10^{-7}$ | 0.995727131 |
+
+几何插值循环数是能量极小插值的 26.503 倍。新增结果保存于
+`code/results/experiment8_interpolation_endpoint.txt`。
 
 Exp2 自动核验结果：
 

@@ -1,4 +1,4 @@
-# two_grids_iteration v8.1.0
+# two_grids_iteration v8.3.0
 
 ## 实现
 
@@ -27,22 +27,25 @@ auto result = tgi::build_adaptive_global_pcg_interpolation(
 ./scripts/run_validation.sh quick
 ./scripts/run_validation.sh supplemental
 ./scripts/run_validation.sh multilevel
+./scripts/run_validation.sh endpoint
 ./scripts/run_validation.sh full
 ```
 
 脚本优先使用 CMake；无 CMake 时采用严格 C++17 直接构建；完整模式绘图需要 Python 3
 与 Matplotlib。环境变量 `TGI_THREADS`、
 `TGI_BUILD_DIR`、`TGI_RESULTS_DIR`、`TGI_QUICK_RESULTS_DIR` 和
-`TGI_STEP_TIMEOUT_SECONDS` 可控制线程、目录与超时。`quick` 构建全部入口并运行实验 1
-的三个代表问题；`supplemental` 运行实验 5--6；`multilevel` 运行实验 7；`full` 运行
-七组正式实验。
+`TGI_STEP_TIMEOUT_SECONDS` 可控制线程、目录与常规步骤超时。`quick` 构建全部入口并运行
+实验 1 的三个代表问题；`supplemental` 运行实验 5--6；`multilevel` 运行实验 7；
+`endpoint` 仅运行实验 8，并让两种方法持续迭代至收敛而不设循环数上限或脚本超时；
+`full` 运行八组正式实验。
 
-## 四个数值主题与七个实验入口
+## 四个数值主题与八个实验入口
 
 | 主题 | 入口 | 内容 |
 |---|---|---|
 | 两网格性能与逐步扫描 | `experiment1_two_grid_comparison` | 尺度、对比度、六类拓扑和 256/16 扩展问题 |
 | 两网格性能与逐步扫描 | `experiment2_step_scan` | cross 与 winding-ring 上逐一扫描 `m=1,...,128`，输出归一化能量与 $\rho_{\mathrm{eff}}$ |
+| 两网格性能与逐步扫描 | `experiment8_interpolation_endpoint` | 中心问题上几何插值与能量极小插值的无循环上限单次对照 |
 | 规则质量、稳健性与代价 | `experiment3_oracle_validation` | 设计组与冻结验证组上的窗口受限离线采样参考 |
 | 规则质量、稳健性与代价 | `experiment4_submission_robustness` | 五个 seed、六类 RHS 与中心问题重复计时 |
 | 规则质量、稳健性与代价 | `experiment5_stopping_ablation` | 自适应有限步、固定步数与固定列残量消融 |
@@ -58,4 +61,6 @@ $J(W)=\tfrac12\operatorname{tr}(P^\top A P)$ 与 $\rho_{\mathrm{eff}}$；前者�
 
 实验 5 以列迭代总数衡量确定性 setup 工作量。实验 6 固定物理通道宽度和背景分区，并
 逐点核对嵌套网格共享节点。实验 7 在两个 Galerkin 转移上独立构造插值，报告
-$C_A$、$C_P$ 及 V-cycle/两网格循环数比。
+$C_A$、$C_P$ 及 V-cycle/两网格循环数比。实验 8 固定中心 128/16、对比度 $10^4$、
+cross-channel 和常数右端项，仅更换插值矩阵；几何插值与列残量容差 $10^{-10}$ 的能量
+极小插值分别需要 85524 和 3227 个循环达到 $10^{-6}$，循环数比为 26.503。

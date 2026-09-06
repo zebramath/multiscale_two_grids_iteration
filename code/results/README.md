@@ -1,7 +1,8 @@
-# v8.1 数值结果
+# v8.3 数值结果
 
-全部七组实验均由 v8.1.0 最终源码以 4 线程重新运行。正式求解容差为相对欧氏残量
-`1e-6`；`global-reference` 的列相对残量容差为 `1e-10`。
+Exp1--7 保留由 v8.1.0 最终源码以 4 线程完整重算的结果，未在 v8.3 中重复运行。Exp8
+由 v8.3.0 源码以 4 线程新增运行。正式求解容差为相对欧氏残量 `1e-6`；
+`global-reference` 的列相对残量容差为 `1e-10`。
 
 | 主题 | 结果摘要 |
 |---|---|
@@ -12,6 +13,7 @@
 | 停止消融 | adaptive/fixed-step/fixed-residual 收敛数为 6/6、5/6、5/6 |
 | 固定物理加密 | adaptive 循环数为 122/119/145，$\rho_{\mathrm{eff}}$ 为 0.892425/0.890129/0.909090 |
 | 三层初试 | adaptive V-cycle 为 101/237 次，$\rho_{\mathrm{eff}}$ 为 0.870836/0.943331 |
+| 插值端点对照 | 中心问题上几何/能量极小插值为 85524/3227 个循环，循环数比为 26.503 |
 
 ## 文件
 
@@ -28,7 +30,11 @@
 | Exp5 | `experiment5_stopping_ablation.txt` |
 | Exp6 | `experiment6_fixed_physical_refinement.txt` |
 | Exp7 | `experiment7_multilevel_pilot.txt` |
+| Exp8 | `experiment8_interpolation_endpoint.txt` |
 
 Exp2 的 CSV 列为步数、$J(W_m)=\tfrac12\operatorname{tr}(P_m^\top A_hP_m)$、归一化
 能量差和实际残量历程得到的 $\rho_{\mathrm{eff}}$。这里的 $\rho_{\mathrm{eff}}$ 与理论
 能量范数两网格因子 $\rho_{\mathrm{TG}}$ 严格区分。
+
+Exp8 中两种方法共用中心问题的矩阵、粗点、Galerkin 构造、磨光器、零初值、右端项和
+停止准则，只更换插值矩阵。每种方法单次确定性求解并持续到收敛，不设循环数上限。

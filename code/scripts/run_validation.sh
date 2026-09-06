@@ -6,9 +6,9 @@ threads="${TGI_THREADS:-4}"
 build_dir="${TGI_BUILD_DIR:-build}"
 step_timeout="${TGI_STEP_TIMEOUT_SECONDS:-900}"
 case "$mode" in
-    quick|supplemental|multilevel|full) ;;
+    quick|supplemental|multilevel|endpoint|full) ;;
     *)
-        echo "usage: $0 [quick|supplemental|multilevel|full]" >&2
+        echo "usage: $0 [quick|supplemental|multilevel|endpoint|full]" >&2
         exit 2
         ;;
 esac
@@ -81,6 +81,9 @@ build_direct() {
     "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
         experiments/experiment7_multilevel_pilot.cpp \
         -o "$build_dir/experiment7_multilevel_pilot"
+    "$cxx" $common -DTGI_RESULTS_DIR=\"results\" \
+        experiments/experiment8_interpolation_endpoint.cpp \
+        -o "$build_dir/experiment8_interpolation_endpoint"
 }
 
 if command -v cmake >/dev/null 2>&1; then
@@ -110,6 +113,11 @@ elif [ "$mode" = "multilevel" ]; then
     run_step experiment7-multilevel \
         env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment7_multilevel_pilot" --threads="$threads"
+elif [ "$mode" = "endpoint" ]; then
+    echo "[start] experiment8-interpolation-endpoint"
+    env TGI_RESULTS_DIR="$results_dir" \
+        "$build_dir/experiment8_interpolation_endpoint" --threads="$threads"
+    echo "[done]  experiment8-interpolation-endpoint"
 else
     run_step experiment1-two-grid \
         env TGI_RESULTS_DIR="$results_dir" \
@@ -144,5 +152,9 @@ else
     run_step experiment7-multilevel \
         env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment7_multilevel_pilot" --threads="$threads"
+    echo "[start] experiment8-interpolation-endpoint"
+    env TGI_RESULTS_DIR="$results_dir" \
+        "$build_dir/experiment8_interpolation_endpoint" --threads="$threads"
+    echo "[done]  experiment8-interpolation-endpoint"
 fi
 echo "[info] results directory: $results_dir"
