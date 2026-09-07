@@ -68,7 +68,7 @@ inline const char* stationary_status_name(StationaryIterationStatus status) {
 struct StationaryIterationResult {
     Vector solution;
     int cycles = 0;
-    double relative_residual = 0.0;
+    double relative_residual = 1.0;
     double best_relative_residual = 1.0;
     double effective_factor = 1.0;
     double tail_factor = 1.0;
@@ -344,7 +344,6 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
     bool upper_triangle_only) {
     const int worker_count = std::max(
         1, std::min(lhs.rows(), thread_count));
-    const bool use_dense_upper_path = upper_triangle_only;
 
     struct RowBlockProduct {
         int first_row = 0;
@@ -386,7 +385,7 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
                 std::min(rhs.cols(), 256)));
             for (int row = product.first_row;
                  row < product.last_row; ++row) {
-                if (use_dense_upper_path) {
+                if (upper_triangle_only) {
                     std::fill(
                         accumulator.begin() + row,
                         accumulator.end(), 0.0);
@@ -454,15 +453,7 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
                         rhs.row_ptr()[static_cast<std::size_t>(inner)];
                     const int rhs_end =
                         rhs.row_ptr()[static_cast<std::size_t>(inner) + 1U];
-                    const int first_rhs = upper_triangle_only
-                        ? static_cast<int>(
-                              std::lower_bound(
-                                  rhs.col_idx().begin() + rhs_begin,
-                                  rhs.col_idx().begin() + rhs_end,
-                                  row) -
-                              rhs.col_idx().begin())
-                        : rhs_begin;
-                    for (int rhs_position = first_rhs;
+                    for (int rhs_position = rhs_begin;
                          rhs_position < rhs_end;
                          ++rhs_position) {
                         const int col =
@@ -477,17 +468,13 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
                             rhs.values()[static_cast<std::size_t>(rhs_position)];
                     }
                 }
-                const int first_candidate =
-                    upper_triangle_only ? row : 0;
-                const int candidate_count =
-                    rhs.cols() - first_candidate;
+                const int candidate_count = rhs.cols();
                 const bool dense_scan =
                     candidate_count > 0 &&
                     touched.size() * 2U >=
                         static_cast<std::size_t>(candidate_count);
                 if (dense_scan) {
-                    for (int col = first_candidate;
-                         col < rhs.cols(); ++col) {
+                    for (int col = 0; col < rhs.cols(); ++col) {
                         if (marker[static_cast<std::size_t>(col)] != row) {
                             continue;
                         }
@@ -706,6 +693,15 @@ template <class Cycle>
 inline StationaryIterationResult solve_stationary_cycles(
     const Vector& rhs, const Cycle& cycle, double relative_tolerance,
     int max_cycles) {
+    if (!(relative_tolerance > 0.0) ||
+        !std::isfinite(relative_tolerance)) {
+        throw std::invalid_argument(
+            "stationary tolerance must be finite and positive");
+    }
+    if (max_cycles < 0) {
+        throw std::invalid_argument(
+            "stationary cycle limit must be nonnegative");
+    }
     constexpr int tail_window = 32;
     StationaryIterationResult result;
     result.solution.assign(rhs.size(), 0.0);
@@ -714,6 +710,18 @@ inline StationaryIterationResult solve_stationary_cycles(
     std::array<double, static_cast<std::size_t>(tail_window + 1)>
         recent_residuals{};
     const double initial_norm = norm2(residual);
+    if (!std::isfinite(initial_norm)) {
+        throw std::invalid_argument("stationary RHS norm must be finite");
+    }
+    if (initial_norm == 0.0) {
+        result.relative_residual = 0.0;
+        result.best_relative_residual = 0.0;
+        result.effective_factor = 0.0;
+        result.tail_factor = 0.0;
+        result.status = StationaryIterationStatus::Converged;
+        result.converged = true;
+        return result;
+    }
     recent_residuals[0] = 1.0;
     for (int iteration = 0; iteration < max_cycles; ++iteration) {
         const double residual_squared =

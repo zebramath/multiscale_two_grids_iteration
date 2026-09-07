@@ -152,9 +152,9 @@ int main(int argc, char** argv) {
         {"Solve tolerance", "1e-6"},
         {"Maximum cycles", "20000"}});
     report.add_note(
-        "The matrix varies fine/coarse scale, contrast and six channel "
-        "topologies. The two 256/16 extensions test cross-channel and "
-        "winding-ring coefficients at the largest scale. The adaptive "
+        "The full matrix suite varies fine/coarse scale, contrast and six "
+        "channel topologies. Its two 256/16 extensions test cross-channel "
+        "and winding-ring coefficients at the largest scale. The adaptive "
         "finite-step rule uses (1/h)/8 "
         "when 1/H<=8; otherwise it uses (1/h)/4, (1/h)/3 or (1/h)/2 in "
         "the low, intermediate or high diagonal-ratio band. The design cases "

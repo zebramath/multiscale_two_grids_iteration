@@ -193,8 +193,8 @@ int main(int argc, char** argv) {
         "use the same global Jacobi-PCG column equations. Fixed-step applies "
         "one normalized checkpoint to every problem. Fixed-residual stops "
         "each column independently at the same relative residual. The "
-        "six-case comparison spans scale, contrast and topology with both "
-        "baseline parameters fixed across cases. Recorded cycle sums include "
+        "full six-case comparison spans scale, contrast and topology with "
+        "both baseline parameters fixed across cases. Recorded cycle sums include "
         "cycles executed by slow-limit cases. Column iteration totals provide "
         "a deterministic proxy for setup work.");
     report.add_table(

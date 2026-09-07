@@ -12,6 +12,8 @@
 
 namespace {
 
+constexpr int scan_cycle_limit = 12000;
+
 struct PathPoint {
     int steps = 0;
     double energy = 0.0;
@@ -45,7 +47,6 @@ ScanSummary scan_case(
     const experiment_support::BasicConfig& config,
     const experiment_support::FieldCase& field,
     const std::string& output_name) {
-    constexpr int observation_limit = 12000;
     const tgi::StructuredGrid grid = experiment_support::make_grid(config);
     const auto problem = experiment_support::make_problem(grid, field, config);
     const auto initial = tgi::build_geometric_interpolation(grid);
@@ -61,7 +62,7 @@ ScanSummary scan_case(
         path.advance_to(steps);
         points.push_back(measure(
             steps, problem.matrix, problem.rhs, path.prolongation(),
-            config.threads, observation_limit));
+            config.threads, scan_cycle_limit));
     }
 
     path.advance_until_relative_residual(1.0e-10);
@@ -161,6 +162,7 @@ int main(int argc, char** argv) {
         {"Scanned interval", "m=1,...,128"},
         {"Threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"},
+        {"Observation cycle limit", std::to_string(scan_cycle_limit)},
         {"Reference column tolerance", "1e-10"}});
     report.add_table(
         "Path-scan summary",
@@ -174,7 +176,8 @@ int main(int argc, char** argv) {
         "normalized energy excess is (J(W_m)-J(W_ref))/(J(W_1)-J(W_ref)). "
         "rho_eff is computed from the observed residual history and is "
         "distinct from the energy-norm two-grid factor rho_TG. Minima are "
-        "minima only within m=1,...,128. Max delta J is max_m "
+        "minima only within m=1,...,128. A solve that has not converged uses "
+        "its residual after 12000 cycles. Max delta J is max_m "
         "[J(W_{m+1})-J(W_m)].");
     report.save("experiment2_step_scan");
     return 0;

@@ -56,7 +56,6 @@ private:
     energy_interpolation_detail::GlobalFSystem system_;
     std::vector<ColumnState> columns_;
     int thread_count_ = 1;
-    int steps_ = 0;
 };
 
 inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
@@ -146,7 +145,14 @@ inline bool GlobalEnergyPcgPath::advance_one_iteration(
 }
 
 inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
-    if (target_steps == steps_) return;
+    if (target_steps < 0) {
+        throw std::invalid_argument("global PCG step count must be nonnegative");
+    }
+    for (const ColumnState& state : columns_) {
+        if (state.iterations > target_steps) {
+            throw std::invalid_argument("global PCG path cannot move backward");
+        }
+    }
     std::atomic<int> next_column{0};
     std::exception_ptr worker_error;
     std::mutex error_mutex;
@@ -180,7 +186,6 @@ inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
         for (auto& thread : workers) thread.join();
     }
     if (worker_error) std::rethrow_exception(worker_error);
-    steps_ = target_steps;
 }
 
 inline GlobalPcgPathReport GlobalEnergyPcgPath::report(
@@ -208,6 +213,14 @@ inline GlobalPcgPathReport GlobalEnergyPcgPath::report(
 inline GlobalPcgPathReport
 GlobalEnergyPcgPath::advance_until_relative_residual(
     double tolerance, int maximum_steps) {
+    if (!(tolerance > 0.0) || !std::isfinite(tolerance)) {
+        throw std::invalid_argument(
+            "global PCG tolerance must be finite and positive");
+    }
+    if (maximum_steps < 0) {
+        throw std::invalid_argument(
+            "global PCG step limit must be nonnegative");
+    }
     std::atomic<int> next_column{0};
     std::exception_ptr worker_error;
     std::mutex error_mutex;

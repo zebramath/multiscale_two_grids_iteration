@@ -162,8 +162,8 @@ int main(int argc, char** argv) {
         "The channel width, channel centerlines, random-block partition and "
         "seed are defined in physical coordinates and held fixed while both "
         "fine and coarse meshes are dyadically refined. Equality on all "
-        "shared nested-grid nodes is checked before solving. This three-level "
-        "sequence complements the cell-count-defined coefficient families in "
+        "shared nested-grid nodes is checked before solving. The full "
+        "three-level sequence complements the cell-count-defined families in "
         "experiments 1--5 and quantifies finite-grid refinement behavior.");
     report.add_table(
         "Nested-refinement comparison",

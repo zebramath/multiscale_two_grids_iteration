@@ -41,11 +41,6 @@ struct TimingSample {
     int cycles = 0;
 };
 
-struct TimingStatistics {
-    double mean = 0.0;
-    double standard_deviation = 0.0;
-};
-
 enum class TimingMethod {
     Adaptive,
     GlobalReference
@@ -162,49 +157,24 @@ TimingSample timing_sample(
     return {setup_ms, solved.milliseconds, solved.cycles};
 }
 
-TimingStatistics statistics(const std::vector<double>& values) {
-    double sum = 0.0;
-    for (double value : values) sum += value;
-    const double count = static_cast<double>(values.size());
-    const double mean = sum / count;
-    double squared_deviations = 0.0;
-    for (double value : values) {
-        const double difference = value - mean;
-        squared_deviations += difference * difference;
-    }
-    return {
-        mean,
-        std::sqrt(squared_deviations /
-                  static_cast<double>(values.size() - 1U))};
-}
-
 experiment_support::Row timing_row(
     const std::string& policy, const std::vector<TimingSample>& samples) {
-    std::vector<double> setup;
-    std::vector<double> solve;
-    std::vector<double> total;
+    double setup = 0.0;
+    double solve = 0.0;
+    double total = 0.0;
     double cycles = 0.0;
-    setup.reserve(samples.size());
-    solve.reserve(samples.size());
-    total.reserve(samples.size());
     for (const auto& sample : samples) {
-        setup.push_back(sample.setup_ms);
-        solve.push_back(sample.solve_ms);
-        total.push_back(sample.setup_ms + sample.solve_ms);
+        setup += sample.setup_ms;
+        solve += sample.solve_ms;
+        total += sample.setup_ms + sample.solve_ms;
         cycles += static_cast<double>(sample.cycles);
     }
     const double count = static_cast<double>(samples.size());
-    const TimingStatistics setup_statistics = statistics(setup);
-    const TimingStatistics solve_statistics = statistics(solve);
-    const TimingStatistics total_statistics = statistics(total);
     return {
         policy, std::to_string(samples.size()),
-        experiment_support::fixed(setup_statistics.mean),
-        experiment_support::fixed(setup_statistics.standard_deviation),
-        experiment_support::fixed(solve_statistics.mean),
-        experiment_support::fixed(solve_statistics.standard_deviation),
-        experiment_support::fixed(total_statistics.mean),
-        experiment_support::fixed(total_statistics.standard_deviation),
+        experiment_support::fixed(setup / count),
+        experiment_support::fixed(solve / count),
+        experiment_support::fixed(total / count),
         experiment_support::fixed(cycles / count, 0)};
 }
 
@@ -397,8 +367,8 @@ int main(int argc, char** argv) {
         "interpolation and use the same Jacobi-PCG path; global-reference "
         "continues until every column reaches relative residual 1e-10. "
         "Setup includes interpolation, Galerkin assembly and cycle "
-        "construction; solve starts from zero. Means and sample standard "
-        "deviations summarize the post-warmup measurements.");
+        "construction; solve starts from zero. The table reports arithmetic "
+        "means over the post-warmup measurements.");
     report.add_table(
         "Coefficient-seed stability",
         {"Seed", "Method", "Parameter", "Cycles", "Effective factor",
@@ -421,9 +391,9 @@ int main(int argc, char** argv) {
         {18, 13, 19, 14, 15}, rhs_summary);
     report.add_table(
         "Central 128/16 repeated wall-clock comparison",
-        {"Policy", "Runs", "Setup mean", "Setup SD", "Solve mean",
-         "Solve SD", "Total mean", "Total SD", "Mean cycles"},
-        {16, 6, 11, 9, 10, 8, 10, 8, 11}, timing_rows);
+        {"Policy", "Runs", "Setup mean", "Solve mean", "Total mean",
+         "Mean cycles"},
+        {16, 6, 11, 10, 10, 11}, timing_rows);
     report.save("experiment4_submission_robustness");
     return 0;
 }

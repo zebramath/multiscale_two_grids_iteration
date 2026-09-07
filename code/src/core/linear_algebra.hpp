@@ -67,7 +67,7 @@ public:
     SparseCholesky() = default;
     void factorize(
         const SparseMatrix& matrix,
-        const std::vector<int>& new_to_old_permutation = {});
+        const std::vector<int>& new_to_old_permutation);
     void solve(const Vector& rhs, Vector& result, Vector& work) const;
 
 private:

@@ -1,4 +1,4 @@
-# two_grids_iteration v8.3.0
+# two_grids_iteration v8.4.0
 
 ## 实现
 
@@ -13,7 +13,9 @@
 
 实现采用固定粗点、精确 Galerkin 粗解和一次前向/后向 Gauss--Seidel。`adaptive` 根据
 粗网格分辨率与矩阵对角尺度比，在 `n/8`、`n/4`、`n/3` 和 `n/2` 中选择一个 PCG
-路径位置。标准 PCG 估计给出 `m=O(1/h)` 的充分尺度；具体比例与阈值由设计问题组确定。
+路径位置。标准 PCG 估计在固定对比度下给出固定比例误差压缩的 `O(1/h)` 充分尺度；
+进入理论中能量极小值点的局部区域还需要对数因子。具体比例与阈值由设计问题组确定，
+不宣称最优。
 
 ```cpp
 auto initial = tgi::build_geometric_interpolation(grid);
@@ -53,11 +55,12 @@ auto result = tgi::build_adaptive_global_pcg_interpolation(
 | 多层初步验证 | `experiment7_multilevel_pilot` | 三层 V-cycle 与首层精确两网格配对 |
 
 正式求解从零初值开始，相对欧氏残量容差为 `1e-6`。常规循环上限为 20000；Exp2
-逐步扫描使用固定的内部观测上限。常规结果报告循环数、最终残量、经验有效收敛因子
+逐步扫描使用 12000 个循环的固定观测上限；未在该上限前收敛的点以第 12000 次循环的
+残量计算经验因子。常规结果报告循环数、最终残量、经验有效收敛因子
 $\rho_{\mathrm{eff}}$、末端因子、插值密度和收敛状态。Exp2 同时记录
 $J(W)=\tfrac12\operatorname{tr}(P^\top A P)$ 与 $\rho_{\mathrm{eff}}$；前者沿路径单调，
 后者是实际残量历程指标，不等同于理论能量范数因子 $\rho_{TG}$。Exp4 的计时比较由几何
-插值出发，双方采用同一 Jacobi--PCG 路径，报告五次预热后测量的均值与样本标准差。
+插值出发，双方采用同一 Jacobi--PCG 路径，报告预热后五次测量的算术平均时间。
 
 实验 5 以列迭代总数衡量确定性 setup 工作量。实验 6 固定物理通道宽度和背景分区，并
 逐点核对嵌套网格共享节点。实验 7 在两个 Galerkin 转移上独立构造插值，报告

@@ -46,12 +46,12 @@
     \norm{\bm X}_{\bm M}&=\norm{\bm M^{1/2}\bm X\bm M^{-1/2}}_2.
     \label{eq:notation-induced-energy}
 \end{align}
-此外, $\lambda_k(\cdot),\sigma_k(\cdot)$ 分别表示矩阵的第 $k$ 大特征值和奇异值, $\Ran(\cdot)$ 表示列空间, $\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^\T\bm A$. PCG 均采用对角预条件共轭梯度法.
+此外, $\lambda_k(\cdot),\sigma_k(\cdot)$ 分别表示按非增序排列的第 $k$ 个特征值和奇异值, $\Ran(\cdot)$ 表示列空间, $\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^\T\bm A$. PCG 采用对角预条件共轭梯度法.
 
 \section{能量极小插值与 PCG 迭代}
 \label{sec:energy-pcg}
 
-\subsection{能量极小端点}
+\subsection{能量极小值点}
 \label{subsec:energy-endpoint}
 
 定义插值能量与 Schur 补
@@ -79,14 +79,47 @@
 \end{proposition}
 
 \begin{proof}
-由\cref{eq:setup-block-A,eq:setup-interpolation},
+由\cref{eq:setup-block-A,eq:setup-interpolation} 作分块乘法,
 \begin{align}
-    J(\bm W)&=\frac{1}{2}\bigl(\tr(\bm W^\T\bm B\bm W)+2\tr(\bm W^\T\bm C)+\tr(\bm A_{\mathrm{CC}})\bigr),
-    \label{eq:energy-block-expansion}\\
-    J'(\bm W)[\bm H]&=\tr(\bm H^\T(\bm B\bm W+\bm C)).
+    \bm P(\bm W)^\T\bm A\bm P(\bm W)
+    &=\bm W^\T\bm B\bm W+\bm W^\T\bm C+\bm C^\T\bm W+\bm A_{\mathrm{CC}},
+    \label{eq:energy-block-matrix-expansion}
+\end{align}
+从而利用迹的性质,
+\begin{align}
+    J(\bm W)
+    &=\frac12\tr(\bm W^\T\bm B\bm W)
+      +\tr(\bm W^\T\bm C)
+      +\frac12\tr(\bm A_{\mathrm{CC}}).
+    \label{eq:energy-block-expansion}
+\end{align}
+对任意扰动 $\bm H$, 求 Fr\'echet 导数得到
+\begin{align}
+    J'(\bm W)[\bm H]
+    &=\tr\left(\bm H^\T(\bm B\bm W+\bm C)\right).
     \label{eq:energy-frechet-derivative}
 \end{align}
-由于 $\bm B\succ\mathbf O$,\cref{eq:energy-frechet-derivative} 的驻点唯一并由\cref{eq:energy-minimizer} 给出, 严格凸性保证其为唯一全局极小值点. 将 $\bm W=\bm W^\ast+\bm\Delta$ 代入\cref{eq:energy-block-expansion}, 并利用 $\bm B\bm W^\ast+\bm C=\mathbf O$, 得到\cref{eq:energy-gap}. 同样对 $\bm P(\bm W)^\T\bm A\bm P(\bm W)$ 展开并利用\cref{eq:schur-complement,eq:energy-minimizer}, 即得\cref{eq:coarse-matrix-energy-error}.
+由\cref{eq:energy-frechet-derivative} 以及 $\bm B\succ\mathbf O$ 可知, $J$ 关于 $\bm W$ 严格凸, 因而唯一驻点 $\bm W^{\ast}$ 满足\cref{eq:energy-minimizer}.
+
+由\cref{eq:energy-minimizer} 令 $\bm W=\bm W^\ast+\bm\Delta$. 展开能量差并使用 $\bm B\bm W^\ast+\bm C=\mathbf O$, 有
+\begin{align}
+    J(\bm W)-J(\bm W^\ast)
+    &=\frac12\tr(\bm\Delta^\T\bm B\bm\Delta)
+      +\tr\left(\bm\Delta^\T(\bm B\bm W^\ast+\bm C)\right)=\frac12\tr(\bm\Delta^\T\bm B\bm\Delta)
+     =\frac12\norm{\bm\Delta}_{\bm B,\mathrm F}^2.
+    \label{eq:energy-gap-proof-explicit}
+\end{align}
+同理, 将 $\bm W^\ast+\bm\Delta$ 代入\cref{eq:energy-block-matrix-expansion}, 并结合\cref{eq:schur-complement,eq:energy-minimizer}, 关于 $\bm\Delta$ 的线性项全部消掉, 而
+\begin{align}
+    {\bm W^\ast}^\T\bm B\bm W^\ast
+    +{\bm W^\ast}^\T\bm C
+    +\bm C^\T\bm W^\ast
+    +\bm A_{\mathrm{CC}}
+    &=\bm A_{\mathrm{CC}}-\bm C^\T\bm B^{-1}\bm C
+     =\bm S.
+    \label{eq:endpoint-coarse-matrix-proof}
+\end{align}
+故得到\cref{eq:coarse-matrix-energy-error}.
 \end{proof}
 
 \subsection{PCG 迭代}
@@ -118,7 +151,23 @@
 \end{proposition}
 
 \begin{proof}
-PCG 给出逐列的 $\bm B$-正交关系 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$. 对所有列的勾股恒等式求和即得\cref{eq:pcg-matrix-pythagoras}; 再由\cref{eq:energy-gap} 得到\cref{eq:pcg-energy-strict-decrease}.
+由\cref{eq:pcg-column-error-step}, $\bm e_{j,m}=\bm e_{j,m+1}+\bm s_{j,m}$. PCG 的 Galerkin 正交性给出 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$, 因此逐列有
+\begin{align}
+    \norm{\bm e_{j,m}}_{\bm B}^2
+    &=\norm{\bm e_{j,m+1}}_{\bm B}^2
+      +\norm{\bm s_{j,m}}_{\bm B}^2.
+    \label{eq:pcg-column-pythagoras}
+\end{align}
+注意 $\bm\Delta_m$ 的第 $j$ 列为 $-\bm e_{j,m}$, 对 $j=1,\ldots,n_{\mathrm C}$ 求和即得\cref{eq:pcg-matrix-pythagoras}. 再结合\cref{eq:energy-gap}, 因而
+\begin{align}
+    J(\bm W_m)-J(\bm W_{m+1})
+    &=\frac12\left(
+        \norm{\bm\Delta_m}_{\bm B,\mathrm F}^2
+        -\norm{\bm\Delta_{m+1}}_{\bm B,\mathrm F}^2
+      \right)=\frac12\norm{\bm W_{m+1}-\bm W_m}_{\bm B,\mathrm F}^2.
+    \label{eq:pcg-energy-decrease-explicit}
+\end{align}
+若该步非零, 右端严格为正, 从而得到\cref{eq:pcg-energy-strict-decrease}.
 \end{proof}
 
 \section{归一化误差与粗空间}
@@ -135,25 +184,37 @@ PCG 给出逐列的 $\bm B$-正交关系 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$
     \bm Q_{\ast}=\bm P(\bm W^{\ast})\bm S^{-1/2}.
     \label{eq:A-orthonormal-basis}
 \end{align}
-由\cref{eq:setup-block-A,eq:energy-minimizer,eq:coarse-matrix-energy-error} 可得
+由\cref{eq:setup-block-A,eq:A-orthonormal-basis,eq:energy-minimizer,eq:coarse-matrix-energy-error} 直接分块计算可得
+\begin{align}
+    \bm Q_{\mathrm F}^\T\bm A\bm Q_{\mathrm F}
+    &=\bm B^{-1/2}\bm B\bm B^{-1/2}=\bm I,
+    \label{eq:QF-A-QF}\\
+    \bm Q_\ast^\T\bm A\bm Q_\ast
+    &=\bm S^{-1/2}\bm P(\bm W^\ast)^\T\bm A\bm P(\bm W^\ast)\bm S^{-1/2}=\bm I,
+    \label{eq:Qstar-A-Qstar}\\
+    \bm Q_{\mathrm F}^\T\bm A\bm Q_\ast
+    &=\bm B^{-1/2}(\bm B\bm W^\ast+\bm C)\bm S^{-1/2}=\mathbf O.
+    \label{eq:QF-A-Qstar}
+\end{align}
+因此
 \begin{align}
     \begin{bNiceMatrix}\bm Q_{\mathrm F}&\bm Q_\ast\end{bNiceMatrix}^\T
     \bm A
     \begin{bNiceMatrix}\bm Q_{\mathrm F}&\bm Q_\ast\end{bNiceMatrix}
-    &=\bm I.
+    &=\bm I,
     \label{eq:A-orthonormal-combined}
 \end{align}
-因此 $\Ran(\bm Q_{\mathrm{F}})\oplus\Ran(\bm Q_{\ast})$ 构成一组 $\bm A$-单位正交基. 再令
+即 $\Ran(\bm Q_{\mathrm F})\oplus\Ran(\bm Q_\ast)$ 构成一组 $\bm A$-单位正交基. 再令
 \begin{align}
     \ti{\bm Q}_{\mathrm{F}}&=\bm A^{1/2}\bm Q_{\mathrm{F}},\q
     \ti{\bm Q}_{\ast}=\bm A^{1/2}\bm Q_{\ast},
     \label{eq:euclidean-orthonormal-basis}
 \end{align}
-则 $\begin{bNiceMatrix}\ti{\bm Q}_{\mathrm{F}}&\ti{\bm Q}_{\ast}\end{bNiceMatrix}$ 为欧氏正交矩阵.
+则 $\begin{bNiceMatrix}\ti{\bm Q}_{\mathrm F}&\ti{\bm Q}_\ast\end{bNiceMatrix}$ 为欧氏正交矩阵.
 
 \begin{proposition}
 \label{prop:normalized-geometry}
-对任意 $\bm W$,
+对任意 $\bm W$, 有
 \begin{align}
     J(\bm W)-J(\bm W^{\ast})&=\frac{1}{2}\norm{\bm Z}_{\mathrm{F},\bm S}^2,
     \label{eq:normalized-energy-gap}\\
@@ -168,15 +229,54 @@ PCG 给出逐列的 $\bm B$-正交关系 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$
     \end{bNiceMatrix}\bm S^{1/2}.
     \label{eq:interpolation-graph-factorization}
 \end{align}
-若 $\theta_k$ 为 $\Ran(\bm P(\bm W))$ 与能量极小粗空间 $\Ran(\bm P(\bm W^\ast))$ 关于 $\bm A$-内积的主角, 等价地, 为其 $\bm A^{1/2}$ 映像之间的欧氏主角, 则
-\begin{align}
-    \tan\theta_k&=\sigma_k(\bm Z).
-    \label{eq:principal-angle-tangent}
-\end{align}
+令 $\theta_k$ 为 $\Ran(\bm P(\bm W))$ 与能量极小粗空间 $\Ran(\bm P(\bm W^\ast))$ 关于 $\bm A$-内积的主角, 按非增序排列, 则 $\tan\theta_k=\sigma_k(\bm Z)$.
 \end{proposition}
 
 \begin{proof}
-由\cref{eq:normalized-error} 有 $\bm\Delta=\bm B^{-1/2}\bm Z\bm S^{1/2}$. 代入\cref{eq:energy-gap,eq:coarse-matrix-energy-error} 即得\cref{eq:normalized-energy-gap,eq:normalized-coarse-matrix};\cref{eq:interpolation-graph-factorization} 直接由\cref{eq:A-orthonormal-basis,eq:energy-minimizer} 得到. 因而在 $\bm A$-单位正交坐标下, 粗空间是 $\Ran\begin{bNiceMatrix}\bm Z\\\bm I\end{bNiceMatrix}$ 的图空间, 主角公式给出\cref{eq:principal-angle-tangent}.
+由\cref{eq:normalized-error},
+\begin{align}
+    \bm\Delta&=\bm B^{-1/2}\bm Z\bm S^{1/2},\q
+    \bm\Delta^\T\bm B\bm\Delta
+    =\bm S^{1/2}\bm Z^\T\bm Z\bm S^{1/2}.
+    \label{eq:normalized-delta-substitution}
+\end{align}
+于是
+\begin{align}
+    \norm{\bm\Delta}_{\bm B,\mathrm F}^2
+    &=\tr(\bm Z^\T\bm Z\bm S)
+     =\norm{\bm Z}_{\mathrm F,\bm S}^2,
+    \label{eq:normalized-norm-equivalence}
+\end{align}
+将\cref{eq:normalized-delta-substitution,eq:normalized-norm-equivalence} 分别代入\cref{eq:energy-gap,eq:coarse-matrix-energy-error}, 就得到\cref{eq:normalized-energy-gap,eq:normalized-coarse-matrix}.
+
+另一方面, 由\cref{eq:A-orthonormal-basis,eq:normalized-delta-substitution},
+\begin{align}
+    \bm P(\bm W)=\bm P(\bm W^\ast)
+      +\begin{bNiceMatrix}\bm\Delta\\\mathbf O\end{bNiceMatrix}=\bm Q_\ast\bm S^{1/2}
+      +\bm Q_{\mathrm F}\bm Z\bm S^{1/2}=\begin{bNiceMatrix}\bm Q_{\mathrm F}&\bm Q_\ast\end{bNiceMatrix}
+      \begin{bNiceMatrix}\bm Z\\\bm I\end{bNiceMatrix}\bm S^{1/2},
+    \label{eq:interpolation-graph-factorization-proof}
+\end{align}
+故在 $\bm A$-单位正交坐标中, 当前粗空间恰是图空间
+\begin{align}
+    \mathcal G(\bm Z)&:=\Ran\begin{bNiceMatrix}\bm Z\\\bm I\end{bNiceMatrix},
+    \label{eq:graph-space-definition}
+\end{align}
+而能量极小粗空间对应 $\mathcal G(\mathbf O)$.
+
+再取 $\bm Z^\T\bm Z$ 的单位正交特征向量 $\bm v_k$, 满足 $\bm Z^\T\bm Z\bm v_k=\sigma_k(\bm Z)^2\bm v_k$. 图空间中对应的单位向量可取为
+\begin{align}
+    \bm q_k
+    &=\frac{1}{\sqrt{1+\sigma_k(\bm Z)^2}}
+      \begin{bNiceMatrix}\bm Z\bm v_k\\\bm v_k\end{bNiceMatrix},
+    \label{eq:graph-principal-vector}
+\end{align}
+而 $\mathcal G(\mathbf O)$ 中对应的单位向量为
+\begin{align}
+    \bm q_k^\ast&=\begin{bNiceMatrix}\mathbf O\\\bm v_k\end{bNiceMatrix}.
+    \label{eq:endpoint-principal-vector}
+\end{align}
+由\cref{eq:graph-principal-vector,eq:endpoint-principal-vector}, $\{\bm q_k\}$ 与 $\{\bm q_k^\ast\}$ 分别构成两个子空间的单位正交基, 且交叉 Gram 矩阵在该配对下为对角阵, 第 $k$ 个对角元为 $(1+\sigma_k(\bm Z)^2)^{-1/2}$. 因而相应主角满足 $\tan\theta_k=\sigma_k(\bm Z)$.
 \end{proof}
 
 \section{两网格收敛率}
@@ -194,30 +294,65 @@ PCG 给出逐列的 $\bm B$-正交关系 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$
 \end{align}
 到 $\Ran(\bm P(\bm W))$ 的 $\bm A$-正交投影记为
 \begin{align}
-    \bm Q_{\mathcal U}^{\bm A}&=\bm P(\bm W)(\bm P(\bm W)^\T\bm A\bm P(\bm W))^{-1}\bm P(\bm W)^\T\bm A,
+    \bm Q_{\mathcal U}^{\bm A}
+    &=\bm P(\bm W)
+      (\bm P(\bm W)^\T\bm A\bm P(\bm W))^{-1}
+      \bm P(\bm W)^\T\bm A.
     \label{eq:A-projector}
 \end{align}
-并令
+在能量坐标下,
 \begin{align}
-    \bm\Pi_{\mathcal U}&=\bm A^{1/2}\bm Q_{\mathcal U}^{\bm A}\bm A^{-1/2},
+    \bm\Pi_{\mathcal U}:=\bm A^{1/2}\bm Q_{\mathcal U}^{\bm A}\bm A^{-1/2}=\bm A^{1/2}\bm P(\bm W)
+      (\bm P(\bm W)^\T\bm A\bm P(\bm W))^{-1}
+      \bm P(\bm W)^\T\bm A^{1/2},
     \label{eq:energy-coordinate-projector}
 \end{align}
-则 $\bm\Pi_{\mathcal U}$ 为到 $\mathcal U$ 的欧氏正交投影. 两网格误差传播算子满足
+由\cref{eq:A-projector,eq:energy-coordinate-projector}, $\bm\Pi_{\mathcal U}$ 是到 $\mathcal U$ 的欧氏正交投影.
+
+两网格误差传播算子为
 \begin{align}
-    \bm E_{\mathrm{TG}}&=\bm G^{\dagger_{\bm A}}(\bm I-\bm Q_{\mathcal U}^{\bm A})\bm G,
-    \label{eq:tg-error-propagator}\\
-    \bm A^{1/2}\bm E_{\mathrm{TG}}\bm A^{-1/2}&=\bm T^\T(\bm I-\bm\Pi_{\mathcal U})\bm T.
+    \bm E_{\mathrm{TG}}
+    &=\bm G^{\dagger_{\bm A}}
+      (\bm I-\bm Q_{\mathcal U}^{\bm A})\bm G.
+    \label{eq:tg-error-propagator}
+\end{align}
+由\cref{eq:smoother-energy-coordinate} 和 $\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^\T\bm A$,
+\begin{align}
+    \bm A^{1/2}\bm G^{\dagger_{\bm A}}\bm A^{-1/2}
+    &=\bm A^{-1/2}\bm G^\T\bm A^{1/2}
+     =\bm T^\T,
+    \label{eq:adjoint-smoother-energy-coordinate}
+\end{align}
+并且由\cref{eq:energy-coordinate-projector},
+\begin{align}
+    \bm A^{1/2}(\bm I-\bm Q_{\mathcal U}^{\bm A})\bm A^{-1/2}
+    &=\bm I-\bm\Pi_{\mathcal U}.
+    \label{eq:coarse-correction-energy-coordinate}
+\end{align}
+结合\cref{eq:tg-error-propagator,eq:adjoint-smoother-energy-coordinate,eq:coarse-correction-energy-coordinate},
+\begin{align}
+    \bm A^{1/2}\bm E_{\mathrm{TG}}\bm A^{-1/2}
+    &=\bm T^\T(\bm I-\bm\Pi_{\mathcal U})\bm T.
     \label{eq:tg-energy-coordinate}
 \end{align}
-由于 $\bm I-\bm\Pi_{\mathcal U}$ 为正交投影,\cref{eq:tg-energy-coordinate} 对称半正定, 因而
+由于 $\bm I-\bm\Pi_{\mathcal U}$ 是对称幂等矩阵,
 \begin{align}
-    \rho(\bm E_{\mathrm{TG}})&=\norm{(\bm I-\bm\Pi_{\mathcal U})\bm T}_2^2=: \rho_{\mathrm{TG}}(\mathcal U).
+    \bm T^\T(\bm I-\bm\Pi_{\mathcal U})\bm T
+    &=\bigl((\bm I-\bm\Pi_{\mathcal U})\bm T\bigr)^\T
+      \bigl((\bm I-\bm\Pi_{\mathcal U})\bm T\bigr)\succeq\mathbf O.
+    \label{eq:tg-energy-coordinate-gram}
+\end{align}
+由\cref{eq:tg-energy-coordinate,eq:tg-energy-coordinate-gram}, 得到
+\begin{align}
+    \rho(\bm E_{\mathrm{TG}})
+    &=\norm{(\bm I-\bm\Pi_{\mathcal U})\bm T}_2^2
+     =:\rho_{\mathrm{TG}}(\mathcal U).
     \label{eq:tg-objective-exact}
 \end{align}
 
 \begin{lemma}
 \label{lem:gs-nonexpansive}
-前向 Gauss--Seidel 满足
+前向 Gauss--Seidel 迭代满足
 \begin{align}
     \norm{\bm T}_2&=\norm{\bm G}_{\bm A}\le 1.
     \label{eq:gs-nonexpansive}
@@ -274,12 +409,40 @@ PCG 给出逐列的 $\bm B$-正交关系 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$
 \end{proposition}
 
 \begin{proof}
-记 $\ti{\bm Q}=\begin{bNiceMatrix}\ti{\bm Q}_{\mathrm F}&\ti{\bm Q}_\ast\end{bNiceMatrix}$. 直接验证 $\begin{bNiceMatrix}\bm Z^\T&\bm I\end{bNiceMatrix}\bm N(\bm Z)=\mathbf O$ 且 $\bm N(\bm Z)^\T\bm N(\bm Z)=\bm I$, 故能量坐标下图空间正交补的投影为 $\ti{\bm Q}\bm N(\bm Z)\bm N(\bm Z)^\T\ti{\bm Q}^\T$. 由\cref{eq:tg-objective-exact,eq:T-block-coordinates},
+记 $\ti{\bm Q}=\begin{bNiceMatrix}\ti{\bm Q}_{\mathrm F}&\ti{\bm Q}_\ast\end{bNiceMatrix}$. 由\cref{eq:interpolation-graph-factorization-proof}, 在该正交坐标中当前粗空间就是 $\mathcal G(\bm Z)$. 先直接验证
 \begin{align}
-    \rho_{\mathrm{TG}}(\bm Z)&=\norm{\bm N(\bm Z)^\T\ti{\bm Q}^\T\bm T}_2^2.
+    \begin{bNiceMatrix}\bm Z^\T&\bm I\end{bNiceMatrix}\bm N(\bm Z)
+    &=\bigl(\bm Z^\T-\bm Z^\T\bigr)
+      (\bm I+\bm Z\bm Z^\T)^{-1/2}
+     =\mathbf O,
+    \label{eq:graph-complement-orthogonality}\\
+    \bm N(\bm Z)^\T\bm N(\bm Z)
+    &=(\bm I+\bm Z\bm Z^\T)^{-1/2}
+      (\bm I+\bm Z\bm Z^\T)
+      (\bm I+\bm Z\bm Z^\T)^{-1/2}
+     =\bm I.
+    \label{eq:graph-complement-normalization}
+\end{align}
+故 $\bm N(\bm Z)$ 的列构成 $\mathcal G(\bm Z)^\perp$ 的单位正交基, 从而
+\begin{align}
+    \bm I-\bm\Pi_{\mathcal U}
+    &=\ti{\bm Q}\bm N(\bm Z)\bm N(\bm Z)^\T\ti{\bm Q}^\T.
+    \label{eq:graph-complement-projector}
+\end{align}
+利用\cref{eq:tg-objective-exact,eq:T-block-coordinates,eq:graph-complement-projector} 以及 $\ti{\bm Q}$ 的正交性,
+\begin{align}
+    \rho_{\mathrm{TG}}(\bm Z)
+    &=\norm{\bm N(\bm Z)^\T\ti{\bm Q}^\T\bm T}_2^2=\norm*{
+        (\bm I+\bm Z\bm Z^\T)^{-1/2}
+        \begin{bNiceMatrix}\bm I&-\bm Z\end{bNiceMatrix}
+        \begin{bNiceMatrix}\bm T_{\mathrm F}\\\bm T_\ast\end{bNiceMatrix}
+      }_2^2=\norm*{
+        (\bm I+\bm Z\bm Z^\T)^{-1/2}
+        (\bm T_{\mathrm F}-\bm Z\bm T_\ast)
+      }_2^2,
     \label{eq:tg-objective-coordinate-projection}
 \end{align}
-再代入\cref{eq:graph-complement-basis} 即得\cref{eq:tg-objective-graph}.
+即得到\cref{eq:tg-objective-graph}.
 \end{proof}
 
 \section{能量极小值点附近的局部谱分析}
@@ -309,56 +472,76 @@ PCG 给出逐列的 $\bm B$-正交关系 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$
 \begin{proof}
 作对称扩张
 \begin{align}
-    \bm M_0&=\begin{bNiceMatrix}
-        \mathbf O & \bm M\\
-        \bm M^\T & \mathbf O
-    \end{bNiceMatrix},\q
-    \bm E_0=\begin{bNiceMatrix}
-        \mathbf O & \bm E\\
-        \bm E^\T & \mathbf O
-    \end{bNiceMatrix},\q
-    \bm q=\frac{1}{\sqrt2}\begin{bNiceMatrix}
-        \bm u\\
-        \bm v
-    \end{bNiceMatrix}.
+    \bm M_0&=
+    \begin{bNiceMatrix}\mathbf O&\bm M\\\bm M^\T&\mathbf O\end{bNiceMatrix},\q
+    \bm E_0=
+    \begin{bNiceMatrix}\mathbf O&\bm E\\\bm E^\T&\mathbf O\end{bNiceMatrix},\q
+    \bm q=\frac1{\sqrt2}
+    \begin{bNiceMatrix}\bm u\\\bm v\end{bNiceMatrix}.
     \label{eq:sv-symmetric-dilation}
 \end{align}
-则 $\lambda_1(\bm M_0)=\sigma$, $\lambda_2(\bm M_0)=\sigma_2(\bm M)$, $\norm{\bm E_0}_2=\norm{\bm E}_2$, 且 $\lambda_1(\bm M_0+\bm E_0)=\sigma_1(\bm M+\bm E)=:\sigma'$. 将 $\sigma'$ 的单位特征向量写成
+由\cref{eq:sv-gap,eq:sv-singular-vectors,eq:sv-symmetric-dilation}, 于是 $\bm M_0\bm q=\sigma\bm q$, $\norm{\bm E_0}_2=\norm{\bm E}_2$, 且
 \begin{align}
-    \bm q'&=\gamma\bm q+\bm z_\perp,\q \bm z_\perp\perp\bm q.
+    \lambda_1(\bm M_0+\bm E_0)
+    &=\sigma_1(\bm M+\bm E)=:\sigma'.
+    \label{eq:sv-dilation-top-eigenvalue}
+\end{align}
+取 $\sigma'$ 的单位特征向量并作正交分解
+\begin{align}
+    \bm q'&=\gamma\bm q+\bm z_\perp,\q
+    \bm z_\perp\perp\bm q.
     \label{eq:sv-eigenvector-decomposition}
 \end{align}
-由 Weyl 不等式 $\sigma'\ge\sigma-\norm{\bm E}_2$. 将特征方程投影到 $\bm q^\perp$ 后, 由\cref{eq:sv-gap} 得
+Weyl 不等式给出 $\sigma'\ge\sigma-\norm{\bm E}_2$. 记 $\bm Q_\perp=\bm I-\bm q\bm q^\T$. 将
 \begin{align}
-    (\dt-\norm{\bm E}_2)\norm{\bm z_\perp}_2
-    &\le \norm{\bm E}_2\bigl(\abs\gamma+\norm{\bm z_\perp}_2\bigr).
+    (\bm M_0+\bm E_0)\bm q'&=\sigma'\bm q'
+    \label{eq:sv-perturbed-eigen-equation}
+\end{align}
+投影到 $\bm q^\perp$. 由于 $\bm M_0$ 对称且 $\bm q$ 是其特征向量, $\bm q^\perp$ 在 $\bm M_0$ 下不变, 因而
+\begin{align}
+    (\sigma'\bm I-\bm M_0)\bm z_\perp
+    &=\bm Q_\perp\bm E_0(\gamma\bm q+\bm z_\perp).
+    \label{eq:sv-projected-eigen-equation}
+\end{align}
+结合\cref{eq:sv-gap,eq:sv-projected-eigen-equation}, $\bm M_0$ 在 $\bm q^\perp$ 上的最大特征值不超过 $\sigma_2(\bm M)$, 所以
+\begin{align}
+    (\dt-\norm{\bm E}_2)\norm{\bm z_\perp}_2\le(\sigma'-\sigma_2(\bm M))\norm{\bm z_\perp}_2\le\norm{(\sigma'\bm I-\bm M_0)\bm z_\perp}_2\le\norm{\bm E}_2
+       \bigl(\abs\gamma+\norm{\bm z_\perp}_2\bigr).
     \label{eq:sv-eigenvector-prebound}
 \end{align}
-若 $\gamma=0$, 则 $\norm{\bm z_\perp}_2=1$, \cref{eq:sv-eigenvector-prebound} 推出 $\dt\le2\norm{\bm E}_2$, 与 $\norm{\bm E}_2\le\dt/4$ 矛盾. 因而 $\gamma\ne0$, 且
+若 $\gamma=0$, 则 $\norm{\bm z_\perp}_2=1$, 上式推出 $\dt\le2\norm{\bm E}_2$, 与 $\norm{\bm E}_2\le\dt/4$ 矛盾. 因而 $\gamma\ne0$. 将含 $\norm{\bm z_\perp}_2$ 的项移到左侧,
 \begin{align}
     \frac{\norm{\bm z_\perp}_2}{\abs\gamma}
     &\le\frac{\norm{\bm E}_2}{\dt-2\norm{\bm E}_2}.
     \label{eq:sv-eigenvector-tilt}
 \end{align}
-再将特征方程左乘 $\bm q^\T$,
+
+再将特征方程左乘 $\bm q^\T$. 利用 $\bm q^\T\bm M_0=\sigma\bm q^\T$ 与 $\bm q^\T\bm z_\perp=0$,
 \begin{align}
-    \sigma'-\sigma-\bm q^\T\bm E_0\bm q
-    &=\frac{1}{\gamma}\bm q^\T\bm E_0\bm z_\perp,\q
-    \bm q^\T\bm E_0\bm q=\bm u^\T\bm E\bm v.
-    \label{eq:sv-top-eigenvalue-expansion}
+    (\sigma'-\sigma)\gamma
+    &=\gamma\bm q^\T\bm E_0\bm q
+      +\bm q^\T\bm E_0\bm z_\perp.
+    \label{eq:sv-top-eigenvalue-projection}
 \end{align}
-结合\cref{eq:sv-eigenvector-tilt,eq:sv-top-eigenvalue-expansion} 与 $\norm{\bm E}_2\le\dt/4$ 即得\cref{eq:sv-second-order-bound}.
+而
+\begin{align}
+    \bm q^\T\bm E_0\bm q
+    &=\bm u^\T\bm E\bm v.
+    \label{eq:sv-dilation-first-order-term}
+\end{align}
+结合\cref{eq:sv-eigenvector-tilt,eq:sv-top-eigenvalue-projection,eq:sv-dilation-first-order-term}, 于是
+\begin{align}
+    \abs*{\sigma'-\sigma-\bm u^\T\bm E\bm v}=\frac{\abs{\bm q^\T\bm E_0\bm z_\perp}}{\abs\gamma}\le\norm{\bm E}_2
+      \frac{\norm{\bm z_\perp}_2}{\abs\gamma}\le\frac{\norm{\bm E}_2^2}{\dt-2\norm{\bm E}_2}\le\frac{2}{\dt}\norm{\bm E}_2^2,
+    \label{eq:sv-second-order-bound-proof}
+\end{align}
+即证.
 \end{proof}
 
 \subsection{能量极小值点处的局部展开}
 \label{subsec:endpoint-local-expansion}
 
-记
-\begin{align}
-    f(\bm Z)&=\sqrt{\rho_{\mathrm{TG}}(\bm Z)}.
-    \label{eq:local-f-definition}
-\end{align}
-由\cref{eq:tg-objective-graph},
+记 $f(\bm Z)=\sqrt{\rho_{\mathrm{TG}}(\bm Z)}$. 由\cref{eq:tg-objective-graph},
 \begin{align}
     f(\bm Z)&=\norm{\bm L(\bm Z)}_2,\q
     \bm L(\bm Z):=(\bm I+\bm Z\bm Z^\T)^{-1/2}(\bm T_{\mathrm F}-\bm Z\bm T_\ast).
@@ -383,14 +566,14 @@ PCG 给出逐列的 $\bm B$-正交关系 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$
 \label{thm:endpoint-local-expansion}
 若
 \begin{align}
-    \norm{\bm Z}_{\mathrm F}&\le\frac{\dt}{8},
+    \norm{\bm Z}_{\mathrm F}&\le \dt/8,
     \label{eq:local-ball-condition}
 \end{align}
 则
 \begin{align}
     f(\bm Z)&=\sigma-\bm u_{\mathrm F}^\T\bm Z\bm y+R(\bm Z),
     \label{eq:local-expansion}\\
-    \abs{R(\bm Z)}&\le\left(1+\frac{8}{\dt}\right)\norm{\bm Z}_{\mathrm F}^2.
+    \abs{R(\bm Z)}&\le\left(1+8/\dt\right)\norm{\bm Z}_{\mathrm F}^2.
     \label{eq:local-remainder-bound}
 \end{align}
 \end{theorem}
@@ -398,32 +581,70 @@ PCG 给出逐列的 $\bm B$-正交关系 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$
 \begin{proof}
 令
 \begin{align}
-    \bm A(\bm Z)&:=(\bm I+\bm Z\bm Z^\T)^{-1/2},\q z:=\norm{\bm Z}_2,
+    \bm A(\bm Z)&:=(\bm I+\bm Z\bm Z^\T)^{-1/2},\q
+    z:=\norm{\bm Z}_2.
     \label{eq:local-normalization-matrix}
 \end{align}
-则
+因为 $\bm Z\bm Z^\T\succeq\mathbf O$,
 \begin{align}
-    \norm{\bm A(\bm Z)-\bm I}_2&=1-\frac{1}{\sqrt{1+z^2}}\le\frac12z^2.
+    \norm{\bm A(\bm Z)-\bm I}_2
+    &=1-\frac1{\sqrt{1+z^2}}
+     \le\frac12z^2.
     \label{eq:local-normalization-bound}
 \end{align}
-由\cref{eq:local-L-definition}, 写成 $\bm L(\bm Z)=\bm T_{\mathrm F}+\bm E(\bm Z)$, 其中
+由\cref{eq:local-L-definition} 将 $\bm L(\bm Z)$ 分成端点矩阵与扰动:
 \begin{align}
-    \bm E(\bm Z)&=-\bm Z\bm T_\ast+(\bm A(\bm Z)-\bm I)(\bm T_{\mathrm F}-\bm Z\bm T_\ast).
-    \label{eq:local-E-definition}
+    \bm L(\bm Z)
+    &=\bm T_{\mathrm F}+\bm E(\bm Z),
+    \label{eq:local-L-perturbation-split}\\
+    \bm E(\bm Z)
+    &=-\bm Z\bm T_\ast+\bm D(\bm Z),
+    \label{eq:local-E-definition}\\
+    \bm D(\bm Z)
+    &:=(\bm A(\bm Z)-\bm I)
+      (\bm T_{\mathrm F}-\bm Z\bm T_\ast).
+    \label{eq:local-D-definition}
 \end{align}
-在\cref{eq:local-ball-condition} 下, 由 $\norm{\bm T_{\mathrm F}}_2,\norm{\bm T_\ast}_2\le1$ 和\cref{eq:local-normalization-bound},
+由\cref{eq:gs-nonexpansive,eq:T-block-coordinates,eq:local-ball-condition,eq:local-normalization-bound} 以及 $z\le\norm{\bm Z}_{\mathrm F}\le\dt/8\le1$,
 \begin{align}
-    \norm{\bm E(\bm Z)+\bm Z\bm T_\ast}_2&\le z^2,\q
-    \norm{\bm E(\bm Z)}_2\le z+z^2\le2z\le\frac{\dt}{4}.
+    \norm{\bm D(\bm Z)}_2
+    &\le\frac12z^2(1+z)
+     \le z^2,
+    \label{eq:local-D-bound}\\
+    \norm{\bm E(\bm Z)}_2
+    &\le z+z^2
+     \le2z
+     \le \dt/4.
     \label{eq:local-E-bounds}
 \end{align}
-由\cref{lem:singular-value-perturbation},\cref{eq:endpoint-singular-vectors,eq:local-E-bounds},
+因此可对 $\bm T_{\mathrm F}+\bm E(\bm Z)$ 使用\cref{lem:singular-value-perturbation}:
 \begin{align}
-    \abs*{f(\bm Z)-\sigma+\bm u_{\mathrm F}^\T\bm Z\bm y}
-    &\le\left(1+\frac{8}{\dt}\right)\norm{\bm Z}_{\mathrm F}^2,
+    \abs*{
+        f(\bm Z)-\sigma
+        -\bm u_{\mathrm F}^\T\bm E(\bm Z)\bm v
+    }
+    &\le\frac2\dt\norm{\bm E(\bm Z)}_2^2.
+    \label{eq:local-apply-sv-perturbation}
+\end{align}
+注意
+\begin{align}
+    \bm u_{\mathrm F}^\T\bm E(\bm Z)\bm v=-\bm u_{\mathrm F}^\T\bm Z\bm T_\ast\bm v
+      +\bm u_{\mathrm F}^\T\bm D(\bm Z)\bm v=-\bm u_{\mathrm F}^\T\bm Z\bm y
+      +\bm u_{\mathrm F}^\T\bm D(\bm Z)\bm v.
+    \label{eq:local-first-order-separation}
+\end{align}
+于是
+\begin{align}
+    \abs*{f(\bm Z)-\sigma+\bm u_{\mathrm F}^\T\bm Z\bm y}\le\abs{\bm u_{\mathrm F}^\T\bm D(\bm Z)\bm v}
+      +\frac2\dt\norm{\bm E(\bm Z)}_2^2\le z^2+\frac8\dt z^2\le\left(1+\frac8\dt\right)\norm{\bm Z}_{\mathrm F}^2.
     \label{eq:local-expansion-bound-proof}
 \end{align}
-即\cref{eq:local-expansion,eq:local-remainder-bound}.
+定义
+\begin{align}
+    R(\bm Z)&:=f(\bm Z)-\sigma+\bm u_{\mathrm F}^\T\bm Z\bm y,
+    \label{eq:local-remainder-definition}
+\end{align}
+即得到\cref{eq:local-expansion,eq:local-remainder-bound}.
 \end{proof}
 
 \section{PCG 迭代的相邻谱半径变化}
@@ -464,13 +685,28 @@ PCG 给出逐列的 $\bm B$-正交关系 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$
 \end{lemma}
 
 \begin{proof}
-PCG 不劣于预条件最速下降法, 故逐列有 $\norm{\bm e_{j,m+1}}_{\bm B}\le c_1\norm{\bm e_{j,m}}_{\bm B}$; 对所有列平方求和得到\cref{eq:pcg-radius-contraction}. 再由\cref{eq:path-radius-pythagoras,eq:pcg-c1-c2},
+PCG 在相同 Krylov 子空间中最小化 $\bm B$-能量误差, 因而一步误差不大于以同一对角预条件器作一步最速下降. 预条件最速下降的标准收缩界逐列给出
 \begin{align}
-    \norm{\bm D_m}_{\mathrm F,\bm S}^2
-    &\ge(1-c_1^2)r_m^2=c_2^2r_m^2,
+    \norm{\bm e_{j,m+1}}_{\bm B}
+    &\le\frac{\kappa-1}{\kappa+1}
+      \norm{\bm e_{j,m}}_{\bm B}
+     =c_1\norm{\bm e_{j,m}}_{\bm B}.
+    \label{eq:pcg-column-one-step-contraction}
+\end{align}
+对所有列平方求和, 并利用 $r_m=\norm{\bm\Delta_m}_{\bm B,\mathrm F}$, 得
+\begin{align}
+    r_{m+1}^2
+    &\le c_1^2r_m^2.
+    \label{eq:pcg-radius-contraction-squared}
+\end{align}
+因此得到\cref{eq:pcg-radius-contraction}. 再由\cref{eq:path-radius-pythagoras},
+\begin{align}
+    \norm{\bm D_m}_{\mathrm F,\bm S}^2=r_m^2-r_{m+1}^2\ge(1-c_1^2)r_m^2
+     =\frac{4\kappa}{(\kappa+1)^2}r_m^2
+     =c_2^2r_m^2,
     \label{eq:pcg-step-lower-bound-proof}
 \end{align}
-即\cref{eq:pcg-step-lower-bound}.
+即得\cref{eq:pcg-step-lower-bound}.
 \end{proof}
 
 若 $\bm D_m\ne\mathbf O$, 定义一步对齐量与判据常数
@@ -497,20 +733,76 @@ PCG 不劣于预条件最速下降法, 故逐列有 $\norm{\bm e_{j,m+1}}_{\bm B
 \end{theorem}
 
 \begin{proof}
-由\cref{eq:local-expansion,eq:local-remainder-bound},
+先由\cref{eq:path-energy-decrease},
 \begin{align}
-    \abs*{f(\bm Z_{m+1})-f(\bm Z_m)-\bm u_{\mathrm F}^\T\bm D_m\bm y}
-    &\le\left(1+\frac8\dt\right)
-    \bigl(\norm{\bm Z_m}_{\mathrm F}^2+\norm{\bm Z_{m+1}}_{\mathrm F}^2\bigr).
+    J(\bm W_m)-J(\bm W_{m+1})
+    &=\frac12\norm{\bm D_m}_{\mathrm F,\bm S}^2>0,
+    \label{eq:step-energy-strict-proof}
+\end{align}
+故能量严格下降.
+
+记 $K:=1+8/\dt$. 由\cref{eq:local-expansion,eq:local-remainder-bound} 的局部展开,
+\begin{align}
+    f(\bm Z_{m+1})-f(\bm Z_m)
+    &=\bm u_{\mathrm F}^\T(\bm Z_m-\bm Z_{m+1})\bm y
+      +R(\bm Z_{m+1})-R(\bm Z_m)\\
+    &=\bm u_{\mathrm F}^\T\bm D_m\bm y
+      +R(\bm Z_{m+1})-R(\bm Z_m).
+    \label{eq:step-f-difference-explicit}
+\end{align}
+余项满足
+\begin{align}
+    \abs{R(\bm Z_{m+1})-R(\bm Z_m)}
+    &\le K\left(
+        \norm{\bm Z_m}_{\mathrm F}^2
+        +\norm{\bm Z_{m+1}}_{\mathrm F}^2
+      \right).
     \label{eq:step-linearization-error}
 \end{align}
-由\cref{eq:notation-right-frob,eq:pcg-radius-contraction},
+又因为
 \begin{align}
-    \norm{\bm Z_m}_{\mathrm F}^2+\norm{\bm Z_{m+1}}_{\mathrm F}^2
+    r_m^2
+    &=\tr(\bm Z_m^\T\bm Z_m\bm S)
+     \ge\lambda_{\min}(\bm S)\norm{\bm Z_m}_{\mathrm F}^2,
+    \label{eq:step-Zm-by-rm}
+\end{align}
+以及\cref{eq:pcg-radius-contraction}, 所以
+\begin{align}
+    \norm{\bm Z_m}_{\mathrm F}^2
+    +\norm{\bm Z_{m+1}}_{\mathrm F}^2
     &\le\frac{1+c_1^2}{\lambda_{\min}(\bm S)}r_m^2.
     \label{eq:step-Z-bound-by-r}
 \end{align}
-由\cref{eq:path-energy-decrease} 与 $\bm D_m\ne\mathbf O$ 得到\cref{eq:step-energy-strict-decrease}; 结合\cref{eq:alignment-nu,eq:pcg-step-lower-bound,eq:step-criterion-C,eq:step-linearization-error,eq:step-Z-bound-by-r} 即分别得到\cref{eq:step-deterioration-condition,eq:step-improvement-condition}.
+
+若 $\nu_m>Cr_m$, 由\cref{eq:alignment-nu,eq:pcg-step-lower-bound,eq:step-criterion-C},
+\begin{align}
+    f(\bm Z_{m+1})-f(\bm Z_m)
+    &\ge\nu_m\norm{\bm D_m}_{\mathrm F,\bm S}
+      -\frac{K(1+c_1^2)}{\lambda_{\min}(\bm S)}r_m^2\\
+    &\ge c_2\nu_m r_m
+      -\frac{K(1+c_1^2)}{\lambda_{\min}(\bm S)}r_m^2\\
+    &=c_2r_m(\nu_m-Cr_m)>0.
+    \label{eq:step-deterioration-proof-chain}
+\end{align}
+由于 $f=\sqrt{\rho_{\mathrm{TG}}}\ge0$, 这等价于 $\rho_{\mathrm{TG}}(\bm Z_{m+1})>\rho_{\mathrm{TG}}(\bm Z_m)$.
+
+若 $\nu_m<-Cr_m$, 则 $\nu_m<0$. 此时
+\begin{align}
+    \nu_m\norm{\bm D_m}_{\mathrm F,\bm S}
+    &\le c_2\nu_m r_m.
+    \label{eq:negative-alignment-step-bound}
+\end{align}
+于是
+\begin{align}
+    f(\bm Z_{m+1})-f(\bm Z_m)
+    &\le\nu_m\norm{\bm D_m}_{\mathrm F,\bm S}
+      +\frac{K(1+c_1^2)}{\lambda_{\min}(\bm S)}r_m^2\\
+    &\le c_2\nu_m r_m
+      +\frac{K(1+c_1^2)}{\lambda_{\min}(\bm S)}r_m^2\\
+    &=c_2r_m(\nu_m+Cr_m)<0,
+    \label{eq:step-improvement-proof-chain}
+\end{align}
+故 $\rho_{\mathrm{TG}}(\bm Z_{m+1})<\rho_{\mathrm{TG}}(\bm Z_m)$. 即证\cref{eq:step-deterioration-condition,eq:step-improvement-condition}.
 \end{proof}
 
 由\cref{eq:pcg-radius-contraction} 可知 $Cr_m$ 沿非终止 PCG 迭代指数衰减, 因而\cref{eq:step-deterioration-condition,eq:step-improvement-condition} 中无法判定符号的区间随 $m$ 收缩.
@@ -518,43 +810,92 @@ PCG 不劣于预条件最速下降法, 故逐列有 $\norm{\bm e_{j,m+1}}_{\bm B
 \subsection{判据常数的量级估计}
 \label{subsec:criterion-scaling}
 
-以下考虑固定有界区域上 Dirichlet 扩散问题的标准二维五点差分离散, 采用通常的 $h^{-2}$ 缩放, 并假设扩散系数满足
+以下考虑固定有界区域上 Dirichlet 扩散问题的标准二维五点差分离散, 并假设扩散系数满足
 \begin{align}
     0<\alpha&\le a(x)\le\beta,\q
     \chi:=\frac{\beta}{\alpha}\ge1.
     \label{eq:coefficient-bounds-and-contrast}
 \end{align}
-由\cref{eq:pcg-c1-c2},
+由\cref{eq:pcg-c1-c2} 可得
 \begin{align}
     \frac{1+c_1^2}{c_2}
-    &=\frac{\kappa^2+1}{\sqrt\kappa(\kappa+1)}=\Theta(\sqrt\kappa).
+    &=\frac{\kappa^2+1}{\sqrt\kappa(\kappa+1)}
+     =\Theta(\sqrt\kappa).
     \label{eq:pcg-factor-scaling}
 \end{align}
-Schur 补的变分表征给出 $\lambda_{\min}(\bm S)\ge\lambda_{\min}(\bm A)\gtrsim\alpha$. 对五点扩散矩阵, $\bm B\preceq2\bm D_{\bm B}$, $\lambda_{\min}(\bm B)\ge\lambda_{\min}(\bm A)\gtrsim\alpha$, 且 $\lambda_{\max}(\bm D_{\bm B})\lesssim\beta h^{-2}$, 从而
+
+对任意 $\bm x_{\mathrm C}$, 有
 \begin{align}
-    \lambda_{\min}(\bm S)&\gtrsim\alpha,
-    \label{eq:schur-lambda-lower}\\
-    \kappa&=\O(\chi h^{-2}).
+    \bm x_{\mathrm C}^\T\bm S\bm x_{\mathrm C}
+    &=\min_{\bm x_{\mathrm F}}
+      \begin{bNiceMatrix}\bm x_{\mathrm F}^\T&\bm x_{\mathrm C}^\T\end{bNiceMatrix}
+      \bm A
+      \begin{bNiceMatrix}\bm x_{\mathrm F}\\\bm x_{\mathrm C}\end{bNiceMatrix}.
+    \label{eq:schur-variational-characterization}
+\end{align}
+因此
+\begin{align}
+    \bm x_{\mathrm C}^\T\bm S\bm x_{\mathrm C}\ge\lambda_{\min}(\bm A)
+      \min_{\bm x_{\mathrm F}}
+      \left(\norm{\bm x_{\mathrm F}}_2^2+\norm{\bm x_{\mathrm C}}_2^2\right)=\lambda_{\min}(\bm A)\norm{\bm x_{\mathrm C}}_2^2.
+    \label{eq:schur-lower-derivation}
+\end{align}
+对固定有界区域上的标准 Dirichlet 五点扩散离散, $\lambda_{\min}(\bm A)\gtrsim\alpha$, 故
+\begin{align}
+    \lambda_{\min}(\bm S)&\gtrsim\alpha.
+    \label{eq:schur-lambda-lower}
+\end{align}
+
+再估计对角预条件后的条件数. 五点扩散矩阵的细点主块满足
+\begin{align}
+    \bm B&\preceq2\bm D_{\bm B},\q
+    \lambda_{\max}(\bm D_{\bm B})\lesssim\beta h^{-2}.
+    \label{eq:B-diagonal-comparison}
+\end{align}
+前者给出
+\begin{align}
+    \lambda_{\max}(\bm D_{\bm B}^{-1/2}\bm B\bm D_{\bm B}^{-1/2})
+    &\le2.
+    \label{eq:jacobi-preconditioned-lambda-max}
+\end{align}
+另一方面, $\bm B$ 是 $\bm A$ 的主子矩阵, 故
+$\lambda_{\min}(\bm B)\ge\lambda_{\min}(\bm A)\gtrsim\alpha$. 对任意非零 $\bm x$,
+\begin{align}
+    \frac{\bm x^\T\bm B\bm x}{\bm x^\T\bm D_{\bm B}\bm x}
+    &\ge\frac{\lambda_{\min}(\bm B)}{\lambda_{\max}(\bm D_{\bm B})}
+     \gtrsim\frac{\alpha}{\beta h^{-2}}
+     =\chi^{-1}h^2.
+    \label{eq:jacobi-preconditioned-lambda-min}
+\end{align}
+结合\cref{eq:jacobi-preconditioned-lambda-max,eq:jacobi-preconditioned-lambda-min}, 因此
+\begin{align}
+    \kappa
+    &=\kappa_2(\bm D_{\bm B}^{-1/2}\bm B\bm D_{\bm B}^{-1/2})
+     =\O(\chi h^{-2}).
     \label{eq:kappa-scaling}
 \end{align}
-将\cref{eq:pcg-factor-scaling,eq:schur-lambda-lower,eq:kappa-scaling} 代入\cref{eq:step-criterion-C}, 得
+最后将以上估计代入判据常数 $C$,
 \begin{align}
-    C&=\O\left(\frac{\sqrt\chi}{\alpha h\dt}\right).
+    C
+    &=\frac{1+8/\dt}{\lambda_{\min}(\bm S)}
+      \frac{1+c_1^2}{c_2}
+     =\O\left(\frac{\sqrt\chi}{\alpha h\dt}\right).
     \label{eq:C-scaling}
 \end{align}
+该估计说明判据常数同时受网格尺度、对比度和端点谱间隙影响.
 
 \section{局部判据的渐近可达性}
 \label{sec:asymptotic-entry}
 
 本节继续采用\cref{subsec:criterion-scaling}的标准二维五点差分设置. 对固定有限维问题, 以下 $m$ 均理解为 PCG 精确终止前的非平凡迭代步; 若 PCG 更早精确终止, 则已直接到达 $\bm Z=\mathbf O$.
 
-标准 PCG 估计给出
+在\cref{eq:jacobi-condition-number} 的同一预条件系统上, 标准 PCG 估计给出
 \begin{align}
     c_3&:=\frac{\sqrt\kappa-1}{\sqrt\kappa+1},\q
     r_m\le2c_3^m r_0.
     \label{eq:pcg-global-matrix-bound}
 \end{align}
-又由\cref{eq:path-step-and-radius,eq:notation-right-frob,eq:schur-lambda-lower},
+再结合\cref{eq:path-step-and-radius,eq:notation-right-frob,eq:schur-lambda-lower,eq:pcg-global-matrix-bound},
 \begin{align}
     \norm{\bm Z_m}_{\mathrm F}
     &\le\frac{2r_0}{\sqrt{\lambda_{\min}(\bm S)}}c_3^m.
@@ -565,10 +906,7 @@ Schur 补的变分表征给出 $\lambda_{\min}(\bm S)\ge\lambda_{\min}(\bm A)\gt
 \label{ass:polynomial-data}
 沿所考虑的离散问题族, 存在固定 $p\ge0$ 使得
 \begin{align}
-    \dt^{-1}&=\O\bigl((\chi h^{-1})^p\bigr),
-    \label{eq:gap-polynomial-growth}\\
-    \frac{r_0}{\sqrt\alpha}&=\O\bigl((\chi h^{-1})^p\bigr).
-    \label{eq:initial-error-polynomial-growth}
+    \dt^{-1}=\O\left((\chi h^{-1})^p\right),\q \frac{r_0}{\sqrt\alpha}=\O\left((\chi h^{-1})^p\right).
 \end{align}
 \end{assumption}
 
@@ -579,12 +917,7 @@ Schur 补的变分表征给出 $\lambda_{\min}(\bm S)\ge\lambda_{\min}(\bm A)\gt
     m_0&=\O\bigl(\sqrt\chi\,h^{-1}\log(\chi h^{-1})\bigr)
     \label{eq:local-entry-scale}
 \end{align}
-使得 PCG 要么在 $m_0$ 前精确终止, 要么对所有 $m\ge m_0$ 的后续非平凡迭代均有
-\begin{align}
-    \norm{\bm Z_m}_{\mathrm F}&\le\frac{\dt}{8}.
-    \label{eq:eventual-local-ball}
-\end{align}
-固定 $\chi$ 时,
+使得 PCG 要么在 $m_0$ 前精确终止, 要么对所有 $m\ge m_0$ 的后续非平凡迭代均有 $\norm{\bm Z_m}_{\mathrm F}\le \dt/8$. 固定 $\chi$ 时,
 \begin{align}
     m_0&=\O(h^{-1}\log h^{-1})=o(h^{-2}).
     \label{eq:fixed-contrast-entry-scale}
@@ -592,17 +925,65 @@ Schur 补的变分表征给出 $\lambda_{\min}(\bm S)\ge\lambda_{\min}(\bm A)\gt
 \end{theorem}
 
 \begin{proof}
-由\cref{eq:Z-global-exponential-bound}, 只需使 $c_3^m\lesssim\dt\sqrt{\lambda_{\min}(\bm S)}/r_0$. 若 $\kappa=1$, 则 PCG 一步精确终止; 以下设 $\kappa>1$. 此时
+由全局 PCG 误差界,
+\begin{align}
+    \norm{\bm Z_m}_{\mathrm F}
+    &\le\frac{2r_0}{\sqrt{\lambda_{\min}(\bm S)}}c_3^m.
+    \label{eq:Z-global-bound-proof-use}
+\end{align}
+因此要满足\cref{eq:local-ball-condition} 的局部条件 $\norm{\bm Z_m}_{\mathrm F}\le\dt/8$, 只需
+\begin{align}
+    c_3^m
+    &\le\frac{\dt\sqrt{\lambda_{\min}(\bm S)}}{16r_0}.
+    \label{eq:entry-sufficient-cg-factor}
+\end{align}
+即
+\begin{align}
+    m&\ge\frac{
+        \log\left(
+            \dfrac{16r_0}{\dt\sqrt{\lambda_{\min}(\bm S)}}
+        \right)
+    }{-\log c_3}:=m_0,
+    \label{eq:entry-explicit-m0}
+\end{align}
+其中
 \begin{align}
     -\log c_3
     &=\log\frac{\sqrt\kappa+1}{\sqrt\kappa-1}
-    =2\operatorname{artanh}(\kappa^{-1/2})
-    \ge\frac{2}{\sqrt\kappa}.
+      =2\operatorname{arctanh}(\kappa^{-1/2})
+      \ge\frac2{\sqrt\kappa},
     \label{eq:cg-factor-log-lower}
 \end{align}
-结合\cref{eq:kappa-scaling,eq:schur-lambda-lower,eq:cg-factor-log-lower,eq:gap-polynomial-growth,eq:initial-error-polynomial-growth}, 上述条件在\cref{eq:local-entry-scale} 的量级下成立, 从而得到\cref{eq:eventual-local-ball}. 固定 $\chi$ 时\cref{eq:fixed-contrast-entry-scale} 立即成立.
+故
+\begin{align}
+    \frac1{-\log c_3}
+    &\le\frac{\sqrt\kappa}{2}
+     =\O(\sqrt\chi\,h^{-1}).
+    \label{eq:cg-log-denominator-scaling}
+\end{align}
+另一方面, $\lambda_{\min}(\bm S)\gtrsim\alpha$, 所以
+\begin{align}
+    \log\left(
+        \frac{16r_0}{\dt\sqrt{\lambda_{\min}(\bm S)}}
+    \right)&=\O\left(\log\left(
+        \frac{r_0}{\sqrt\alpha}\dt^{-1}
+    \right)\right)
+     =\O(\log(\chi h^{-1})),
+    \label{eq:entry-log-numerator-scaling}
+\end{align}
+其中最后一步使用\cref{ass:polynomial-data}. 将\cref{eq:cg-log-denominator-scaling,eq:entry-log-numerator-scaling} 代入\cref{eq:entry-explicit-m0}, 得
+\begin{align}
+    m_0
+    &=\O\bigl(\sqrt\chi\,h^{-1}\log(\chi h^{-1})\bigr).
+    \label{eq:local-entry-scale-proof}
+\end{align}
+固定 $\chi$ 后即得到\cref{eq:fixed-contrast-entry-scale}.
 \end{proof}
 
-在固定比例的 C/F 划分下, 二维细点数满足 $n_{\mathrm F}(h)=\Theta(h^{-2})$, 故\cref{eq:fixed-contrast-entry-scale} 还给出 $m_0/n_{\mathrm F}(h)=\O(h\log h^{-1})\to0$. 因此, \cref{thm:endpoint-local-expansion,thm:pcg-two-sided-step-criterion} 虽然在粗空间坐标中是局部结果, 但沿 PCG 路径在一个相对于二维代数终止尺度为低阶的初始过渡段之后均可适用.
+由于二维细点数满足 $n_{\mathrm F}(h)=\Theta(h^{-2})$, 故\cref{eq:fixed-contrast-entry-scale} 还给出
+\begin{align}
+    \frac{m_0}{n_{\mathrm F}(h)}=\O(h\log h^{-1})\to0.
+\end{align}
+因此, \cref{thm:endpoint-local-expansion,thm:pcg-two-sided-step-criterion} 虽然在粗空间坐标中是局部结果, 但沿 PCG 路径在一个相对于二维代数终止尺度为低阶的初始过渡段之后均可适用.
 
 \end{document}

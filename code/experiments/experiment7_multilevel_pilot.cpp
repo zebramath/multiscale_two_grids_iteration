@@ -195,8 +195,8 @@ int main(int argc, char** argv) {
         "The experiment applies the same interpolation construction "
         "independently on both Galerkin transitions. Exact two-grid cycles "
         "with the first interpolation provide a controlled reference for "
-        "replacing the exact coarse solve by one recursive V-cycle. The two "
-        "hierarchies quantify finite-level feasibility and recursion cost.");
+        "replacing the exact coarse solve by one recursive V-cycle. The full "
+        "two-hierarchy experiment quantifies feasibility and recursion cost.");
     report.add_table(
         "Exact two-grid versus recursive V-cycle",
         {"Case", "Levels", "Method", "Level params", "P density %",
