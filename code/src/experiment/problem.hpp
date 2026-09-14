@@ -3,6 +3,7 @@
 #include "multigrid/energy_interpolation.hpp"
 #include "pde/diffusion_problem.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <utility>
@@ -11,6 +12,12 @@
 namespace experiment_support {
 
 inline constexpr int maximum_two_grid_cycles = 20000;
+
+inline int fixed_path_steps(
+    int fine_intervals, int numerator, int denominator) {
+    return std::max(
+        1, (numerator * fine_intervals + denominator / 2) / denominator);
+}
 
 struct BasicConfig {
     int fine_intervals = 128;

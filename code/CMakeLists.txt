@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(two_grids_iteration VERSION 8.4.0 LANGUAGES CXX)
+project(two_grids_iteration VERSION 9.1.0 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -44,26 +44,22 @@ function(tgi_add_program target)
     target_link_libraries(${target} PRIVATE tgi_headers)
 endfunction()
 
-tgi_add_program(experiment1_two_grid_comparison
-    experiments/experiment1_two_grid_comparison.cpp)
-tgi_add_program(experiment2_step_scan
-    experiments/experiment2_step_scan.cpp)
-tgi_add_program(experiment3_oracle_validation
-    experiments/experiment3_oracle_validation.cpp)
-tgi_add_program(experiment4_submission_robustness
-    experiments/experiment4_submission_robustness.cpp)
-tgi_add_program(experiment5_stopping_ablation
-    experiments/experiment5_stopping_ablation.cpp)
-tgi_add_program(experiment6_fixed_physical_refinement
-    experiments/experiment6_fixed_physical_refinement.cpp)
+tgi_add_program(experiment1_finite_path_comparison
+    experiments/experiment1_finite_path_comparison.cpp)
+tgi_add_program(experiment2_spectral_path
+    experiments/experiment2_spectral_path.cpp)
+tgi_add_program(experiment3_scaling_propagation
+    experiments/experiment3_scaling_propagation.cpp)
+tgi_add_program(experiment4_local_diagnostic_export
+    experiments/experiment4_local_diagnostic_export.cpp)
+tgi_add_program(experiment5_robustness
+    experiments/experiment5_robustness.cpp)
+tgi_add_program(experiment6_endpoint_comparison
+    experiments/experiment6_endpoint_comparison.cpp)
 tgi_add_program(experiment7_multilevel_pilot
     experiments/experiment7_multilevel_pilot.cpp)
-tgi_add_program(experiment8_interpolation_endpoint
-    experiments/experiment8_interpolation_endpoint.cpp)
 add_custom_target(experiments
-    DEPENDS experiment1_two_grid_comparison experiment2_step_scan
-            experiment3_oracle_validation experiment4_submission_robustness
-            experiment5_stopping_ablation
-            experiment6_fixed_physical_refinement
-            experiment7_multilevel_pilot
-            experiment8_interpolation_endpoint)
+    DEPENDS experiment1_finite_path_comparison experiment2_spectral_path
+            experiment3_scaling_propagation
+            experiment4_local_diagnostic_export experiment5_robustness
+            experiment6_endpoint_comparison experiment7_multilevel_pilot)

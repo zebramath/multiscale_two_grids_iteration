@@ -4,6 +4,7 @@
 #include "multigrid/multilevel_solver.hpp"
 #include "version.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <string>
@@ -12,7 +13,7 @@
 
 namespace {
 
-enum class TransferMethod { Adaptive, GlobalReference };
+enum class TransferMethod { FiniteOneThird, EnergyEndpoint };
 
 struct MultilevelCase {
     std::string name;
@@ -29,10 +30,10 @@ struct Hierarchy {
 
 const char* method_name(TransferMethod method) {
     switch (method) {
-        case TransferMethod::Adaptive:
-            return "adaptive";
-        case TransferMethod::GlobalReference:
-            return "global-reference";
+        case TransferMethod::FiniteOneThird:
+            return "finite-1/3";
+        case TransferMethod::EnergyEndpoint:
+            return "energy-endpoint";
     }
     return "unknown";
 }
@@ -50,16 +51,16 @@ Hierarchy build_hierarchy(
         const auto initial = tgi::build_geometric_interpolation(grid);
         tgi::SparseMatrix prolongation;
         std::string parameter;
-        if (method == TransferMethod::Adaptive) {
-            const int steps = tgi::adaptive_global_pcg_detail::select_steps(
-                grid, hierarchy.matrices.back());
+        if (method == TransferMethod::FiniteOneThird) {
+            const int steps = experiment_support::fixed_path_steps(
+                fine_intervals, 1, 3);
             tgi::GlobalEnergyPcgPath path(
                 grid, hierarchy.matrices.back(), initial.prolongation,
                 threads);
             path.advance_to(steps);
             prolongation = path.prolongation();
             parameter = "m=" + std::to_string(steps);
-        } else if (method == TransferMethod::GlobalReference) {
+        } else if (method == TransferMethod::EnergyEndpoint) {
             const auto reference = experiment_support::build_global_reference(
                 grid, hierarchy.matrices.back(), threads);
             prolongation = reference.prolongation;
@@ -166,8 +167,8 @@ int main(int argc, char** argv) {
         const auto problem = experiment_support::make_problem(
             fine_grid, field, config);
         for (const TransferMethod method : {
-                 TransferMethod::Adaptive,
-                 TransferMethod::GlobalReference}) {
+                 TransferMethod::FiniteOneThird,
+                 TransferMethod::EnergyEndpoint}) {
             experiment_support::progress(
                 "multilevel " + std::to_string(case_index + 1U) + "/" +
                 std::to_string(case_count) + ": " + item.name + ", " +

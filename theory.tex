@@ -10,7 +10,18 @@
 
 \maketitle
 
-\section{问题设置与记号}
+\begin{abstract}
+本文研究能量极小插值的有限 Jacobi--PCG 构造路径, 而不是提出一个复杂的在线自适应器. 在固定粗点、单位注入、一次前向与一次后向 Gauss--Seidel 磨光以及精确 Galerkin 粗解的设定下, 本文把真实两网格谱半径写成能量坐标中的精确图空间目标, 并证明插值能量沿 PCG 路径严格下降并不蕴含两网格谱半径单调下降. 主要结果包括: 能量端点附近带显式余项的奇异值展开与双向步判据; 端点在可检验条件下并非局部求解器最优; PCG 校正的有限图传播; 规则二维粗化下同时覆盖 fixed-$H$ 与 fixed-$q$ 的容量尺度, 以及网格尺寸和系数对比度依赖的分别尖锐性. 这些结论解释了为何 $m=\Theta(h^{-1})$ 量级的有限路径点可能明显优于高精度能量端点, 同时明确指出该量级不是一般 SPD 问题上最佳步数的无条件公式.
+\end{abstract}
+
+\subsection*{与 ideal/optimal interpolation 文献的关系}
+在本文固定单位注入且不施加额外稀疏约束的坐标中,
+$\bm P_{\rm id}=[-\bm A_{\rm FF}^{-1}\bm A_{\rm FC};\bm I]$
+既是经典 ideal interpolation, 也是本文插值能量的精确端点. 能量极小化、Krylov 构造与为控制 setup 成本而有限迭代已有系统研究
+\cite{olson2011energy,janna2023parallel}. 本文不把这些构造本身作为新贡献.
+另一方面, Brannick 等\cite{brannick2018optimal} 所称 optimal interpolation 直接针对给定两层方法的收敛率; 它一般不同于上述 ideal interpolation. 二者在特定的 $F$-relaxation/经典 AMG 表述下可以等价, 但这种等价不能无条件移植到本文固定的全变量前向/后向 Gauss--Seidel 两网格算子. 因而本文的准确定位是: 在一条已有的能量极小化 PCG 路径上, 研究 ideal 能量端点与固定磨光子下真实两网格谱目标之间的机制性错配, 并给出可复现的定量诊断.
+
+\section{问题设置、目标与理论路线}
 \label{sec:setup}
 
 考虑高对比度多尺度问题, 对其采用有限差分或者有限元格式得到对称正定线性方程组 $\bm A\bm u=\bm b$. 按细点与粗点分块,
@@ -46,12 +57,17 @@
     \norm{\bm X}_{\bm M}&=\norm{\bm M^{1/2}\bm X\bm M^{-1/2}}_2.
     \label{eq:notation-induced-energy}
 \end{align}
-此外, $\lambda_k(\cdot),\sigma_k(\cdot)$ 分别表示按非增序排列的第 $k$ 个特征值和奇异值, $\Ran(\cdot)$ 表示列空间, $\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^\T\bm A$. PCG 采用对角预条件共轭梯度法.
+此外, $\lambda_k(\cdot),\sigma_k(\cdot)$ 分别表示按非增序排列的第 $k$ 个特征值和奇异值, $\Ran(\cdot)$ 表示列空间, $\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^\T\bm A$. 必要时将奇异值序列以零补齐到所需维数. PCG 采用对角预条件共轭梯度法. 除非特别说明, 以下 PCG 恒等式均按精确算术理解, 已精确终止的列在后续全局步中保持不动.
 
-\section{能量极小插值与 PCG 迭代}
-\label{sec:energy-pcg}
 
-\subsection{能量极小值点}
+本文关注的不是如何更快逼近能量极小插值本身, 而是沿同一条有限 PCG 插值轨迹比较不同粗空间的两网格性能. 为避免混淆, 下文始终区分两个对象: 一是由插值能量定义的端点 $\bm W^\ast$, 二是对固定磨光子和固定粗空间维数而言的求解器最优谱基准. 理论分析依次完成四件事: 首先刻画有限 PCG 轨迹的能量与 Krylov 结构; 其次给出两网格目标的精确粗空间表示并引入求解器最优基准; 再次在能量端点附近定量解释能量下降与两网格性能变化之间的错配; 最后在二维规则粗化下给出显式的 $h,H$ 尺度、局部区域进入复杂度以及对路径形状与最佳步数所能作出的谨慎结论.
+
+\section{有限 PCG 插值轨迹的能量与粗空间几何}
+\label{sec:finite-pcg-trajectory}
+
+本节只研究插值构造本身. 核心事实是: 能量极小端点具有精确二次误差结构, 而有限 PCG 并非任意能量下降过程, 而是嵌套 Krylov 子空间上的谱多项式轨迹. 这为后续比较 ``PCG 自身优化的能量目标'' 与 ``真正关心的两网格目标'' 提供统一坐标.
+
+\subsection{能量极小端点及精确能量分解}
 \label{subsec:energy-endpoint}
 
 定义插值能量与 Schur 补
@@ -122,25 +138,148 @@
 故得到\cref{eq:coarse-matrix-energy-error}.
 \end{proof}
 
-\subsection{PCG 迭代}
+
+\subsection{PCG 的 Krylov 结构与严格能量下降}
 \label{subsec:pcg-energy-geometry}
 
-对\cref{eq:energy-minimizer} 的第 $j$ 列, 以几何插值为初值进行 PCG. 记
+对\cref{eq:energy-minimizer} 的第 $j$ 列, 以几何插值为初值进行对角预条件 PCG. 记
 \begin{align}
+    \bm D_{\bm B}&:=\diag(\bm B),\q
+    \widehat{\bm B}:=\bm D_{\bm B}^{-1/2}\bm B\bm D_{\bm B}^{-1/2}\succ\mathbf O,
+    \label{eq:pcg-symmetric-preconditioned-B}\\
     \bm B\bm w_j^{\ast}&=-\bm C\bm e_j,
     \label{eq:pcg-column-system}\\
-    \bm e_{j,m}&=\bm w_j^{\ast}-\bm w_{j,m},\q
-    \bm s_{j,m}=\bm w_{j,m+1}-\bm w_{j,m},
+    \bm e_{j,m}&:=\bm w_j^{\ast}-\bm w_{j,m},\q
+    \bm s_{j,m}:=\bm w_{j,m+1}-\bm w_{j,m},
     \label{eq:pcg-column-error-step}\\
-    \bm\Delta_m&=\bm W_m-\bm W^{\ast}.
+    \widehat{\bm e}_{j,m}&:=\bm D_{\bm B}^{1/2}\bm e_{j,m},\q
+    \widehat{\bm r}_{j,0}:=\widehat{\bm B}\widehat{\bm e}_{j,0},
+    \label{eq:pcg-preconditioned-error-residual}\\
+    \bm\Delta_m&:=\bm W_m-\bm W^{\ast}.
     \label{eq:pcg-matrix-error}
 \end{align}
+各列使用同一矩阵 $\bm B$ 与同一预条件器 $\bm D_{\bm B}$; 若某列提前精确终止, 则其后保持不动.
+
+\begin{proposition}
+\label{prop:pcg-krylov-characterization}
+令
+\begin{align}
+    \mathcal K_{j,m}
+    &:=
+    \mathcal K_m(\widehat{\bm B},\widehat{\bm r}_{j,0})
+    =
+    \operatorname{span}\left\{
+      \widehat{\bm r}_{j,0},
+      \widehat{\bm B}\widehat{\bm r}_{j,0},
+      \ldots,
+      \widehat{\bm B}^{m-1}\widehat{\bm r}_{j,0}
+    \right\},
+    \label{eq:pcg-column-krylov-space}
+\end{align}
+其中 $\mathcal K_{j,0}=\{\mathbf0\}$. 则第 $m$ 个 PCG 迭代点满足
+\begin{align}
+    \widehat{\bm w}_{j,m}
+    &\in\widehat{\bm w}_{j,0}+\mathcal K_{j,m},
+    \label{eq:pcg-affine-krylov-membership}\\
+    \widehat{\bm w}_{j,m}
+    &=
+    \arg\min_{\widehat{\bm w}\in
+    \widehat{\bm w}_{j,0}+\mathcal K_{j,m}}
+    \norm{\widehat{\bm w}_j^\ast-\widehat{\bm w}}_{\widehat{\bm B}},
+    \label{eq:pcg-krylov-minimizer}
+\end{align}
+其中 $\widehat{\bm w}:=\bm D_{\bm B}^{1/2}\bm w$. 进一步, 对每个 $j,m$ 均存在次数不超过 $m$ 且 $p_{j,m}(0)=1$ 的实多项式 $p_{j,m}$, 使
+\begin{align}
+    \widehat{\bm e}_{j,m}
+    &=
+    p_{j,m}(\widehat{\bm B})\widehat{\bm e}_{j,0}.
+    \label{eq:pcg-error-polynomial}
+\end{align}
+因此 PCG 路径不是任意能量下降路径, 而是由嵌套 Krylov 子空间上的 Galerkin 极小化所确定的谱多项式路径.
+\end{proposition}
+
+\begin{proof}
+作对称变量代换
+$\widehat{\bm w}=\bm D_{\bm B}^{1/2}\bm w$,
+则第 $j$ 列方程等价于
+\begin{align}
+    \widehat{\bm B}\widehat{\bm w}_j^\ast
+    &=
+    -\bm D_{\bm B}^{-1/2}\bm C\bm e_j.
+    \label{eq:pcg-symmetric-system}
+\end{align}
+对角预条件 PCG 在原变量中的递推与对
+\cref{eq:pcg-symmetric-system} 应用标准 CG 完全等价. CG 的第 $m$ 个校正属于
+$\mathcal K_{j,m}$, 且其 Galerkin 条件为
+\begin{align}
+    \widehat{\bm e}_{j,m}
+    &\perp_{\widehat{\bm B}}\mathcal K_{j,m}.
+    \label{eq:pcg-krylov-galerkin}
+\end{align}
+任取
+$\widehat{\bm w}=\widehat{\bm w}_{j,m}+\bm z$,
+$\bm z\in\mathcal K_{j,m}$, 由\cref{eq:pcg-krylov-galerkin},
+\begin{align}
+    \norm{\widehat{\bm w}_j^\ast-\widehat{\bm w}}_{\widehat{\bm B}}^2
+    &=
+    \norm{\widehat{\bm e}_{j,m}-\bm z}_{\widehat{\bm B}}^2
+     =
+    \norm{\widehat{\bm e}_{j,m}}_{\widehat{\bm B}}^2
+    +\norm{\bm z}_{\widehat{\bm B}}^2,
+    \label{eq:pcg-krylov-minimizer-proof}
+\end{align}
+故\cref{eq:pcg-krylov-minimizer} 成立且极小点唯一.
+
+又由
+$\widehat{\bm r}_{j,0}
+=\widehat{\bm B}\widehat{\bm e}_{j,0}$,
+有
+\begin{align}
+    \mathcal K_{j,m}
+    &=
+    \operatorname{span}\left\{
+      \widehat{\bm B}\widehat{\bm e}_{j,0},
+      \ldots,
+      \widehat{\bm B}^{m}\widehat{\bm e}_{j,0}
+    \right\}.
+    \label{eq:pcg-krylov-error-span}
+\end{align}
+因此
+$\widehat{\bm e}_{j,m}
+=\widehat{\bm e}_{j,0}-(\widehat{\bm w}_{j,m}-\widehat{\bm w}_{j,0})$
+必可写成\cref{eq:pcg-error-polynomial}, 且常数项为 $1$.
+\end{proof}
+
+\begin{proposition}[有限图传播]
+\label{prop:pcg-finite-propagation}
+令 $\mathcal G_{\rm F}$ 为 $\widehat{\bm B}$ 的非零非对角元所定义的无向图,
+$\mathcal N_k(\Omega)$ 表示集合 $\Omega$ 的图距离不超过 $k$ 的闭邻域. 对第 $j$ 列令
+$\Omega_j=\supp(\widehat{\bm r}_{j,0})$. 则对任意 $m\ge1$,
+\begin{align}
+  \supp(\bm w_{j,m}-\bm w_{j,0})
+  &\subseteq \mathcal N_{m-1}(\Omega_j).
+  \label{eq:pcg-finite-propagation}
+\end{align}
+特别地, 每增加一步 PCG, 校正支撑至多在 $A_{\rm FF}$ 图上向外扩展一层; 对角预条件不会改变该支撑结论.
+\end{proposition}
+
+\begin{proof}
+由\cref{eq:pcg-affine-krylov-membership}, 对称变量中的校正属于
+$\operatorname{span}\{\widehat{\bm r}_{j,0},\ldots,
+\widehat{\bm B}^{m-1}\widehat{\bm r}_{j,0}\}$.
+稀疏矩阵每乘一次至多把支撑沿 $\mathcal G_{\rm F}$ 扩展一层, 故该 Krylov 空间中每个向量的支撑均包含于
+$\mathcal N_{m-1}(\Omega_j)$. 左右乘正对角矩阵
+$\bm D_{\bm B}^{\pm1/2}$ 不改变零元位置, 因而原变量满足\cref{eq:pcg-finite-propagation}.
+\end{proof}
 
 \begin{proposition}
 \label{prop:pcg-exact-identities}
 对任意 PCG 步,
 \begin{align}
-    \norm{\bm\Delta_m}_{\bm B,\mathrm{F}}^2&=\norm{\bm\Delta_{m+1}}_{\bm B,\mathrm{F}}^2+\norm{\bm W_{m+1}-\bm W_m}_{\bm B,\mathrm{F}}^2.
+    \norm{\bm\Delta_m}_{\bm B,\mathrm{F}}^2
+    &=
+    \norm{\bm\Delta_{m+1}}_{\bm B,\mathrm{F}}^2
+    +\norm{\bm W_{m+1}-\bm W_m}_{\bm B,\mathrm{F}}^2.
     \label{eq:pcg-matrix-pythagoras}
 \end{align}
 若 $\bm W_{m+1}\ne\bm W_m$, 则
@@ -151,26 +290,33 @@
 \end{proposition}
 
 \begin{proof}
-由\cref{eq:pcg-column-error-step}, $\bm e_{j,m}=\bm e_{j,m+1}+\bm s_{j,m}$. PCG 的 Galerkin 正交性给出 $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$, 因此逐列有
+由\cref{eq:pcg-column-error-step},
+$\bm e_{j,m}=\bm e_{j,m+1}+\bm s_{j,m}$.
+由第 $m+1$ 步的 CG Galerkin 正交性以及 $\bm s_{j,m}\in\mathcal K_{j,m+1}$ 可知
+$\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
+因此逐列有
 \begin{align}
     \norm{\bm e_{j,m}}_{\bm B}^2
-    &=\norm{\bm e_{j,m+1}}_{\bm B}^2
-      +\norm{\bm s_{j,m}}_{\bm B}^2.
+    &=
+    \norm{\bm e_{j,m+1}}_{\bm B}^2
+    +\norm{\bm s_{j,m}}_{\bm B}^2.
     \label{eq:pcg-column-pythagoras}
 \end{align}
-注意 $\bm\Delta_m$ 的第 $j$ 列为 $-\bm e_{j,m}$, 对 $j=1,\ldots,n_{\mathrm C}$ 求和即得\cref{eq:pcg-matrix-pythagoras}. 再结合\cref{eq:energy-gap}, 因而
+注意 $\bm\Delta_m$ 的第 $j$ 列为 $-\bm e_{j,m}$,
+对 $j=1,\ldots,n_{\mathrm C}$ 求和即得
+\cref{eq:pcg-matrix-pythagoras}. 再结合\cref{eq:energy-gap},
 \begin{align}
     J(\bm W_m)-J(\bm W_{m+1})
-    &=\frac12\left(
-        \norm{\bm\Delta_m}_{\bm B,\mathrm F}^2
-        -\norm{\bm\Delta_{m+1}}_{\bm B,\mathrm F}^2
-      \right)=\frac12\norm{\bm W_{m+1}-\bm W_m}_{\bm B,\mathrm F}^2.
+    &=
+    \frac12
+    \norm{\bm W_{m+1}-\bm W_m}_{\bm B,\mathrm F}^2.
     \label{eq:pcg-energy-decrease-explicit}
 \end{align}
-若该步非零, 右端严格为正, 从而得到\cref{eq:pcg-energy-strict-decrease}.
+非零步时右端严格为正.
 \end{proof}
 
-\section{归一化误差与粗空间}
+
+\subsection{归一化图坐标与粗空间距离}
 \label{sec:normalized-geometry}
 
 令
@@ -279,10 +425,15 @@
 由\cref{eq:graph-principal-vector,eq:endpoint-principal-vector}, $\{\bm q_k\}$ 与 $\{\bm q_k^\ast\}$ 分别构成两个子空间的单位正交基, 且交叉 Gram 矩阵在该配对下为对角阵, 第 $k$ 个对角元为 $(1+\sigma_k(\bm Z)^2)^{-1/2}$. 因而相应主角满足 $\tan\theta_k=\sigma_k(\bm Z)$.
 \end{proof}
 
-\section{两网格收敛率}
+
+上述结果说明, $\norm{\bm Z}$ 精确刻画当前插值相对于能量极小端点的归一化偏离, PCG 则使相应能量距离严格下降. 但这一事实本身并不包含磨光子信息, 因而尚不能推出两网格性能沿 PCG 路径单调改善. 下一节将两网格收敛率直接写成粗空间与磨光子共同决定的谱目标.
+
+\section{固定磨光子下的两网格谱目标与最优粗空间基准}
 \label{sec:tg-objective}
 
-\subsection{能量坐标与 Gauss--Seidel 迭代}
+本节固定前磨光子 $\bm G$、其 $\bm A$-伴随后磨光子以及精确 Galerkin 粗解, 将两网格收敛率转化为能量坐标中的子空间逼近问题. 这一表示一方面给出能量端点附近所需的精确图空间公式, 另一方面允许在所有同维粗空间中定义一个与插值能量无关的求解器最优谱基准.
+
+\subsection{两网格谱半径的能量坐标表示}
 \label{subsec:energy-coordinate-tg}
 
 定义前磨光子在 $\bm A$-能量坐标下的表示与粗空间
@@ -373,7 +524,7 @@
 一次前向 Gauss--Seidel 迭代是\cref{eq:gs-coordinate-update} 的连续复合, 故 $\norm{\bm G\bm e}_{\bm A}\le\norm{\bm e}_{\bm A}$; 结合\cref{eq:notation-induced-energy,eq:smoother-energy-coordinate} 即得\cref{eq:gs-nonexpansive}.
 \end{proof}
 
-\subsection{图空间表示}
+\subsection{能量端点图坐标中的精确公式}
 \label{subsec:graph-projector-stability}
 
 在\cref{eq:euclidean-orthonormal-basis} 的正交基底下, 定义
@@ -445,10 +596,294 @@
 即得到\cref{eq:tg-objective-graph}.
 \end{proof}
 
-\section{能量极小值点附近的局部谱分析}
-\label{sec:local-spectral-analysis}
 
-\subsection{最大奇异值的二阶扰动界}
+\subsection{求解器最优谱基准与拟凸几何}
+\label{sec:solver-optimal-geometry}
+
+令 $n=n_{\mathrm F}+n_{\mathrm C}$ 与 $r=n_{\mathrm C}$, 并假设 $1\le r<n$, 再对
+\cref{eq:smoother-energy-coordinate} 中的 $\bm T$ 作奇异值分解
+\begin{align}
+    \bm T
+    &=
+    \begin{bNiceMatrix}\bm U_1&\bm U_2\end{bNiceMatrix}
+    \begin{bNiceMatrix}
+      \bm\Sigma_1&\mathbf O\\
+      \mathbf O&\bm\Sigma_2
+    \end{bNiceMatrix}
+    \begin{bNiceMatrix}\bm V_1&\bm V_2\end{bNiceMatrix}^{\T},
+    \label{eq:solver-optimal-svd}
+\end{align}
+其中
+\begin{align}
+    \bm\Sigma_1&=\diag(\sigma_1,\ldots,\sigma_r),\q
+    \bm\Sigma_2=\diag(\sigma_{r+1},\ldots,\sigma_n),
+    \label{eq:solver-optimal-sigma-blocks}
+\end{align}
+且 $\sigma_1\ge\cdots\ge\sigma_n\ge0$.
+定义一组标准的求解器最优粗空间
+\begin{align}
+    \mathcal U_{\mathrm{opt}}
+    &:=\Ran(\bm U_1).
+    \label{eq:solver-optimal-space}
+\end{align}
+这里的“最优”是对所有 $r$ 维能量坐标粗空间作无约束比较,
+仅针对固定磨光子 $\bm T$、固定维数 $r$ 与精确正交粗校正下的两网格目标
+\cref{eq:tg-objective-exact}. 若 $\mathcal U_{\mathrm{opt}}$ 在固定 C 点注入坐标中不横截,
+它应理解为求解器性能的标准谱基准. 后文只使用其无约束几何性质来解释两网格目标的结构,
+并不假设实际 PCG 路径必然经过、渐近贴近或以某个预设速度接近该空间.
+
+\begin{theorem}
+\label{thm:solver-optimal-space}
+对任意 $r$ 维子空间 $\mathcal U\subset\R^n$,
+\begin{align}
+    \rho_{\mathrm{TG}}(\mathcal U)
+    &\ge\sigma_{r+1}^2,
+    \label{eq:solver-optimal-lower}\\
+    \rho_{\mathrm{TG}}(\mathcal U_{\mathrm{opt}})
+    &=\sigma_{r+1}^2.
+    \label{eq:solver-optimal-attainment}
+\end{align}
+进一步, 任取
+$\bm X\in\R^{(n-r)\times r}$ 并在
+$\begin{bNiceMatrix}\bm U_1&\bm U_2\end{bNiceMatrix}$ 坐标下定义图空间
+\begin{align}
+    \mathcal U_{\mathrm{opt}}(\bm X)
+    &:=
+    \Ran\begin{bNiceMatrix}\bm I\\\bm X\end{bNiceMatrix}.
+    \label{eq:solver-optimal-graph-space}
+\end{align}
+则
+\begin{align}
+    \rho_{\mathrm{TG}}^{\mathrm{opt}}(\bm X)
+    &:=
+    \rho_{\mathrm{TG}}\bigl(\mathcal U_{\mathrm{opt}}(\bm X)\bigr)\notag\\
+    &=
+    \lambda_{\max}\left(
+      (\bm I+\bm X\bm X^\T)^{-1/2}
+      \left(
+        \bm\Sigma_2^2+\bm X\bm\Sigma_1^2\bm X^\T
+      \right)
+      (\bm I+\bm X\bm X^\T)^{-1/2}
+    \right).
+    \label{eq:solver-optimal-exact-graph}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+固定任意 $r$ 维 $\mathcal U$ 并记其欧氏正交投影为
+$\bm\Pi_{\mathcal U}$. 矩阵
+$\bm R:=\bm\Pi_{\mathcal U}\bm T$ 的秩至多为 $r$.
+在 $(r+1)$ 维空间 $\Ran(\bm V_1)\oplus\operatorname{span}\{\bm v_{r+1}\}$
+上, $\bm R$ 的限制必有非零核向量 $\bm x$. 将其归一化后,
+$\bm R\bm x=\mathbf0$, 且由奇异值分解
+\begin{align}
+    \norm{(\bm T-\bm R)\bm x}_2
+    &=\norm{\bm T\bm x}_2
+      \ge\sigma_{r+1}.
+    \label{eq:solver-optimal-rank-proof}
+\end{align}
+故
+$\norm{(\bm I-\bm\Pi_{\mathcal U})\bm T}_2\ge\sigma_{r+1}$,
+结合\cref{eq:tg-objective-exact} 得
+\cref{eq:solver-optimal-lower}. 对
+$\mathcal U_{\mathrm{opt}}=\Ran(\bm U_1)$,
+\begin{align}
+    (\bm I-\bm U_1\bm U_1^\T)\bm T
+    &=
+    \bm U_2\bm\Sigma_2\bm V_2^\T,
+    \label{eq:solver-optimal-residual}
+\end{align}
+其谱范数为 $\sigma_{r+1}$, 从而得到
+\cref{eq:solver-optimal-attainment}.
+
+对图空间\cref{eq:solver-optimal-graph-space}, 其正交补的一组单位正交基为
+\begin{align}
+    \bm N_{\mathrm{opt}}(\bm X)
+    &=
+    \begin{bNiceMatrix}
+      -\bm X^\T\\
+      \bm I
+    \end{bNiceMatrix}
+    (\bm I+\bm X\bm X^\T)^{-1/2}.
+    \label{eq:solver-optimal-complement}
+\end{align}
+因此
+\begin{align}
+    \rho_{\mathrm{TG}}^{\mathrm{opt}}(\bm X)
+    &=
+    \norm*{
+      \bm N_{\mathrm{opt}}(\bm X)^\T
+      \begin{bNiceMatrix}\bm U_1&\bm U_2\end{bNiceMatrix}^{\T}
+      \bm T
+    }_2^2\notag\\
+    &=
+    \norm*{
+      (\bm I+\bm X\bm X^\T)^{-1/2}
+      \begin{bNiceMatrix}
+        -\bm X\bm\Sigma_1&\bm\Sigma_2
+      \end{bNiceMatrix}
+      \begin{bNiceMatrix}\bm V_1&\bm V_2\end{bNiceMatrix}^{\T}
+    }_2^2\notag\\
+    &=
+    \norm*{
+      (\bm I+\bm X\bm X^\T)^{-1/2}
+      \begin{bNiceMatrix}
+        -\bm X\bm\Sigma_1&\bm\Sigma_2
+      \end{bNiceMatrix}
+    }_2^2,
+    \label{eq:solver-optimal-graph-proof}
+\end{align}
+其中最后一步使用了 $\begin{bNiceMatrix}\bm V_1&\bm V_2\end{bNiceMatrix}$ 的正交性. 因而最后一个矩阵乘积的 Gram 矩阵恰为
+$\bm\Sigma_2^2+\bm X\bm\Sigma_1^2\bm X^\T$, 即得
+\cref{eq:solver-optimal-exact-graph}.
+\end{proof}
+
+\begin{theorem}
+\label{thm:solver-optimal-quasiconvex}
+假设
+\begin{align}
+    \gamma_{\mathrm{opt}}
+    &:=
+    \sigma_r^2-\sigma_{r+1}^2>0.
+    \label{eq:solver-optimal-gap}
+\end{align}
+则对任意
+$\sigma_{r+1}^2<\lambda<\sigma_r^2$,
+\begin{align}
+    \left\{
+      \bm X:\rho_{\mathrm{TG}}^{\mathrm{opt}}(\bm X)\le\lambda
+    \right\}
+    &=
+    \left\{
+      \bm X:
+      \norm*{
+        (\lambda\bm I-\bm\Sigma_2^2)^{-1/2}
+        \bm X
+        (\bm\Sigma_1^2-\lambda\bm I)^{1/2}
+      }_2
+      \le1
+    \right\}.
+    \label{eq:solver-optimal-sublevel}
+\end{align}
+因此该次水平集为凸集. 此外, 对任意固定
+$\bm H\in\R^{(n-r)\times r}$,
+函数
+\begin{align}
+    t\longmapsto
+    \rho_{\mathrm{TG}}^{\mathrm{opt}}(t\bm H)
+    \label{eq:solver-optimal-radial-profile}
+\end{align}
+关于 $|t|$ 单调不减.
+\end{theorem}
+
+\begin{proof}
+由\cref{eq:solver-optimal-exact-graph},
+$\rho_{\mathrm{TG}}^{\mathrm{opt}}(\bm X)\le\lambda$
+等价于
+\begin{align}
+    \bm\Sigma_2^2+\bm X\bm\Sigma_1^2\bm X^\T
+    &\preceq
+    \lambda(\bm I+\bm X\bm X^\T),
+    \label{eq:solver-optimal-sublevel-loewner}
+\end{align}
+即
+\begin{align}
+    \bm X(\bm\Sigma_1^2-\lambda\bm I)\bm X^\T
+    &\preceq
+    \lambda\bm I-\bm\Sigma_2^2.
+    \label{eq:solver-optimal-sublevel-rearranged}
+\end{align}
+由 $\lambda<\sigma_r^2$ 与
+$\lambda>\sigma_{r+1}^2$, 两侧用于归一化的矩阵均正定,
+故\cref{eq:solver-optimal-sublevel-rearranged} 与
+\cref{eq:solver-optimal-sublevel} 等价. 右侧集合是谱范数单位球在线性映射
+\[
+\bm X\longmapsto
+(\lambda\bm I-\bm\Sigma_2^2)^{-1/2}
+\bm X(\bm\Sigma_1^2-\lambda\bm I)^{1/2}
+\]
+下的逆像, 因而为凸集.
+
+再令 $s=t^2\ge0$. 对任意非零
+$\bm z\in\R^{n-r}$, \cref{eq:solver-optimal-exact-graph}
+对应的广义 Rayleigh 商为
+\begin{align}
+    \mathcal R_{\bm z}(s)
+    &:=
+    \frac{
+      \bm z^\T\bm\Sigma_2^2\bm z
+      +s\,\bm z^\T\bm H\bm\Sigma_1^2\bm H^\T\bm z
+    }{
+      \bm z^\T\bm z
+      +s\,\bm z^\T\bm H\bm H^\T\bm z
+    }.
+    \label{eq:solver-optimal-radial-rayleigh}
+\end{align}
+记分子中的四个非负标量依次为 $a+s b$ 与分母为 $c+s d$.
+由
+$b\ge\sigma_r^2d$ 与
+$a\le\sigma_{r+1}^2c$,
+\begin{align}
+    \frac{\mathrm d}{\mathrm ds}\mathcal R_{\bm z}(s)
+    &=
+    \frac{bc-ad}{(c+sd)^2}
+    \ge
+    \frac{
+      (\sigma_r^2-\sigma_{r+1}^2)cd
+    }{(c+sd)^2}
+    \ge0.
+    \label{eq:solver-optimal-radial-derivative}
+\end{align}
+对所有 $\bm z$ 取上确界即得径向单调性.
+\end{proof}
+
+\begin{corollary}
+\label{cor:solver-optimal-line-unimodal}
+设
+$\bm X(t)=\bm X_0+t\bm H$ 为仿射直线, $I\subset\R$ 为非空紧区间,
+并且
+\begin{align}
+    \rho_{\mathrm{TG}}^{\mathrm{opt}}(\bm X(t))
+    &<\sigma_r^2,\q t\in I.
+    \label{eq:solver-optimal-line-low-region}
+\end{align}
+则
+$t\mapsto\rho_{\mathrm{TG}}^{\mathrm{opt}}(\bm X(t))$
+在 $I$ 上为连续拟凸函数. 特别地, 其任意次水平集都是区间,
+故存在一个可能退化为单点的最小值区间; 函数在该区间左侧不增,
+在右侧不减.
+\end{corollary}
+
+\begin{proof}
+连续性由\cref{eq:solver-optimal-exact-graph} 直接得到.
+对任意
+$\sigma_{r+1}^2<\lambda<\sigma_r^2$,
+由\cref{thm:solver-optimal-quasiconvex} 其 $\bm X$-次水平集为凸集,
+与仿射直线相交后仍为区间.
+当 $\lambda=\sigma_{r+1}^2$ 时, 相应次水平集是
+$\lambda\downarrow\sigma_{r+1}^2$ 时上述闭凸集的嵌套交,
+仍为闭凸集; 更低的次水平集为空. 当 $\lambda\ge\sigma_r^2$ 时,
+由\cref{eq:solver-optimal-line-low-region} 相应的一维次水平集就是整个 $I$.
+故 $t\mapsto\rho_{\mathrm{TG}}^{\mathrm{opt}}(\bm X(t))$ 在 $I$ 上拟凸.
+又因 $I$ 紧且函数连续, 最小值必能达到, 其最小值集合为闭区间.
+若一维连续拟凸函数在该最小值区间左侧存在
+$t_1<t_2$ 且函数值在 $t_2$ 大于 $t_1$, 再取最小值点 $t_3>t_2$,
+则适当次水平集会同时包含 $t_1,t_3$ 而不包含 $t_2$, 与其为区间矛盾;
+右侧同理.
+\end{proof}
+
+
+需要强调的是, $\mathcal U_{\mathrm{opt}}$ 是固定磨光子和固定维数下对所有粗空间作无约束比较得到的谱基准; 本文并不假设它满足固定 C 点注入结构, 也不假设实际 PCG 轨迹经过该空间. 它的作用是揭示两网格目标自身的几何: 在最优图坐标的低值区域内, 次水平集为凸集, 因而仿射切片具有严格的单盆地结构. 这一区别使后文能够把 ``目标函数本身的几何'' 与 ``实际 PCG 路径的几何'' 分开讨论.
+
+从以上两节可以看到两个优化目标的根本差异. PCG 在 $J$ 的二次几何中朝 $\bm W^\ast$ 单调前进, 而两网格目标只取决于当前粗空间对磨光后误差 $\bm T$ 的捕获能力. 因而 ``更接近能量极小端点'' 与 ``更接近求解器最优粗空间'' 在一般情形下不是同一方向. 下一节把这一几何错配转化为可定量验证的局部谱结论.
+
+
+\section{能量端点附近的性能错配机制}
+\label{sec:local-mismatch-mechanism}
+
+现在回到实际有限 PCG 轨迹的极限端点 $\bm W^\ast$. 由于 $\bm Z=\mathbf O$ 对应能量极小粗空间, 而两网格目标由\cref{eq:tg-objective-graph} 决定, 两者的局部变化机制并不相同. 本节的目标是定量说明: 即使 PCG 在每一步都严格降低插值能量, 两网格谱半径仍可沿某些相邻步增大; 同时给出这一方向变化与 PCG Krylov 谱结构之间的精确联系.
+
+\subsection{最大奇异值的二阶扰动工具}
 \label{subsec:singular-value-perturbation}
 
 \begin{lemma}
@@ -461,90 +896,37 @@
     \bm M\bm v&=\sigma\bm u,\q \bm M^\T\bm u=\sigma\bm v,
     \label{eq:sv-singular-vectors}
 \end{align}
-其中 $\bm u,\bm v$ 为单位奇异向量. 若 $\norm{\bm E}_2\le\dt/4$, 则
+其中 $\bm u,\bm v$ 为单位奇异向量. 令 $e=\norm{\bm E}_2$. 若
+\begin{align}
+    e&<\frac{\dt}{2},
+    \label{eq:sv-perturbation-domain}
+\end{align}
+则
 \begin{align}
     \abs*{\sigma_1(\bm M+\bm E)-\sigma-\bm u^\T\bm E\bm v}
-    &\le\frac{2}{\dt}\norm{\bm E}_2^2.
+    &\le
+    \frac{e^2}{\sqrt{\dt(\dt-2e)}}.
     \label{eq:sv-second-order-bound}
+\end{align}
+进一步, 对称扩张中端点与扰动后最大特征向量的夹角 $\vartheta$ 满足
+\begin{align}
+    \sin\vartheta&\le\frac{e}{\dt-e}.
+    \label{eq:sv-eigenvector-angle-bound}
 \end{align}
 \end{lemma}
 
 \begin{proof}
-作对称扩张
-\begin{align}
-    \bm M_0&=
-    \begin{bNiceMatrix}\mathbf O&\bm M\\\bm M^\T&\mathbf O\end{bNiceMatrix},\q
-    \bm E_0=
-    \begin{bNiceMatrix}\mathbf O&\bm E\\\bm E^\T&\mathbf O\end{bNiceMatrix},\q
-    \bm q=\frac1{\sqrt2}
-    \begin{bNiceMatrix}\bm u\\\bm v\end{bNiceMatrix}.
-    \label{eq:sv-symmetric-dilation}
-\end{align}
-由\cref{eq:sv-gap,eq:sv-singular-vectors,eq:sv-symmetric-dilation}, 于是 $\bm M_0\bm q=\sigma\bm q$, $\norm{\bm E_0}_2=\norm{\bm E}_2$, 且
-\begin{align}
-    \lambda_1(\bm M_0+\bm E_0)
-    &=\sigma_1(\bm M+\bm E)=:\sigma'.
-    \label{eq:sv-dilation-top-eigenvalue}
-\end{align}
-取 $\sigma'$ 的单位特征向量并作正交分解
-\begin{align}
-    \bm q'&=\gamma\bm q+\bm z_\perp,\q
-    \bm z_\perp\perp\bm q.
-    \label{eq:sv-eigenvector-decomposition}
-\end{align}
-Weyl 不等式给出 $\sigma'\ge\sigma-\norm{\bm E}_2$. 记 $\bm Q_\perp=\bm I-\bm q\bm q^\T$. 将
-\begin{align}
-    (\bm M_0+\bm E_0)\bm q'&=\sigma'\bm q'
-    \label{eq:sv-perturbed-eigen-equation}
-\end{align}
-投影到 $\bm q^\perp$. 由于 $\bm M_0$ 对称且 $\bm q$ 是其特征向量, $\bm q^\perp$ 在 $\bm M_0$ 下不变, 因而
-\begin{align}
-    (\sigma'\bm I-\bm M_0)\bm z_\perp
-    &=\bm Q_\perp\bm E_0(\gamma\bm q+\bm z_\perp).
-    \label{eq:sv-projected-eigen-equation}
-\end{align}
-结合\cref{eq:sv-gap,eq:sv-projected-eigen-equation}, $\bm M_0$ 在 $\bm q^\perp$ 上的最大特征值不超过 $\sigma_2(\bm M)$, 所以
-\begin{align}
-    (\dt-\norm{\bm E}_2)\norm{\bm z_\perp}_2\le(\sigma'-\sigma_2(\bm M))\norm{\bm z_\perp}_2\le\norm{(\sigma'\bm I-\bm M_0)\bm z_\perp}_2\le\norm{\bm E}_2
-       \bigl(\abs\gamma+\norm{\bm z_\perp}_2\bigr).
-    \label{eq:sv-eigenvector-prebound}
-\end{align}
-若 $\gamma=0$, 则 $\norm{\bm z_\perp}_2=1$, 上式推出 $\dt\le2\norm{\bm E}_2$, 与 $\norm{\bm E}_2\le\dt/4$ 矛盾. 因而 $\gamma\ne0$. 将含 $\norm{\bm z_\perp}_2$ 的项移到左侧,
-\begin{align}
-    \frac{\norm{\bm z_\perp}_2}{\abs\gamma}
-    &\le\frac{\norm{\bm E}_2}{\dt-2\norm{\bm E}_2}.
-    \label{eq:sv-eigenvector-tilt}
-\end{align}
-
-再将特征方程左乘 $\bm q^\T$. 利用 $\bm q^\T\bm M_0=\sigma\bm q^\T$ 与 $\bm q^\T\bm z_\perp=0$,
-\begin{align}
-    (\sigma'-\sigma)\gamma
-    &=\gamma\bm q^\T\bm E_0\bm q
-      +\bm q^\T\bm E_0\bm z_\perp.
-    \label{eq:sv-top-eigenvalue-projection}
-\end{align}
-而
-\begin{align}
-    \bm q^\T\bm E_0\bm q
-    &=\bm u^\T\bm E\bm v.
-    \label{eq:sv-dilation-first-order-term}
-\end{align}
-结合\cref{eq:sv-eigenvector-tilt,eq:sv-top-eigenvalue-projection,eq:sv-dilation-first-order-term}, 于是
-\begin{align}
-    \abs*{\sigma'-\sigma-\bm u^\T\bm E\bm v}=\frac{\abs{\bm q^\T\bm E_0\bm z_\perp}}{\abs\gamma}\le\norm{\bm E}_2
-      \frac{\norm{\bm z_\perp}_2}{\abs\gamma}\le\frac{\norm{\bm E}_2^2}{\dt-2\norm{\bm E}_2}\le\frac{2}{\dt}\norm{\bm E}_2^2,
-    \label{eq:sv-second-order-bound-proof}
-\end{align}
-即证.
+证明见\cref{app:sv-perturbation-proof}.
 \end{proof}
 
-\subsection{能量极小值点处的局部展开}
+\subsection{端点局部展开与扩大后的有效区域}
 \label{subsec:endpoint-local-expansion}
 
-记 $f(\bm Z)=\sqrt{\rho_{\mathrm{TG}}(\bm Z)}$. 由\cref{eq:tg-objective-graph},
+记
 \begin{align}
-    f(\bm Z)&=\norm{\bm L(\bm Z)}_2,\q
-    \bm L(\bm Z):=(\bm I+\bm Z\bm Z^\T)^{-1/2}(\bm T_{\mathrm F}-\bm Z\bm T_\ast).
+    f(\bm Z)&:=\sqrt{\rho_{\mathrm{TG}}(\bm Z)}=\norm{\bm L(\bm Z)}_2,
+    \label{eq:local-f-definition}\\
+    \bm L(\bm Z)&:=(\bm I+\bm Z\bm Z^\T)^{-1/2}(\bm T_{\mathrm F}-\bm Z\bm T_\ast).
     \label{eq:local-L-definition}
 \end{align}
 假设端点最大奇异值简单,
@@ -560,95 +942,255 @@ Weyl 不等式给出 $\sigma'\ge\sigma-\norm{\bm E}_2$. 记 $\bm Q_\perp=\bm I-\
     \bm y:=\bm T_\ast\bm v.
     \label{eq:endpoint-singular-vectors}
 \end{align}
-由 $\norm{\bm T_{\mathrm F}}_2\le1$ 还知 $0<\dt\le\sigma\le1$.
+再记
+\begin{align}
+    \tau&:=\norm{\bm T_\ast}_2\le1,
+    \label{eq:Tstar-norm-tau}\\
+    a(z)&:=1-\frac1{\sqrt{1+z^2}},\q
+    \phi(z):=\frac{z}{\sqrt{1+z^2}},
+    \label{eq:local-a-phi}\\
+    \varepsilon(z)&:=\sigma a(z)+\tau\phi(z).
+    \label{eq:local-epsilon}
+\end{align}
+由\cref{eq:gs-nonexpansive,eq:T-block-coordinates} 有 $0<\dt\le\sigma\le1$ 与 $0\le\tau\le1$.
 
 \begin{theorem}
 \label{thm:endpoint-local-expansion}
-若
+令 $z=\norm{\bm Z}_2$. 若
 \begin{align}
-    \norm{\bm Z}_{\mathrm F}&\le \dt/8,
-    \label{eq:local-ball-condition}
+    \varepsilon(z)&<\frac{\dt}{2},
+    \label{eq:local-sharp-domain}
 \end{align}
-则
+则 $\bm L(\bm Z)$ 的最大奇异值仍为简单值, 且
 \begin{align}
     f(\bm Z)&=\sigma-\bm u_{\mathrm F}^\T\bm Z\bm y+R(\bm Z),
     \label{eq:local-expansion}\\
-    \abs{R(\bm Z)}&\le\left(1+8/\dt\right)\norm{\bm Z}_{\mathrm F}^2.
+    \abs{R(\bm Z)}
+    &\le \mathcal R_\dt(z)
+    :=a(z)(\sigma+\tau z)
+      +\frac{\varepsilon(z)^2}
+      {\sqrt{\dt(\dt-2\varepsilon(z))}}.
     \label{eq:local-remainder-bound}
+\end{align}
+特别地,
+\begin{align}
+    \limsup_{z\downarrow0}\frac{\mathcal R_\dt(z)}{z^2}
+    &\le\frac{\sigma}{2}+\frac{\tau^2}{\dt}.
+    \label{eq:local-remainder-asymptotic}
 \end{align}
 \end{theorem}
 
 \begin{proof}
 令
 \begin{align}
-    \bm A(\bm Z)&:=(\bm I+\bm Z\bm Z^\T)^{-1/2},\q
-    z:=\norm{\bm Z}_2.
+    \bm A(\bm Z)&:=(\bm I+\bm Z\bm Z^\T)^{-1/2}.
     \label{eq:local-normalization-matrix}
 \end{align}
-因为 $\bm Z\bm Z^\T\succeq\mathbf O$,
+若 $\bm Z=\bm U\bm\Sigma\bm V^\T$ 为奇异值分解, 则直接由谱函数计算
 \begin{align}
-    \norm{\bm A(\bm Z)-\bm I}_2
-    &=1-\frac1{\sqrt{1+z^2}}
-     \le\frac12z^2.
-    \label{eq:local-normalization-bound}
+    \norm{\bm A(\bm Z)-\bm I}_2&=a(z),
+    \label{eq:local-normalization-exact}\\
+    \norm{\bm A(\bm Z)\bm Z}_2&=\phi(z).
+    \label{eq:local-AZ-exact}
 \end{align}
-由\cref{eq:local-L-definition} 将 $\bm L(\bm Z)$ 分成端点矩阵与扰动:
+由\cref{eq:local-L-definition},
 \begin{align}
-    \bm L(\bm Z)
-    &=\bm T_{\mathrm F}+\bm E(\bm Z),
-    \label{eq:local-L-perturbation-split}\\
-    \bm E(\bm Z)
-    &=-\bm Z\bm T_\ast+\bm D(\bm Z),
-    \label{eq:local-E-definition}\\
-    \bm D(\bm Z)
-    &:=(\bm A(\bm Z)-\bm I)
-      (\bm T_{\mathrm F}-\bm Z\bm T_\ast).
-    \label{eq:local-D-definition}
+    \bm L(\bm Z)-\bm T_{\mathrm F}
+    &=(\bm A(\bm Z)-\bm I)\bm T_{\mathrm F}
+      -\bm A(\bm Z)\bm Z\bm T_\ast.
+    \label{eq:local-L-perturbation-split}
 \end{align}
-由\cref{eq:gs-nonexpansive,eq:T-block-coordinates,eq:local-ball-condition,eq:local-normalization-bound} 以及 $z\le\norm{\bm Z}_{\mathrm F}\le\dt/8\le1$,
+因此
 \begin{align}
-    \norm{\bm D(\bm Z)}_2
-    &\le\frac12z^2(1+z)
-     \le z^2,
-    \label{eq:local-D-bound}\\
-    \norm{\bm E(\bm Z)}_2
-    &\le z+z^2
-     \le2z
-     \le \dt/4.
-    \label{eq:local-E-bounds}
+    \norm{\bm L(\bm Z)-\bm T_{\mathrm F}}_2
+    &\le \sigma a(z)+\tau\phi(z)
+     =\varepsilon(z).
+    \label{eq:local-E-sharp-bound}
 \end{align}
-因此可对 $\bm T_{\mathrm F}+\bm E(\bm Z)$ 使用\cref{lem:singular-value-perturbation}:
+由\cref{eq:local-sharp-domain,eq:local-E-sharp-bound} 与 Weyl 不等式,
+\begin{align}
+    \sigma_1(\bm L(\bm Z))-\sigma_2(\bm L(\bm Z))
+    &\ge\dt-2\varepsilon(z)>0,
+    \label{eq:local-gap-preservation}
+\end{align}
+故最大奇异值仍为简单值.
+
+对 $\bm M=\bm T_{\mathrm F}$ 与 $\bm E=\bm L(\bm Z)-\bm T_{\mathrm F}$ 应用\cref{lem:singular-value-perturbation}. 注意
+\begin{align}
+    &\bm u_{\mathrm F}^\T(\bm L(\bm Z)-\bm T_{\mathrm F})\bm v
+      +\bm u_{\mathrm F}^\T\bm Z\bm y\notag\\
+    &\qquad=
+      \sigma\bm u_{\mathrm F}^\T(\bm A(\bm Z)-\bm I)\bm u_{\mathrm F}
+      +\bm u_{\mathrm F}^\T(\bm I-\bm A(\bm Z))\bm Z\bm y,
+    \label{eq:local-first-order-correction}
+\end{align}
+从而由\cref{eq:local-normalization-exact} 及 $\norm{\bm y}_2\le\tau$,
 \begin{align}
     \abs*{
-        f(\bm Z)-\sigma
-        -\bm u_{\mathrm F}^\T\bm E(\bm Z)\bm v
-    }
-    &\le\frac2\dt\norm{\bm E(\bm Z)}_2^2.
-    \label{eq:local-apply-sv-perturbation}
+      \bm u_{\mathrm F}^\T(\bm L(\bm Z)-\bm T_{\mathrm F})\bm v
+      +\bm u_{\mathrm F}^\T\bm Z\bm y}
+    &\le a(z)(\sigma+\tau z).
+    \label{eq:local-first-order-correction-bound}
 \end{align}
-注意
+注意对 $0\le e<\dt/2$, 函数
+$e\mapsto e^2/\sqrt{\dt(\dt-2e)}$ 严格单调递增.
+因此可在\cref{eq:sv-second-order-bound} 中用上界
+$\varepsilon(z)$ 代替实际扰动范数
+$\norm{\bm L(\bm Z)-\bm T_{\mathrm F}}_2$.
+结合\cref{eq:sv-second-order-bound,eq:local-E-sharp-bound,eq:local-first-order-correction-bound} 即得\cref{eq:local-expansion,eq:local-remainder-bound}.
+
+最后, 当 $z\downarrow0$ 时
 \begin{align}
-    \bm u_{\mathrm F}^\T\bm E(\bm Z)\bm v=-\bm u_{\mathrm F}^\T\bm Z\bm T_\ast\bm v
-      +\bm u_{\mathrm F}^\T\bm D(\bm Z)\bm v=-\bm u_{\mathrm F}^\T\bm Z\bm y
-      +\bm u_{\mathrm F}^\T\bm D(\bm Z)\bm v.
-    \label{eq:local-first-order-separation}
+    a(z)&=\frac12z^2+\O(z^4),\q
+    \phi(z)=z+\O(z^3),\q
+    \varepsilon(z)=\tau z+\frac\sigma2z^2+\O(z^3),
+    \label{eq:local-small-z-expansions}
 \end{align}
-于是
-\begin{align}
-    \abs*{f(\bm Z)-\sigma+\bm u_{\mathrm F}^\T\bm Z\bm y}\le\abs{\bm u_{\mathrm F}^\T\bm D(\bm Z)\bm v}
-      +\frac2\dt\norm{\bm E(\bm Z)}_2^2\le z^2+\frac8\dt z^2\le\left(1+\frac8\dt\right)\norm{\bm Z}_{\mathrm F}^2.
-    \label{eq:local-expansion-bound-proof}
-\end{align}
-定义
-\begin{align}
-    R(\bm Z)&:=f(\bm Z)-\sigma+\bm u_{\mathrm F}^\T\bm Z\bm y,
-    \label{eq:local-remainder-definition}
-\end{align}
-即得到\cref{eq:local-expansion,eq:local-remainder-bound}.
+代入\cref{eq:local-remainder-bound} 得\cref{eq:local-remainder-asymptotic}.
 \end{proof}
 
-\section{PCG 迭代的相邻谱半径变化}
-\label{sec:pcg-step-performance}
+\begin{corollary}[能量端点并非局部两网格最优]
+\label{cor:endpoint-not-local-tg-optimum}
+在\cref{eq:endpoint-singular-gap} 的简单最大奇异值假设下, 若
+$\bm y=\bm T_\ast\bm v\ne\mathbf0$, 则能量极小端点
+$\bm Z=\mathbf O$ 不是 $\rho_{\mathrm{TG}}$ 在全体单位注入插值上的局部极小点. 更具体地, 取
+\begin{align}
+  \bm H&=\bm u_{\mathrm F}\bm y^\T,
+  \label{eq:endpoint-descent-direction}
+\end{align}
+则存在 $t_0>0$, 使所有 $0<t<t_0$ 均满足
+\begin{align}
+  \rho_{\mathrm{TG}}(t\bm H)
+  &<\rho_{\mathrm{TG}}(\mathbf O).
+  \label{eq:endpoint-strict-nonoptimality}
+\end{align}
+该结论只断言存在求解器下降方向; 它不保证实际 PCG 路径恰好沿此方向离开端点.
+\end{corollary}
+
+\begin{proof}
+由\cref{eq:local-expansion,eq:local-remainder-asymptotic},
+\begin{align}
+ f(t\bm H)
+ &=\sigma-t\bm u_{\mathrm F}^\T\bm H\bm y+\O(t^2)
+ =\sigma-t\norm{\bm y}_2^2+\O(t^2).
+ \label{eq:endpoint-descent-expansion}
+\end{align}
+因 $\bm y\ne\mathbf0$, 充分小的正 $t$ 使右端严格小于 $\sigma=f(\mathbf O)$. 再用 $\rho_{\mathrm{TG}}=f^2$ 即得结论. 任意有限 $\bm H$ 都对应
+$\bm W=\bm W^\ast+\bm B^{-1/2}(t\bm H)\bm S^{1/2}$,
+故方向确实属于本文的插值参数空间.
+\end{proof}
+
+\begin{corollary}
+\label{cor:universal-local-radius}
+令
+\begin{align}
+    d_\dt&:=\dt\left(1-\frac\dt4\right),\q
+    \rho_\dt:=\frac{d_\dt}{1+\sqrt{1-d_\dt^2}}.
+    \label{eq:universal-local-radius}
+\end{align}
+则 $0<\rho_\dt<1$, 且
+\begin{align}
+    \rho_\dt&=\frac\dt2-\frac{\dt^2}{8}+\O(\dt^3)
+    \q(\dt\downarrow0).
+    \label{eq:universal-local-radius-asymptotic}
+\end{align}
+若 $\norm{\bm Z}_2<\rho_\dt$, 则\cref{eq:local-sharp-domain} 必成立; 因而 $\norm{\bm Z}_{\mathrm F}<\rho_\dt$ 也是一个充分条件.
+\end{corollary}
+
+\begin{proof}
+由 $\sigma,\tau\le1$,
+\begin{align}
+    \varepsilon(z)&\le a(z)+\phi(z).
+    \label{eq:local-epsilon-universal-bound}
+\end{align}
+函数 $a(z)+\phi(z)$ 在 $z\ge0$ 上严格递增. 方程
+\begin{align}
+    a(z)+\phi(z)&=\frac\dt2
+    \label{eq:universal-radius-equation}
+\end{align}
+等价于
+\begin{align}
+    z+\left(1-\frac\dt2\right)\sqrt{1+z^2}=1.
+    \label{eq:universal-radius-equation-expanded}
+\end{align}
+平方并取小于 $1$ 的正根恰得\cref{eq:universal-local-radius}. 因而 $z<\rho_\dt$ 时 $\varepsilon(z)<\dt/2$. Taylor 展开给出\cref{eq:universal-local-radius-asymptotic}. 最后一条由 $\norm{\bm Z}_2\le\norm{\bm Z}_{\mathrm F}$ 得到.
+\end{proof}
+
+\subsection{相邻路径点所需的余项差控制}
+\label{subsec:local-remainder-lipschitz}
+
+\begin{lemma}
+\label{lem:normalization-derivative}
+对任意 $\bm Z,\bm H$, 映射
+$\bm A(\bm Z)=(\bm I+\bm Z\bm Z^\T)^{-1/2}$ 的 Fr\'echet 导数满足
+\begin{align}
+    \norm{D\bm A(\bm Z)[\bm H]}_2
+    &\le \norm{\bm Z}_2\norm{\bm H}_2.
+    \label{eq:normalization-derivative-bound}
+\end{align}
+\end{lemma}
+
+\begin{proof}
+证明见\cref{app:local-derivative-proofs}.
+\end{proof}
+
+定义
+\begin{align}
+    b(z)&:=z(\sigma+\tau z)+\tau a(z),
+    \label{eq:local-b-definition}\\
+    g_\dt(z)&:=b(z)
+      +2\bigl(\tau+b(z)\bigr)
+       \frac{\varepsilon(z)}{\dt-\varepsilon(z)},
+    \label{eq:local-g-definition}
+\end{align}
+其定义域取 $\varepsilon(z)<\dt/2$.
+
+\begin{lemma}
+\label{lem:local-derivative-remainder}
+若 $\varepsilon(z)<\dt/2$, $z=\norm{\bm Z}_2$, 则对任意 $\bm H$,
+\begin{align}
+    \abs*{Df(\bm Z)[\bm H]+\bm u_{\mathrm F}^\T\bm H\bm y}
+    &\le g_\dt(z)\norm{\bm H}_{\mathrm F}.
+    \label{eq:local-derivative-remainder}
+\end{align}
+并且
+\begin{align}
+    \lim_{z\downarrow0}\frac{g_\dt(z)}{z}
+    &=\sigma+\frac{2\tau^2}{\dt}.
+    \label{eq:local-g-asymptotic}
+\end{align}
+\end{lemma}
+
+\begin{proof}
+证明见\cref{app:local-derivative-proofs}.
+\end{proof}
+
+\begin{corollary}
+\label{cor:local-remainder-difference}
+设 $\bm Z,\bm Z'$ 满足
+\begin{align}
+    \bar z&:=\max\{\norm{\bm Z}_2,\norm{\bm Z'}_2\},\q
+    \varepsilon(\bar z)<\frac\dt2.
+    \label{eq:local-segment-domain}
+\end{align}
+则
+\begin{align}
+    \abs*{R(\bm Z')-R(\bm Z)}
+    &\le g_\dt(\bar z)\norm{\bm Z'-\bm Z}_{\mathrm F}.
+    \label{eq:local-remainder-difference}
+\end{align}
+\end{corollary}
+
+\begin{proof}
+线段 $\bm Z(t)=(1-t)\bm Z+t\bm Z'$ 满足
+$\norm{\bm Z(t)}_2\le\bar z$. 由 $\varepsilon$ 单调递增, 整条线段均满足\cref{eq:local-sharp-domain}. 对
+$R(\bm Z)=f(\bm Z)-\sigma+\bm u_{\mathrm F}^\T\bm Z\bm y$
+沿线段积分, 再使用\cref{eq:local-derivative-remainder} 即得.
+\end{proof}
+
+
+\subsection{相邻 PCG 步的方向判据与 Krylov 谱解释}
+\label{subsec:sharp-step-criterion}
 
 令
 \begin{align}
@@ -663,327 +1205,1314 @@ Weyl 不等式给出 $\sigma'\ge\sigma-\norm{\bm E}_2$. 记 $\bm Q_\perp=\bm I-\
     J(\bm W_m)-J(\bm W_{m+1})&=\frac12\norm{\bm D_m}_{\mathrm F,\bm S}^2.
     \label{eq:path-energy-decrease}
 \end{align}
+若 $\bm D_m\ne\mathbf O$, 定义一步对齐量
+\begin{align}
+    \nu_m&:=\frac{\bm u_{\mathrm F}^\T\bm D_m\bm y}
+    {\norm{\bm D_m}_{\mathrm F,\bm S}}.
+    \label{eq:alignment-nu}
+\end{align}
 
-\begin{lemma}
-\label{lem:pcg-one-step-contraction}
-令
-\begin{align}
-    \bm D_{\bm B}&=\diag(\bm B),\q
-    \kappa=\kappa_2(\bm D_{\bm B}^{-1/2}\bm B\bm D_{\bm B}^{-1/2}),
-    \label{eq:jacobi-condition-number}\\
-    c_1&=\frac{\kappa-1}{\kappa+1},\q
-    c_2=\frac{2\sqrt\kappa}{\kappa+1}.
-    \label{eq:pcg-c1-c2}
-\end{align}
-则
-\begin{align}
-    r_{m+1}&\le c_1r_m,
-    \label{eq:pcg-radius-contraction}\\
-    \norm{\bm D_m}_{\mathrm F,\bm S}&\ge c_2r_m.
-    \label{eq:pcg-step-lower-bound}
-\end{align}
-\end{lemma}
-
-\begin{proof}
-PCG 在相同 Krylov 子空间中最小化 $\bm B$-能量误差, 因而一步误差不大于以同一对角预条件器作一步最速下降. 预条件最速下降的标准收缩界逐列给出
-\begin{align}
-    \norm{\bm e_{j,m+1}}_{\bm B}
-    &\le\frac{\kappa-1}{\kappa+1}
-      \norm{\bm e_{j,m}}_{\bm B}
-     =c_1\norm{\bm e_{j,m}}_{\bm B}.
-    \label{eq:pcg-column-one-step-contraction}
-\end{align}
-对所有列平方求和, 并利用 $r_m=\norm{\bm\Delta_m}_{\bm B,\mathrm F}$, 得
-\begin{align}
-    r_{m+1}^2
-    &\le c_1^2r_m^2.
-    \label{eq:pcg-radius-contraction-squared}
-\end{align}
-因此得到\cref{eq:pcg-radius-contraction}. 再由\cref{eq:path-radius-pythagoras},
-\begin{align}
-    \norm{\bm D_m}_{\mathrm F,\bm S}^2=r_m^2-r_{m+1}^2\ge(1-c_1^2)r_m^2
-     =\frac{4\kappa}{(\kappa+1)^2}r_m^2
-     =c_2^2r_m^2,
-    \label{eq:pcg-step-lower-bound-proof}
-\end{align}
-即得\cref{eq:pcg-step-lower-bound}.
-\end{proof}
-
-若 $\bm D_m\ne\mathbf O$, 定义一步对齐量与判据常数
-\begin{align}
-    \nu_m&:=\frac{\bm u_{\mathrm F}^\T\bm D_m\bm y}{\norm{\bm D_m}_{\mathrm F,\bm S}},
-    \label{eq:alignment-nu}\\
-    C&:=\frac{(1+8/\dt)(1+c_1^2)}{\lambda_{\min}(\bm S)c_2}.
-    \label{eq:step-criterion-C}
-\end{align}
 
 \begin{theorem}
 \label{thm:pcg-two-sided-step-criterion}
-设 $\bm D_m\ne\mathbf O$, 且 $\bm Z_m,\bm Z_{m+1}$ 均满足\cref{eq:local-ball-condition}. 则
+设 $\bm D_m\ne\mathbf O$, 并记
+\begin{align}
+    \bar z_m&:=\max\{\norm{\bm Z_m}_2,\norm{\bm Z_{m+1}}_2\}.
+    \label{eq:step-zbar}
+\end{align}
+若 $\varepsilon(\bar z_m)<\dt/2$, 则
 \begin{align}
     J(\bm W_{m+1})&<J(\bm W_m),
     \label{eq:step-energy-strict-decrease}\\
-    \nu_m>Cr_m&\q\Longrightarrow\q
+    \nu_m>
+    \frac{g_\dt(\bar z_m)}{\sqrt{\lambda_{\min}(\bm S)}}
+    &\q\Longrightarrow\q
     \rho_{\mathrm{TG}}(\bm Z_{m+1})>\rho_{\mathrm{TG}}(\bm Z_m),
-    \label{eq:step-deterioration-condition}\\
-    \nu_m<-Cr_m&\q\Longrightarrow\q
+    \label{eq:step-deterioration-sharp}\\
+    \nu_m<-
+    \frac{g_\dt(\bar z_m)}{\sqrt{\lambda_{\min}(\bm S)}}
+    &\q\Longrightarrow\q
     \rho_{\mathrm{TG}}(\bm Z_{m+1})<\rho_{\mathrm{TG}}(\bm Z_m).
-    \label{eq:step-improvement-condition}
+    \label{eq:step-improvement-sharp}
 \end{align}
 \end{theorem}
 
 \begin{proof}
-先由\cref{eq:path-energy-decrease},
-\begin{align}
-    J(\bm W_m)-J(\bm W_{m+1})
-    &=\frac12\norm{\bm D_m}_{\mathrm F,\bm S}^2>0,
-    \label{eq:step-energy-strict-proof}
-\end{align}
-故能量严格下降.
-
-记 $K:=1+8/\dt$. 由\cref{eq:local-expansion,eq:local-remainder-bound} 的局部展开,
+由\cref{eq:path-energy-decrease} 与 $\bm D_m\ne\mathbf O$ 立即得到\cref{eq:step-energy-strict-decrease}. 另一方面, 由\cref{eq:local-expansion,eq:local-remainder-difference},
 \begin{align}
     f(\bm Z_{m+1})-f(\bm Z_m)
-    &=\bm u_{\mathrm F}^\T(\bm Z_m-\bm Z_{m+1})\bm y
-      +R(\bm Z_{m+1})-R(\bm Z_m)\\
     &=\bm u_{\mathrm F}^\T\bm D_m\bm y
-      +R(\bm Z_{m+1})-R(\bm Z_m).
-    \label{eq:step-f-difference-explicit}
+      +R(\bm Z_{m+1})-R(\bm Z_m),
+    \label{eq:step-f-difference}\\
+    \abs*{R(\bm Z_{m+1})-R(\bm Z_m)}
+    &\le g_\dt(\bar z_m)\norm{\bm D_m}_{\mathrm F}.
+    \label{eq:step-remainder-difference-bound}
 \end{align}
-余项满足
+又由
 \begin{align}
-    \abs{R(\bm Z_{m+1})-R(\bm Z_m)}
-    &\le K\left(
-        \norm{\bm Z_m}_{\mathrm F}^2
-        +\norm{\bm Z_{m+1}}_{\mathrm F}^2
-      \right).
-    \label{eq:step-linearization-error}
+    \norm{\bm D_m}_{\mathrm F}
+    &\le\frac{\norm{\bm D_m}_{\mathrm F,\bm S}}
+    {\sqrt{\lambda_{\min}(\bm S)}},
+    \label{eq:step-F-by-S}
 \end{align}
-又因为
-\begin{align}
-    r_m^2
-    &=\tr(\bm Z_m^\T\bm Z_m\bm S)
-     \ge\lambda_{\min}(\bm S)\norm{\bm Z_m}_{\mathrm F}^2,
-    \label{eq:step-Zm-by-rm}
-\end{align}
-以及\cref{eq:pcg-radius-contraction}, 所以
-\begin{align}
-    \norm{\bm Z_m}_{\mathrm F}^2
-    +\norm{\bm Z_{m+1}}_{\mathrm F}^2
-    &\le\frac{1+c_1^2}{\lambda_{\min}(\bm S)}r_m^2.
-    \label{eq:step-Z-bound-by-r}
-\end{align}
-
-若 $\nu_m>Cr_m$, 由\cref{eq:alignment-nu,eq:pcg-step-lower-bound,eq:step-criterion-C},
+可知, 若\cref{eq:step-deterioration-sharp} 左端条件成立, 则
 \begin{align}
     f(\bm Z_{m+1})-f(\bm Z_m)
-    &\ge\nu_m\norm{\bm D_m}_{\mathrm F,\bm S}
-      -\frac{K(1+c_1^2)}{\lambda_{\min}(\bm S)}r_m^2\\
-    &\ge c_2\nu_m r_m
-      -\frac{K(1+c_1^2)}{\lambda_{\min}(\bm S)}r_m^2\\
-    &=c_2r_m(\nu_m-Cr_m)>0.
-    \label{eq:step-deterioration-proof-chain}
+    &\ge\left(
+      \nu_m-\frac{g_\dt(\bar z_m)}{\sqrt{\lambda_{\min}(\bm S)}}
+      \right)
+      \norm{\bm D_m}_{\mathrm F,\bm S}>0.
+    \label{eq:step-deterioration-sharp-proof}
 \end{align}
-由于 $f=\sqrt{\rho_{\mathrm{TG}}}\ge0$, 这等价于 $\rho_{\mathrm{TG}}(\bm Z_{m+1})>\rho_{\mathrm{TG}}(\bm Z_m)$.
-
-若 $\nu_m<-Cr_m$, 则 $\nu_m<0$. 此时
-\begin{align}
-    \nu_m\norm{\bm D_m}_{\mathrm F,\bm S}
-    &\le c_2\nu_m r_m.
-    \label{eq:negative-alignment-step-bound}
-\end{align}
-于是
-\begin{align}
-    f(\bm Z_{m+1})-f(\bm Z_m)
-    &\le\nu_m\norm{\bm D_m}_{\mathrm F,\bm S}
-      +\frac{K(1+c_1^2)}{\lambda_{\min}(\bm S)}r_m^2\\
-    &\le c_2\nu_m r_m
-      +\frac{K(1+c_1^2)}{\lambda_{\min}(\bm S)}r_m^2\\
-    &=c_2r_m(\nu_m+Cr_m)<0,
-    \label{eq:step-improvement-proof-chain}
-\end{align}
-故 $\rho_{\mathrm{TG}}(\bm Z_{m+1})<\rho_{\mathrm{TG}}(\bm Z_m)$. 即证\cref{eq:step-deterioration-condition,eq:step-improvement-condition}.
+负方向同理. 因 $f\ge0$, $f$ 的严格大小关系与 $\rho_{\mathrm{TG}}=f^2$ 的严格大小关系一致.
 \end{proof}
 
-由\cref{eq:pcg-radius-contraction} 可知 $Cr_m$ 沿非终止 PCG 迭代指数衰减, 因而\cref{eq:step-deterioration-condition,eq:step-improvement-condition} 中无法判定符号的区间随 $m$ 收缩.
+\begin{corollary}
+\label{cor:pcg-Crho-criterion}
+固定任意 $0<\rho<\rho_\dt$, 定义
+\begin{align}
+    L_\rho&:=\sup_{0<z\le\rho}\frac{g_\dt(z)}{z},\q
+    C_\rho:=\frac{L_\rho}{\lambda_{\min}(\bm S)},
+    \label{eq:sharp-Crho-definition}
+\end{align}
+并将 $g_\dt(z)/z$ 在 $z=0$ 处连续延拓为
+$\sigma+2\tau^2/\dt$. 由于 $\rho<\rho_\dt$ 且
+\cref{eq:local-g-asymptotic} 给出该连续延拓, $L_\rho<\infty$.
+若
+$\norm{\bm Z_m}_2,\norm{\bm Z_{m+1}}_2\le\rho$, 则
+\begin{align}
+    \nu_m>C_\rho r_m
+    &\q\Longrightarrow\q
+    \rho_{\mathrm{TG}}(\bm Z_{m+1})>\rho_{\mathrm{TG}}(\bm Z_m),
+    \label{eq:step-deterioration-Crho}\\
+    \nu_m<-C_\rho r_m
+    &\q\Longrightarrow\q
+    \rho_{\mathrm{TG}}(\bm Z_{m+1})<\rho_{\mathrm{TG}}(\bm Z_m).
+    \label{eq:step-improvement-Crho}
+\end{align}
+而且
+\begin{align}
+    \lim_{\rho\downarrow0}C_\rho
+    &=\frac{\sigma+2\tau^2/\dt}{\lambda_{\min}(\bm S)}.
+    \label{eq:sharp-Crho-asymptotic}
+\end{align}
+特别地, $C_\rho$ 不含 Jacobi--PCG 条件数.
+\end{corollary}
 
-\subsection{判据常数的量级估计}
+\begin{proof}
+由\cref{eq:path-radius-pythagoras}, $r_{m+1}\le r_m$. 又
+\begin{align}
+    \norm{\bm Z_j}_2
+    &\le\norm{\bm Z_j}_{\mathrm F}
+     \le\frac{r_j}{\sqrt{\lambda_{\min}(\bm S)}},\q j=m,m+1,
+    \label{eq:step-z-by-r}
+\end{align}
+故 $\bar z_m\le r_m/\sqrt{\lambda_{\min}(\bm S)}$. 由\cref{eq:sharp-Crho-definition},
+\begin{align}
+    \frac{g_\dt(\bar z_m)}{\sqrt{\lambda_{\min}(\bm S)}}
+    &\le C_\rho r_m.
+    \label{eq:sharp-threshold-by-Crho}
+\end{align}
+再应用\cref{thm:pcg-two-sided-step-criterion} 即得双向结论. 极限式由\cref{eq:local-g-asymptotic} 直接得到.
+\end{proof}
+
+
+\paragraph{Krylov 谱解释.}
+上述判据中的 $\nu_m$ 不是额外假定的随机方向量. PCG 的多项式表示允许把其分子精确分解为预条件谱上的滤波增量与有符号交叉谱权之和; 因此判据应被理解为对实际 PCG 谱方向的认证, 而不是由能量单调性自动推出的符号规律.
+
+\cref{thm:pcg-two-sided-step-criterion} 是一个确定性的方向判据,
+但仅由能量正交性不能决定 $\nu_m$ 的符号. PCG 的额外结构来自
+\cref{prop:pcg-krylov-characterization} 中的 Krylov 谱多项式.
+下面给出该方向量的精确谱表示.
+
+令
+\begin{align}
+    \widehat{\bm B}\bm q_k&=\lambda_k\bm q_k,\q
+    k=1,\ldots,n_{\mathrm F},
+    \label{eq:pcg-preconditioned-eigenpairs}
+\end{align}
+其中 $\{\bm q_k\}$ 为欧氏单位正交基. 再定义
+\begin{align}
+    \bm c&:=\bm S^{-1/2}\bm y,\q
+    \bm\eta:=\bm D_{\bm B}^{-1/2}\bm B^{1/2}\bm u_{\mathrm F},
+    \label{eq:pcg-cross-spectral-vectors}\\
+    \omega_{jk}
+    &:=
+    c_j
+    (\bm q_k^\T\bm\eta)
+    (\bm q_k^\T\widehat{\bm e}_{j,0}).
+    \label{eq:pcg-cross-spectral-weights}
+\end{align}
+
+\begin{proposition}
+\label{prop:pcg-alignment-spectral}
+对任意 $m\ge0$,
+\begin{align}
+    \bm u_{\mathrm F}^\T\bm D_m\bm y
+    &=
+    \sum_{j=1}^{n_{\mathrm C}}
+    \sum_{k=1}^{n_{\mathrm F}}
+    \omega_{jk}
+    \left[
+      p_{j,m+1}(\lambda_k)-p_{j,m}(\lambda_k)
+    \right].
+    \label{eq:pcg-alignment-spectral}
+\end{align}
+因此相邻步对两网格目标的一阶影响由两部分共同决定:
+PCG 多项式滤波增量
+$p_{j,m+1}-p_{j,m}$, 以及由初始插值误差与磨光子敏感方向共同诱导的有符号交叉谱权
+$\omega_{jk}$. 在一般 SPD 假设下, 后者没有统一符号,
+故\cref{thm:pcg-two-sided-step-criterion} 应理解为谱方向的认证条件,
+而不是由 PCG 能量单调性推出的符号定律.
+\end{proposition}
+
+\begin{proof}
+由
+\cref{eq:path-step-and-radius,eq:normalized-error,eq:pcg-column-error-step},
+\begin{align}
+    \bm D_m\bm y
+    &=
+    \bm B^{1/2}
+    (\bm W_m-\bm W_{m+1})
+    \bm S^{-1/2}\bm y\notag\\
+    &=
+    -\bm B^{1/2}
+    \sum_{j=1}^{n_{\mathrm C}}c_j\bm s_{j,m}.
+    \label{eq:pcg-Dm-column-sum}
+\end{align}
+又由
+$\widehat{\bm s}_{j,m}:=\bm D_{\bm B}^{1/2}\bm s_{j,m}$
+与\cref{eq:pcg-error-polynomial},
+\begin{align}
+    \widehat{\bm s}_{j,m}
+    &=
+    \widehat{\bm e}_{j,m}
+    -\widehat{\bm e}_{j,m+1}\notag\\
+    &=
+    \left[
+      p_{j,m}(\widehat{\bm B})
+      -p_{j,m+1}(\widehat{\bm B})
+    \right]
+    \widehat{\bm e}_{j,0}.
+    \label{eq:pcg-step-polynomial}
+\end{align}
+因此
+\begin{align}
+    \bm u_{\mathrm F}^\T\bm D_m\bm y
+    &=
+    \sum_{j=1}^{n_{\mathrm C}}c_j
+    \bm\eta^\T
+    \left[
+      p_{j,m+1}(\widehat{\bm B})
+      -p_{j,m}(\widehat{\bm B})
+    \right]
+    \widehat{\bm e}_{j,0}.
+    \label{eq:pcg-alignment-operator-polynomial}
+\end{align}
+将 $\widehat{\bm B}$ 的正交谱分解代入
+\cref{eq:pcg-alignment-operator-polynomial},
+即得到\cref{eq:pcg-alignment-spectral}.
+\end{proof}
+
+
+\subsection{任意路径位置的非端点谱认证}
+\label{sec:pathwise-spectral-criterion}
+
+端点局部展开用于解释 $\bm Z=\mathbf O$ 附近的方向敏感性, 但相邻路径点的谱变化还可以在不接近端点的情况下直接认证.
+
+\begin{theorem}
+\label{thm:pathwise-spectral-criterion}
+给定任意两个路径位置 $\bm Z,\bm Z'$, 令
+\begin{align}
+    \bm M&:=\bm L(\bm Z),\q
+    \Delta\bm L:=\bm L(\bm Z')-\bm L(\bm Z),
+    \label{eq:pathwise-M-deltaL}
+\end{align}
+并假设
+\begin{align}
+    \sigma_1(\bm M)&>\sigma_2(\bm M),\q
+    \dt_Z:=\sigma_1(\bm M)-\sigma_2(\bm M)>0.
+    \label{eq:pathwise-gap}
+\end{align}
+取 $\bm M$ 的最大单位左右奇异向量 $\bm u_Z,\bm v_Z$, 记
+$e_Z:=\norm{\Delta\bm L}_2$. 若 $e_Z<\dt_Z/2$, 则
+\begin{align}
+    \abs*{
+      f(\bm Z')-f(\bm Z)
+      -\bm u_Z^\T\Delta\bm L\bm v_Z}
+    &\le
+    \frac{e_Z^2}{\sqrt{\dt_Z(\dt_Z-2e_Z)}}.
+    \label{eq:pathwise-spectral-remainder}
+\end{align}
+因此若一阶项大于右端, 则
+$\rho_{\mathrm{TG}}(\bm Z')>\rho_{\mathrm{TG}}(\bm Z)$; 若一阶项小于右端的相反数, 则严格反向. 若同时 $\bm Z,\bm Z'$ 是相邻非零 PCG 步, 则无论上述谱方向为何, 插值能量仍严格下降.
+\end{theorem}
+
+\begin{proof}
+将\cref{lem:singular-value-perturbation} 应用于
+$\bm M=\bm L(\bm Z)$ 与 $\bm E=\Delta\bm L$ 即得\cref{eq:pathwise-spectral-remainder}. 谱半径方向由 $f\ge0$ 得到; PCG 能量结论由\cref{eq:path-energy-decrease} 得到.
+\end{proof}
+
+
+这一节给出的两个层次互为补充: 端点局部判据解释能量目标与求解器目标为何可以发生方向错配, 任意路径位置的扰动判据则可用于数值诊断远离端点的实际有限 PCG 步. 二者都不要求把当前经验自适应规则解释成理论最优停止准则.
+
+\section{二维规则粗化下的尺度与局部可达性}
+\label{sec:scaling-reachability}
+
+前述谱结论适用于一般 SPD 分块系统. 为回答局部判据中的常数是否随网格恶化, 以及 PCG 需要多少步才能进入端点局部区域, 本节才专门化到单位方形上的二维五点扩散离散. 这里把两个不同问题分开处理: $C_\rho$ 控制进入局部区域后的方向判据, 而 $\kappa$ 控制 PCG 到达该区域的速度. 这一分离是改进后尺度分析的关键.
+
+\subsection{局部方向阈值的显式尺度}
 \label{subsec:criterion-scaling}
 
-以下考虑固定有界区域上 Dirichlet 扩散问题的标准二维五点差分离散, 并假设扩散系数满足
+以下考虑单位方形区域上齐次 Dirichlet 扩散问题的标准二维五点差分离散, 网格宽度为 $h=1/N$, 并假设所有界面扩散系数均由满足
 \begin{align}
     0<\alpha&\le a(x)\le\beta,\q
-    \chi:=\frac{\beta}{\alpha}\ge1.
+    \chi:=\frac\beta\alpha\ge1
     \label{eq:coefficient-bounds-and-contrast}
 \end{align}
-由\cref{eq:pcg-c1-c2} 可得
-\begin{align}
-    \frac{1+c_1^2}{c_2}
-    &=\frac{\kappa^2+1}{\sqrt\kappa(\kappa+1)}
-     =\Theta(\sqrt\kappa).
-    \label{eq:pcg-factor-scaling}
-\end{align}
+的系数通过调和平均得到. 因而每条离散边的系数仍位于 $[\alpha,\beta]$.
 
-对任意 $\bm x_{\mathrm C}$, 有
+令 $\bm A_1$ 为同一网格上单位系数五点离散矩阵. 能量逐边比较给出
+\begin{align}
+    \alpha\bm A_1&\preceq\bm A\preceq\beta\bm A_1.
+    \label{eq:coefficient-loewner-comparison}
+\end{align}
+而
+\begin{align}
+    \lambda_{\min}(\bm A_1)
+    &=8h^{-2}\sin^2\frac{\pi h}{2}.
+    \label{eq:laplacian-min-eigenvalue}
+\end{align}
+结合 Schur 补的变分表征
 \begin{align}
     \bm x_{\mathrm C}^\T\bm S\bm x_{\mathrm C}
     &=\min_{\bm x_{\mathrm F}}
       \begin{bNiceMatrix}\bm x_{\mathrm F}^\T&\bm x_{\mathrm C}^\T\end{bNiceMatrix}
       \bm A
-      \begin{bNiceMatrix}\bm x_{\mathrm F}\\\bm x_{\mathrm C}\end{bNiceMatrix}.
+      \begin{bNiceMatrix}\bm x_{\mathrm F}\\\bm x_{\mathrm C}\end{bNiceMatrix},
     \label{eq:schur-variational-characterization}
+\end{align}
+对任意 $\bm x_{\mathrm C}$ 有
+\begin{align}
+    \bm x_{\mathrm C}^\T\bm S\bm x_{\mathrm C}
+    &\ge \lambda_{\min}(\bm A)
+      \min_{\bm x_{\mathrm F}}
+      \left(\norm{\bm x_{\mathrm F}}_2^2+\norm{\bm x_{\mathrm C}}_2^2\right)
+     =\lambda_{\min}(\bm A)\norm{\bm x_{\mathrm C}}_2^2.
+    \label{eq:schur-lambda-via-A}
 \end{align}
 因此
 \begin{align}
-    \bm x_{\mathrm C}^\T\bm S\bm x_{\mathrm C}\ge\lambda_{\min}(\bm A)
-      \min_{\bm x_{\mathrm F}}
-      \left(\norm{\bm x_{\mathrm F}}_2^2+\norm{\bm x_{\mathrm C}}_2^2\right)=\lambda_{\min}(\bm A)\norm{\bm x_{\mathrm C}}_2^2.
-    \label{eq:schur-lower-derivation}
+    \lambda_{\min}(\bm S)
+    &\ge\lambda_{\min}(\bm A)
+     \ge8\alpha h^{-2}\sin^2\frac{\pi h}{2}
+     \ge8\alpha.
+    \label{eq:schur-lambda-explicit-lower}
 \end{align}
-对固定有界区域上的标准 Dirichlet 五点扩散离散, $\lambda_{\min}(\bm A)\gtrsim\alpha$, 故
-\begin{align}
-    \lambda_{\min}(\bm S)&\gtrsim\alpha.
-    \label{eq:schur-lambda-lower}
-\end{align}
+最后一个不等式使用 $\sin(\pi h/2)\ge h$ 对 $0<h\le1$ 成立.
 
-再估计对角预条件后的条件数. 五点扩散矩阵的细点主块满足
+为了给出 $C_\rho$ 的完全显式控制, 再定义稍小但仍满足
+$\widehat\rho_\dt\sim\dt/2$ 的安全半径
 \begin{align}
-    \bm B&\preceq2\bm D_{\bm B},\q
-    \lambda_{\max}(\bm D_{\bm B})\lesssim\beta h^{-2}.
-    \label{eq:B-diagonal-comparison}
+    \widehat\rho_\dt&:=\sqrt{1+\dt}-1,
+    \label{eq:safe-local-radius}
 \end{align}
-前者给出
+它满足
+$\widehat\rho_\dt+\widehat\rho_\dt^2/2=\dt/2$; 又因对 $z>0$ 有 $a(z)<z^2/2$ 与 $\phi(z)<z$, 故 $a(\widehat\rho_\dt)+\phi(\widehat\rho_\dt)<\dt/2$, 从而
+$\widehat\rho_\dt<\rho_\dt$. 固定任意 $0<\eta<1$ 并取
 \begin{align}
-    \lambda_{\max}(\bm D_{\bm B}^{-1/2}\bm B\bm D_{\bm B}^{-1/2})
-    &\le2.
-    \label{eq:jacobi-preconditioned-lambda-max}
+    \rho&:=\eta\widehat\rho_\dt.
+    \label{eq:fixed-fraction-local-radius}
 \end{align}
-另一方面, $\bm B$ 是 $\bm A$ 的主子矩阵, 故
-$\lambda_{\min}(\bm B)\ge\lambda_{\min}(\bm A)\gtrsim\alpha$. 对任意非零 $\bm x$,
+对 $0<z\le\rho$, 由
+$a(z)\le z^2/2$, $\phi(z)\le z$ 得
 \begin{align}
-    \frac{\bm x^\T\bm B\bm x}{\bm x^\T\bm D_{\bm B}\bm x}
-    &\ge\frac{\lambda_{\min}(\bm B)}{\lambda_{\max}(\bm D_{\bm B})}
-     \gtrsim\frac{\alpha}{\beta h^{-2}}
-     =\chi^{-1}h^2.
-    \label{eq:jacobi-preconditioned-lambda-min}
+    \varepsilon(z)
+    &\le z\left(\tau+\frac{\sigma\rho}{2}\right)
+     \le z+\frac{z^2}{2}
+     \le\eta\frac\dt2,
+    \label{eq:epsilon-fixed-fraction-bound}
 \end{align}
-结合\cref{eq:jacobi-preconditioned-lambda-max,eq:jacobi-preconditioned-lambda-min}, 因此
+其中最后一步使用
+$\eta^2\le\eta$ 与
+$\widehat\rho_\dt+\widehat\rho_\dt^2/2=\dt/2$.
+再令
+\begin{align}
+    A_\rho&:=\sigma+\frac32\tau\rho.
+    \label{eq:Arho-definition}
+\end{align}
+则
+\begin{align}
+    \frac{b(z)}{z}&\le A_\rho,\q
+    \frac{\varepsilon(z)}{z}\le\tau+\frac{\sigma\rho}{2},\q
+    \dt-\varepsilon(z)\ge\dt\left(1-\frac\eta2\right).
+    \label{eq:g-components-fixed-fraction}
+\end{align}
+因此由\cref{eq:local-g-definition},
+\begin{align}
+    L_\rho
+    &\le A_\rho
+      +\frac{
+        2(\tau+\rho A_\rho)
+        (\tau+\sigma\rho/2)
+      }{
+        \dt(1-\eta/2)
+      }.
+    \label{eq:Lrho-explicit-upper}
+\end{align}
+结合\cref{eq:schur-lambda-explicit-lower},
+\begin{align}
+    C_\rho
+    &\le\frac1{8\alpha}\left[
+      A_\rho
+      +\frac{
+        2(\tau+\rho A_\rho)
+        (\tau+\sigma\rho/2)
+      }{
+        \dt(1-\eta/2)
+      }
+    \right]
+     =\O\left(\frac1{\alpha\dt}\right).
+    \label{eq:sharp-C-scaling}
+\end{align}
+这里隐常数只依赖固定的 $\eta$; 特别地, 不再包含 $h^{-1}$、$\sqrt\chi$ 或 PCG 条件数因子.
+
+
+\subsection{规则粗点下统一的 $h,H$ 容量尺度}
+\label{subsec:structured-kappa}
+
+记
 \begin{align}
     \kappa
-    &=\kappa_2(\bm D_{\bm B}^{-1/2}\bm B\bm D_{\bm B}^{-1/2})
-     =\O(\chi h^{-2}).
-    \label{eq:kappa-scaling}
+    &:=
+    \kappa_2(\widehat{\bm B})
+    =
+    \kappa_2(\bm D_{\bm B}^{-1/2}\bm B\bm D_{\bm B}^{-1/2}).
+    \label{eq:jacobi-condition-number}
 \end{align}
-最后将以上估计代入判据常数 $C$,
+一般地, 五点扩散主块满足
 \begin{align}
-    C
-    &=\frac{1+8/\dt}{\lambda_{\min}(\bm S)}
-      \frac{1+c_1^2}{c_2}
-     =\O\left(\frac{\sqrt\chi}{\alpha h\dt}\right).
-    \label{eq:C-scaling}
+    \bm B&\preceq2\bm D_{\bm B},\q
+    \lambda_{\max}(\bm D_{\bm B})\le4\beta h^{-2}.
+    \label{eq:B-diagonal-comparison}
 \end{align}
-该估计说明判据常数同时受网格尺度、对比度和端点谱间隙影响.
+第一条由逐边不等式
+$w_{ij}(x_i-x_j)^2\le2w_{ij}(x_i^2+x_j^2)$
+以及连向粗点或 Dirichlet 边界的项求和得到; 第二条来自每个内部节点至多有四条边且每条边权不超过 $\beta h^{-2}$.
+又因 $\bm B$ 是 $\bm A$ 的主子矩阵,
+$\lambda_{\min}(\bm B)\ge\lambda_{\min}(\bm A)$. 因而对任意非零 $\bm x$,
+\begin{align}
+    \frac{\bm x^\T\bm B\bm x}{\bm x^\T\bm D_{\bm B}\bm x}
+    &\ge
+    \frac{\lambda_{\min}(\bm A)}{\lambda_{\max}(\bm D_{\bm B})}
+    \ge 2\chi^{-1}\sin^2\frac{\pi h}{2}.
+    \label{eq:jacobi-general-rayleigh-lower}
+\end{align}
+因而
+\begin{align}
+    \lambda_{\min}(\bm D_{\bm B}^{-1/2}\bm B\bm D_{\bm B}^{-1/2})
+    &\ge2\chi^{-1}\sin^2\frac{\pi h}{2},
+    \label{eq:jacobi-general-lambda-min}\\
+    \kappa&\le\chi\csc^2\frac{\pi h}{2}.
+    \label{eq:kappa-general-explicit}
+\end{align}
 
-\section{局部判据的渐近可达性}
+进一步假设 $q:=H/h\in\mathbb N$, $q\ge2$, $q\mid N$, 且粗点为规则格点
+$(iq,jq)$, $1\le i,j\le N/q-1$, 这与本文数值部分采用的规则 C/F 划分一致.
+
+\begin{lemma}
+\label{lem:pinned-poincare}
+存在与 $h,H,q$ 无关的常数 $C_{\mathrm{pin}}>0$, 使得对任意细点向量 $\bm x_{\mathrm F}$, 将其延拓为全细网格函数 $\ti x$, 并在所有粗点与物理边界上置零后, 都有
+\begin{align}
+    \sum_{i\in\mathrm F}\ti x_i^2
+    &\le C_{\mathrm{pin}}q^2\log(2q)\,\mathcal E(\ti x),
+    \label{eq:pinned-poincare}
+\end{align}
+其中 $\mathcal E(\ti x)$ 为单位权五点图上的边差平方和, 包括通向 Dirichlet 边界的边.
+\end{lemma}
+
+\begin{proof}
+证明见\cref{app:capacity-proofs}.
+\end{proof}
+
+\begin{proposition}
+\label{prop:structured-kappa}
+在上述规则粗点假设下, 令
+\begin{align}
+    c_{\mathrm{pin}}&:=\frac1{8C_{\mathrm{pin}}},
+    \label{eq:cpin-definition}\\
+    \Lambda_{h,H}
+    &:=
+    h^2+\frac{h^2}{H^2\log(2H/h)}
+     =
+    h^2+\frac1{q^2\log(2q)}.
+    \label{eq:boundary-capacity-scale}
+\end{align}
+则
+\begin{align}
+    \lambda_{\min}(\widehat{\bm B})
+    &\ge\frac1\chi\left(
+      \sin^2\frac{\pi h}{2}
+      +\frac{c_{\mathrm{pin}}}{q^2\log(2q)}
+    \right),
+    \label{eq:jacobi-structured-lambda-min}\\
+    \kappa
+    &\le
+    \frac{2\chi}{
+      \sin^2(\pi h/2)+c_{\mathrm{pin}}/(q^2\log(2q))}
+    \le
+    C_{\mathrm{cap}}\chi\,\Lambda_{h,H}^{-1},
+    \label{eq:kappa-structured-unified}\\
+    \sqrt\kappa
+    &=\O\left(
+      \sqrt\chi\,\Lambda_{h,H}^{-1/2}
+    \right),
+    \label{eq:kappa-boundary-capacity-scale}
+\end{align}
+其中 $C_{\mathrm{cap}}>0$ 为与 $h,H,q,\chi$ 无关的绝对常数.
+因此 $\Lambda_{h,H}$ 是同时包含物理 Dirichlet 边界约束与规则内部粗点约束的统一尺度, 不需要对两种机制分段讨论.
+\end{proposition}
+
+\begin{proof}
+对 $\bm x_{\mathrm F}$ 作\cref{lem:pinned-poincare} 中的零延拓. 由于 $\bm B$ 是 $\bm A$ 的主子矩阵,
+\begin{align}
+    \bm x_{\mathrm F}^\T\bm B\bm x_{\mathrm F}
+    &=\ti{\bm x}^\T\bm A\ti{\bm x}
+     \ge\alpha h^{-2}\mathcal E(\ti x).
+    \label{eq:B-energy-pinned-lower}
+\end{align}
+另一方面, 由 $\lambda_{\max}(\bm D_{\bm B})\le4\beta h^{-2}$ 与\cref{eq:pinned-poincare},
+\begin{align}
+    \bm x_{\mathrm F}^\T\bm D_{\bm B}\bm x_{\mathrm F}
+    &\le4\beta h^{-2}\sum_{i\in\mathrm F}\ti x_i^2
+     \le4C_{\mathrm{pin}}\beta q^2\log(2q)h^{-2}\mathcal E(\ti x),
+    \label{eq:D-energy-pinned-upper}
+\end{align}
+故
+\begin{align}
+    \lambda_{\min}(\widehat{\bm B})
+    &\ge\frac1{4C_{\mathrm{pin}}\chi q^2\log(2q)}.
+    \label{eq:jacobi-pinned-lambda-min}
+\end{align}
+将\cref{eq:jacobi-general-lambda-min,eq:jacobi-pinned-lambda-min} 取最大值,
+并使用 $\max\{a,b\}\ge(a+b)/2$, 得到
+\cref{eq:jacobi-structured-lambda-min}. 又由
+\cref{eq:B-diagonal-comparison},
+$\lambda_{\max}(\widehat{\bm B})\le2$,
+从而得到\cref{eq:kappa-structured-unified} 的第一不等式.
+由于 $\sin(\pi h/2)\ge h$,
+\begin{align}
+    \sin^2\frac{\pi h}{2}
+    +\frac{c_{\mathrm{pin}}}{q^2\log(2q)}
+    &\ge
+    \min\{1,c_{\mathrm{pin}}\}
+    \Lambda_{h,H},
+    \label{eq:capacity-denominator-comparison}
+\end{align}
+故可取
+$C_{\mathrm{cap}}=2/\min\{1,c_{\mathrm{pin}}\}$,
+并得到其余结论.
+\end{proof}
+
+\begin{proposition}
+\label{prop:structured-kappa-sharpness}
+在单位系数五点差分情形 $a\equiv1$ 下,
+记 $\widehat{\bm B}_1$ 为相应的 Jacobi 对称预条件细点主块.
+存在与 $h,H,q$ 无关的绝对常数
+$c_0,C_0>0$, 使
+\begin{align}
+    c_0\Lambda_{h,H}
+    &\le
+    \lambda_{\min}(\widehat{\bm B}_1)
+    \le
+    C_0\Lambda_{h,H},
+    \label{eq:capacity-scale-sharp-lambda}\\
+    1
+    &\le
+    \lambda_{\max}(\widehat{\bm B}_1)
+    \le2,
+    \label{eq:capacity-scale-sharp-lambda-max}\\
+    c_0\Lambda_{h,H}^{-1}
+    &\le
+    \kappa_2(\widehat{\bm B}_1)
+    \le
+    C_0\Lambda_{h,H}^{-1}.
+    \label{eq:capacity-scale-sharp-kappa}
+\end{align}
+因此 $\Lambda_{h,H}$ 给出的 $h,H$ 依赖在常系数规则粗化下按量级是尖锐的.
+更一般地, 若一族系数满足统一椭圆性且
+$\chi\le\chi_0<\infty$, 则同样有
+\begin{align}
+    \kappa_2(\widehat{\bm B})
+    &=\Theta_{\chi_0}\left(\Lambda_{h,H}^{-1}\right),
+    \label{eq:capacity-scale-fixed-contrast-sharp}
+\end{align}
+其中隐常数可依赖 $\chi_0$, 但与 $h,H,q$ 无关.
+\end{proposition}
+
+\begin{proof}
+证明见\cref{app:capacity-proofs}.
+\end{proof}
+
+\begin{proposition}[对比度指数的尖锐性]
+\label{prop:contrast-exponent-sharpness}
+考虑具有至少一对相邻 F 点的五点加权扩散图. 在允许边权属于
+$[\alpha,\beta]$ 的系数类中, 存在一族合法权重使
+\begin{align}
+  \kappa_2(\widehat{\bm B})&\ge c\,\chi,
+  \qquad \chi=\beta/\alpha,
+  \label{eq:contrast-lower-sharp}
+\end{align}
+其中 $c>0$ 与 $h,H,\alpha,\beta$ 无关. 因而
+\cref{eq:kappa-structured-unified} 中对比度的一次幂在一般有界权扩散类上不能降低. 结合\cref{prop:structured-kappa-sharpness}, 网格容量因子
+$\Lambda_{h,H}^{-1}$ 与对比度因子 $\chi$ 的幂次分别达到最优; 本文不额外声称对每个受限几何系数子类都存在统一乘积下界
+$\kappa\gtrsim\chi\Lambda_{h,H}^{-1}$.
+\end{proposition}
+
+\begin{proof}
+取两个相邻 F 点 $p,p'$, 令它们之间的边权为 $\beta$, 与二者相连的其余边权均为 $\alpha$; 其余合法边任取 $[\alpha,\beta]$ 中的值. 令向量 $\bm x$ 仅在 $p,p'$ 上取值 $1$, 其余 F 点为零. 记 $d_p,d_{p'}$ 为 $\bm B$ 的相应对角元. 五点图中
+$d_p+d_{p'}\ge2\beta$, 而公共高权边在
+$\bm x^\T\bm B\bm x$ 中相消, 因此至多六条外连边给出
+\begin{align}
+ \frac{\bm x^\T\bm B\bm x}
+      {\bm x^\T\bm D_{\bm B}\bm x}
+ &\le\frac{6\alpha}{2\beta}=\frac3\chi.
+ \label{eq:contrast-test-rayleigh}
+\end{align}
+故 $\lambda_{\min}(\widehat{\bm B})\le3/\chi$. 又因
+$\widehat{\bm B}$ 的对角元全为 $1$, 其特征值平均值为 $1$, 从而
+$\lambda_{\max}(\widehat{\bm B})\ge1$. 因此
+$\kappa_2(\widehat{\bm B})\ge\chi/3$, 可取 $c=1/3$.
+\end{proof}
+
+
+\subsection{PCG 收敛与局部区域进入复杂度}
 \label{sec:asymptotic-entry}
 
-本节继续采用\cref{subsec:criterion-scaling}的标准二维五点差分设置. 对固定有限维问题, 以下 $m$ 均理解为 PCG 精确终止前的非平凡迭代步; 若 PCG 更早精确终止, 则已直接到达 $\bm Z=\mathbf O$.
+\paragraph{Chebyshev 全局误差界.}
+\label{subsec:chebyshev-pcg}
 
-在\cref{eq:jacobi-condition-number} 的同一预条件系统上, 标准 PCG 估计给出
+\begin{lemma}
+\label{lem:pcg-chebyshev-bound}
+若 $\kappa=1$, 则每个非平凡列方程在一次 PCG 步内精确终止. 若 $\kappa>1$, 定义
 \begin{align}
-    c_3&:=\frac{\sqrt\kappa-1}{\sqrt\kappa+1},\q
-    r_m\le2c_3^m r_0.
-    \label{eq:pcg-global-matrix-bound}
+    \xi_\kappa
+    &:=\arccosh\frac{\kappa+1}{\kappa-1}
+      =\log\frac{\sqrt\kappa+1}{\sqrt\kappa-1}>0.
+    \label{eq:xi-kappa}
 \end{align}
-再结合\cref{eq:path-step-and-radius,eq:notation-right-frob,eq:schur-lambda-lower,eq:pcg-global-matrix-bound},
+则对所有 $m\ge0$,
 \begin{align}
-    \norm{\bm Z_m}_{\mathrm F}
-    &\le\frac{2r_0}{\sqrt{\lambda_{\min}(\bm S)}}c_3^m.
-    \label{eq:Z-global-exponential-bound}
+    r_m
+    &\le\frac{r_0}{\cosh(m\xi_\kappa)}.
+    \label{eq:pcg-chebyshev-matrix-bound}
 \end{align}
+\end{lemma}
+
+\begin{proof}
+对每一列, PCG 的能量误差不超过在预条件谱区间
+$[\lambda_{\min},\lambda_{\max}]$ 上满足 $p(0)=1$ 的 $m$ 次多项式的最小最大界. Chebyshev 多项式给出
+\begin{align}
+    \frac{\norm{\bm e_{j,m}}_{\bm B}}
+    {\norm{\bm e_{j,0}}_{\bm B}}
+    &\le
+    \frac1{T_m\left((\kappa+1)/(\kappa-1)\right)}.
+    \label{eq:pcg-chebyshev-column}
+\end{align}
+由 $T_m(\cosh\xi)=\cosh(m\xi)$ 与\cref{eq:xi-kappa}, 得逐列因子 $1/\cosh(m\xi_\kappa)$. 对列平方求和并使用
+$r_m=\norm{\bm\Delta_m}_{\bm B,\mathrm F}$ 得\cref{eq:pcg-chebyshev-matrix-bound}. $\kappa=1$ 时预条件矩阵为标量倍单位阵, 一步即精确求解.
+\end{proof}
+
+\paragraph{显式进入步数与渐近复杂度.}
+\label{subsec:explicit-local-entry}
+
+由\cref{eq:step-z-by-r},
+\begin{align}
+    \norm{\bm Z_m}_2
+    &\le\frac{r_m}{\sqrt{\lambda_{\min}(\bm S)}}.
+    \label{eq:Z-by-r-entry}
+\end{align}
+令
+\begin{align}
+    R_\dt&:=\rho_\dt\sqrt{\lambda_{\min}(\bm S)}.
+    \label{eq:entry-target-radius}
+\end{align}
+若 $r_m<R_\dt$, 则由\cref{cor:universal-local-radius} 必有
+$\norm{\bm Z_m}_2<\rho_\dt$.
+
+\begin{theorem}
+\label{thm:explicit-local-entry}
+若 $r_0<R_\dt$, 取 $m_0=0$. 若 $r_0\ge R_\dt$ 且 $\kappa=1$, 取 $m_0=1$. 若 $r_0\ge R_\dt$ 且 $\kappa>1$, 取
+\begin{align}
+    m_0&:=1+\left\lfloor
+      \frac{
+        \arccosh(r_0/R_\dt)
+      }{\xi_\kappa}
+    \right\rfloor.
+    \label{eq:entry-explicit-m0}
+\end{align}
+则 PCG 要么不晚于第 $m_0$ 步精确终止, 要么对所有 $m\ge m_0$ 的后续非平凡迭代均满足
+\begin{align}
+    \norm{\bm Z_m}_2&<\rho_\dt,
+    \label{eq:entry-local-condition}
+\end{align}
+从而\cref{thm:endpoint-local-expansion,thm:pcg-two-sided-step-criterion} 均可应用.
+\end{theorem}
+
+\begin{proof}
+只需考虑 $\kappa>1$ 且 $r_0\ge R_\dt$. 由\cref{eq:entry-explicit-m0},
+$m_0\xi_\kappa>\arccosh(r_0/R_\dt)$, 故
+\begin{align}
+    \cosh(m_0\xi_\kappa)&>\frac{r_0}{R_\dt}.
+    \label{eq:entry-cosh-target}
+\end{align}
+结合\cref{eq:pcg-chebyshev-matrix-bound} 得 $r_{m_0}<R_\dt$. 又由\cref{eq:path-radius-pythagoras}, $r_m$ 单调不增, 故所有后续非平凡步均保持在该区域内. 其余情形已在定理定义中覆盖.
+\end{proof}
 
 \begin{assumption}
 \label{ass:polynomial-data}
 沿所考虑的离散问题族, 存在固定 $p\ge0$ 使得
 \begin{align}
-    \dt^{-1}=\O\left((\chi h^{-1})^p\right),\q \frac{r_0}{\sqrt\alpha}=\O\left((\chi h^{-1})^p\right).
+    \dt^{-1}&=\O\left((\chi h^{-1})^p\right),\q
+    \frac{r_0}{\sqrt\alpha}=\O\left((\chi h^{-1})^p\right).
+    \label{eq:polynomial-data}
 \end{align}
 \end{assumption}
 
 \begin{theorem}
 \label{thm:asymptotic-local-entry}
-在\cref{eq:kappa-scaling,eq:schur-lambda-lower} 和\cref{ass:polynomial-data} 下, 存在
-\begin{align}
-    m_0&=\O\bigl(\sqrt\chi\,h^{-1}\log(\chi h^{-1})\bigr)
-    \label{eq:local-entry-scale}
-\end{align}
-使得 PCG 要么在 $m_0$ 前精确终止, 要么对所有 $m\ge m_0$ 的后续非平凡迭代均有 $\norm{\bm Z_m}_{\mathrm F}\le \dt/8$. 固定 $\chi$ 时,
-\begin{align}
-    m_0&=\O(h^{-1}\log h^{-1})=o(h^{-2}).
-    \label{eq:fixed-contrast-entry-scale}
-\end{align}
-\end{theorem}
-
-\begin{proof}
-由全局 PCG 误差界,
-\begin{align}
-    \norm{\bm Z_m}_{\mathrm F}
-    &\le\frac{2r_0}{\sqrt{\lambda_{\min}(\bm S)}}c_3^m.
-    \label{eq:Z-global-bound-proof-use}
-\end{align}
-因此要满足\cref{eq:local-ball-condition} 的局部条件 $\norm{\bm Z_m}_{\mathrm F}\le\dt/8$, 只需
-\begin{align}
-    c_3^m
-    &\le\frac{\dt\sqrt{\lambda_{\min}(\bm S)}}{16r_0}.
-    \label{eq:entry-sufficient-cg-factor}
-\end{align}
-即
-\begin{align}
-    m&\ge\frac{
-        \log\left(
-            \dfrac{16r_0}{\dt\sqrt{\lambda_{\min}(\bm S)}}
-        \right)
-    }{-\log c_3}:=m_0,
-    \label{eq:entry-explicit-m0}
-\end{align}
-其中
-\begin{align}
-    -\log c_3
-    &=\log\frac{\sqrt\kappa+1}{\sqrt\kappa-1}
-      =2\operatorname{arctanh}(\kappa^{-1/2})
-      \ge\frac2{\sqrt\kappa},
-    \label{eq:cg-factor-log-lower}
-\end{align}
-故
-\begin{align}
-    \frac1{-\log c_3}
-    &\le\frac{\sqrt\kappa}{2}
-     =\O(\sqrt\chi\,h^{-1}).
-    \label{eq:cg-log-denominator-scaling}
-\end{align}
-另一方面, $\lambda_{\min}(\bm S)\gtrsim\alpha$, 所以
-\begin{align}
-    \log\left(
-        \frac{16r_0}{\dt\sqrt{\lambda_{\min}(\bm S)}}
-    \right)&=\O\left(\log\left(
-        \frac{r_0}{\sqrt\alpha}\dt^{-1}
-    \right)\right)
-     =\O(\log(\chi h^{-1})),
-    \label{eq:entry-log-numerator-scaling}
-\end{align}
-其中最后一步使用\cref{ass:polynomial-data}. 将\cref{eq:cg-log-denominator-scaling,eq:entry-log-numerator-scaling} 代入\cref{eq:entry-explicit-m0}, 得
+在\cref{ass:polynomial-data} 下, 一般五点差分设置中存在
 \begin{align}
     m_0
     &=\O\bigl(\sqrt\chi\,h^{-1}\log(\chi h^{-1})\bigr).
-    \label{eq:local-entry-scale-proof}
+    \label{eq:local-entry-general-scale}
 \end{align}
-固定 $\chi$ 后即得到\cref{eq:fixed-contrast-entry-scale}.
+若进一步采用\cref{subsec:structured-kappa}中的规则粗点, 则统一地有
+\begin{align}
+    m_0
+    &=\O\left(
+      \sqrt\chi\,
+      \Lambda_{h,H}^{-1/2}
+      \log(\chi h^{-1})
+    \right),
+    \label{eq:local-entry-structured-scale}
+\end{align}
+其中 $\Lambda_{h,H}$ 由\cref{eq:boundary-capacity-scale} 定义.
+特别地, 固定粗化比 $q=H/h$ 时
+\begin{align}
+    m_0
+    &=\O\bigl(\sqrt\chi\log(\chi h^{-1})\bigr),
+    \label{eq:local-entry-fixed-q}\\
+    \chi=\text{常数}
+    \q&\Longrightarrow\q
+    m_0=\O(\log h^{-1})=o(h^{-2}).
+    \label{eq:local-entry-fixed-q-contrast}
+\end{align}
+若再有 $\dt^{-1}$ 与 $r_0/\sqrt\alpha$ 一致有界,
+则固定 $q,\chi$ 时进一步有 $m_0=\O(1)$.
+固定 $H>0$ 时
+$\Lambda_{h,H}\asymp h^2$, 因而
+\cref{eq:local-entry-structured-scale} 自动回到
+$\O(\sqrt\chi\,h^{-1}\log(\chi h^{-1}))$ 的尺度.
+\end{theorem}
+
+\begin{proof}
+由\cref{eq:universal-local-radius-asymptotic},
+在 $0<\dt\le1$ 上
+$\rho_\dt^{-1}=\O(\dt^{-1})$.
+再由\cref{eq:schur-lambda-explicit-lower} 与
+\cref{ass:polynomial-data},
+\begin{align}
+    \arccosh\left(\frac{r_0}{R_\dt}\right)_+
+    &=\O(\log(\chi h^{-1})),
+    \label{eq:entry-arcosh-scaling}
+\end{align}
+其中 $\arccosh(x)_+$ 表示当 $x>1$ 时取
+$\arccosh(x)$, 当 $x\le1$ 时取 $0$.
+对 $\kappa>1$,
+\begin{align}
+    \xi_\kappa
+    &=
+    2\operatorname{arctanh}(\kappa^{-1/2})
+    \ge\frac2{\sqrt\kappa},
+    \label{eq:xi-kappa-lower}
+\end{align}
+故 $\xi_\kappa^{-1}\le\sqrt\kappa/2$.
+将\cref{eq:kappa-general-explicit} 代入
+\cref{eq:entry-explicit-m0} 得
+\cref{eq:local-entry-general-scale};
+使用\cref{eq:kappa-boundary-capacity-scale} 得
+\cref{eq:local-entry-structured-scale}.
+固定 $q$ 时 $\Lambda_{h,H}$ 一致有正下界,
+从而得到\cref{eq:local-entry-fixed-q,eq:local-entry-fixed-q-contrast}.
+若 $\dt^{-1}$ 与 $r_0/\sqrt\alpha$ 一致有界,
+则 $r_0/R_\dt$ 一致有界, 且固定 $q,\chi$ 时
+$\kappa$ 一致有界, 故由\cref{eq:entry-explicit-m0}
+得到 $m_0=\O(1)$.
+最后, 固定 $H>0$ 时
+\begin{align}
+    \Lambda_{h,H}
+    &=
+    h^2\left(
+      1+\frac1{H^2\log(2H/h)}
+    \right)
+    \asymp h^2,
+    \label{eq:capacity-fixed-H}
+\end{align}
+即得最后结论.
 \end{proof}
 
-由于二维细点数满足 $n_{\mathrm F}(h)=\Theta(h^{-2})$, 故\cref{eq:fixed-contrast-entry-scale} 还给出
+由于固定粗化比下二维细点数满足
+$n_{\mathrm F}(h)=\Theta(h^{-2})$,
+\cref{eq:local-entry-fixed-q-contrast} 进一步给出
 \begin{align}
-    \frac{m_0}{n_{\mathrm F}(h)}=\O(h\log h^{-1})\to0.
+    \frac{m_0}{n_{\mathrm F}(h)}
+    &=\O(h^2\log h^{-1})\to0.
+    \label{eq:local-entry-vs-dimension}
 \end{align}
-因此, \cref{thm:endpoint-local-expansion,thm:pcg-two-sided-step-criterion} 虽然在粗空间坐标中是局部结果, 但沿 PCG 路径在一个相对于二维代数终止尺度为低阶的初始过渡段之后均可适用.
+
+
+因此, 改进后的理论把局部判据和到达局部区域的成本清楚地区分开: 在固定局部半径比例下 $C_\rho=\O((\alpha\dt)^{-1})$ 不再含 $h^{-1}$、$\sqrt\chi$ 或 $\sqrt\kappa$; PCG 条件数只通过进入步数出现, 并在规则粗化下由统一的二维边界--容量尺度 $\Lambda_{h,H}$ 控制. 这使 fixed-ratio multigrid 与 fixed-$H$ aggressive two-grid 两种实际 regime 可以在同一个公式中讨论.
+
+\section{PCG 路径形状与最佳步数：可证结论及其边界}
+\label{sec:pcg-path-shape-mopt}
+
+前述结果已经严格给出三类互补结构: PCG 是由嵌套 Krylov 子空间决定的谱多项式路径;
+两网格目标在求解器最优粗空间的图坐标中具有精确拟凸几何;
+能量极小值点附近以及任意给定路径位置的相邻谱变化可由扰动理论认证.
+另一方面, \cref{eq:pcg-alignment-spectral} 表明实际相邻步还包含有符号交叉谱权,
+因此一般 SPD 理论并不能仅由 $J(\bm W_m)$、$r_m$ 或 $\kappa$ 推出实际 PCG 路径严格单峰,
+也不能据此给出普适的最佳步数公式. 本节只保留可由 PCG 误差界直接推出的自然时间尺度, 不再引入难以独立验证的仿射路径假设.
+
+令
+\begin{align}
+    \mathcal U_m
+    &:={\Ran}\bigl(\bm A^{1/2}\bm P(\bm W_m)\bigr),
+    \label{eq:pcg-path-subspace-final}\\
+    m_{\mathrm{opt}}
+    &:=\min\operatorname*{arg\,min}_{0\le m\le n_{\mathrm F}}
+      \rho_{\mathrm{TG}}(\mathcal U_m).
+    \label{eq:mopt-global-definition-final}
+\end{align}
+精确算术下每一列 CG 至多在 $n_{\mathrm F}$ 步内终止, 已终止列随后保持不动,
+故上述区间覆盖整条有限 PCG 路径.
+
+\subsection{PCG 的自然时间尺度与最佳步数的理论边界}
+\label{subsec:natural-krylov-time-scale}
+
+一般理论不能由条件数单独确定 $m_{\mathrm{opt}}$, 但 PCG 本身给出一个与算法复杂度直接相关的自然时间尺度.
+固定任意 $0<\theta<1$. 对 $\kappa>1$ 定义
+\begin{align}
+    m_{\theta}^{\mathrm{suff}}
+    &:=\left\lceil
+      \frac{\arccosh(\theta^{-1})}{\xi_\kappa}
+      \right\rceil,
+    \qquad
+    \xi_\kappa=\log\frac{\sqrt\kappa+1}{\sqrt\kappa-1},
+    \label{eq:fixed-reduction-sufficient-steps}
+\end{align}
+并在 $\kappa=1$ 时令 $m_{\theta}^{\mathrm{suff}}=1$.
+
+\begin{proposition}
+\label{prop:fixed-reduction-krylov-scale}
+对任意 $m\ge m_{\theta}^{\mathrm{suff}}$,
+\begin{align}
+    r_m&\le\theta r_0.
+    \label{eq:fixed-reduction-guarantee}
+\end{align}
+当 $\kappa\to\infty$ 时,
+\begin{align}
+    m_{\theta}^{\mathrm{suff}}
+    &=\frac{\arccosh(\theta^{-1})}{2}\sqrt\kappa+\O(1).
+    \label{eq:fixed-reduction-sqrt-kappa-scale}
+\end{align}
+在规则粗点、统一有界对比度的二维五点问题中, 固定 $H>0$ 且 $h\to0$ 时
+\begin{align}
+    m_{\theta}^{\mathrm{suff}}&=\Theta(h^{-1}),
+    \label{eq:fixed-reduction-fixed-H-scale}
+\end{align}
+而固定粗化比 $q=H/h$ 时
+\begin{align}
+    m_{\theta}^{\mathrm{suff}}&=\O(1)
+    \label{eq:fixed-reduction-fixed-q-scale}
+\end{align}
+对固定对比度成立.
+\end{proposition}
+
+\begin{proof}
+由\cref{lem:pcg-chebyshev-bound},
+$r_m/r_0\le1/\cosh(m\xi_\kappa)$,
+故\cref{eq:fixed-reduction-guarantee} 由
+\cref{eq:fixed-reduction-sufficient-steps} 直接得到.
+又
+\begin{align}
+    \xi_\kappa
+    &=2\operatorname{arctanh}(\kappa^{-1/2})
+      =\frac2{\sqrt\kappa}+\O(\kappa^{-3/2}),
+    \label{eq:fixed-reduction-xi-asymptotic}
+\end{align}
+从而得到\cref{eq:fixed-reduction-sqrt-kappa-scale}.
+固定 $H$ 时由
+\cref{prop:structured-kappa-sharpness,eq:capacity-fixed-H}
+有 $\kappa=\Theta(h^{-2})$;
+固定 $q$ 时同一尖锐性结果给出 $\kappa=\Theta(1)$,
+故分别得到\cref{eq:fixed-reduction-fixed-H-scale,eq:fixed-reduction-fixed-q-scale}.
+\end{proof}
+
+\cref{prop:fixed-reduction-krylov-scale} 只刻画把 PCG 能量误差降低固定比例所需的统一充分步数,
+并不把该步数等同于 $m_{\mathrm{opt}}$.
+因此 fixed-$H$ 实验中观察到的 $m_{\mathrm{opt}}\approx c h^{-1}$
+与 PCG 的自然 Krylov 时间尺度一致, 但目前的无条件理论不据此声称
+$m_{\mathrm{opt}}=\Theta(h^{-1})$.
+真正决定最佳路径位置的额外信息仍然是
+\cref{eq:pcg-alignment-spectral} 中由磨光子与 PCG 谱滤波共同产生的有符号方向信息.
+
+
+综合以上分析, 本文能够无条件证明的是有限 PCG 的 Krylov--能量与有限传播结构、两网格目标的精确谱几何、端点非局部最优性与邻步双向判据, 以及规则粗化下网格尺度和对比度幂次分别尖锐的条件数界. 对最佳步数, $\sqrt\kappa$ 是 PCG 的自然时间尺度, 但一般情形下仍不能仅由条件数或能量衰减推出 $m_{\mathrm{opt}}$. 这一边界与数值部分的角色分工一致: 数值实验负责展示真实谱半径路径和有限迭代优势, 理论负责解释这种优势为何可能出现以及其尺度为何合理.
+
+\appendix
+
+\section{最大奇异值扰动引理的证明}
+\label{app:sv-perturbation-proof}
+
+\begin{proof}
+作对称扩张
+\begin{align}
+    \bm M_0&=
+    \begin{bNiceMatrix}\mathbf O&\bm M\\\bm M^\T&\mathbf O\end{bNiceMatrix},\q
+    \bm E_0=
+    \begin{bNiceMatrix}\mathbf O&\bm E\\\bm E^\T&\mathbf O\end{bNiceMatrix},\q
+    \bm q=\frac1{\sqrt2}
+    \begin{bNiceMatrix}\bm u\\\bm v\end{bNiceMatrix}.
+    \label{eq:sv-symmetric-dilation}
+\end{align}
+则 $\bm M_0\bm q=\sigma\bm q$, $\norm{\bm E_0}_2=e$, 且 $\bm M_0$ 的第二大特征值不超过 $\sigma_2(\bm M)=\sigma-\dt$. 记
+\begin{align}
+    \sigma'&:=\lambda_1(\bm M_0+\bm E_0)=\sigma_1(\bm M+\bm E),
+    \label{eq:sv-dilation-top-eigenvalue}
+\end{align}
+并取对应单位特征向量
+\begin{align}
+    \bm q'&=\gamma\bm q+\bm z_\perp,\q \bm z_\perp\perp\bm q.
+    \label{eq:sv-eigenvector-decomposition}
+\end{align}
+Weyl 不等式给出 $\sigma'\ge\sigma-e$. 令 $\bm Q_\perp=\bm I-\bm q\bm q^\T$. 将特征方程投影到 $\bm q^\perp$ 得
+\begin{align}
+    (\sigma'\bm I-\bm M_0)\bm z_\perp
+    &=\bm Q_\perp\bm E_0\bm q'.
+    \label{eq:sv-projected-eigen-equation}
+\end{align}
+由于 $\bm M_0$ 在 $\bm q^\perp$ 上的最大特征值不超过 $\sigma-\dt$,
+\begin{align}
+    (\dt-e)\norm{\bm z_\perp}_2
+    &\le \norm{\bm Q_\perp\bm E_0\bm q'}_2
+     \le e.
+    \label{eq:sv-angle-proof-bound}
+\end{align}
+故得到\cref{eq:sv-eigenvector-angle-bound}. 由 $e<\dt/2$ 还知
+$\norm{\bm z_\perp}_2<1$, 因而 $\gamma\ne0$ 且
+\begin{align}
+    \abs\gamma
+    &=\sqrt{1-\norm{\bm z_\perp}_2^2}
+     \ge
+     \sqrt{1-\left(\frac{e}{\dt-e}\right)^2}.
+    \label{eq:sv-gamma-lower}
+\end{align}
+再将特征方程左乘 $\bm q^\T$. 利用 $\bm q^\T\bm M_0=\sigma\bm q^\T$ 与 $\bm q^\T\bm z_\perp=0$,
+\begin{align}
+    (\sigma'-\sigma)\gamma
+    &=\gamma\bm q^\T\bm E_0\bm q
+      +\bm q^\T\bm E_0\bm z_\perp,
+    \label{eq:sv-top-eigenvalue-projection}
+\end{align}
+且
+\begin{align}
+    \bm q^\T\bm E_0\bm q
+    &=\bm u^\T\bm E\bm v.
+    \label{eq:sv-dilation-first-order-term}
+\end{align}
+结合\cref{eq:sv-angle-proof-bound,eq:sv-gamma-lower,eq:sv-top-eigenvalue-projection,eq:sv-dilation-first-order-term},
+\begin{align}
+    \abs*{\sigma'-\sigma-\bm u^\T\bm E\bm v}
+    &\le e\frac{\norm{\bm z_\perp}_2}{\abs\gamma}
+     \le
+     \frac{e^2}{\sqrt{(\dt-e)^2-e^2}}
+     =\frac{e^2}{\sqrt{\dt(\dt-2e)}}.
+    \label{eq:sv-second-order-bound-proof}
+\end{align}
+即证.
+\end{proof}
+
+\section{局部余项差估计的技术证明}
+\label{app:local-derivative-proofs}
+
+本节集中给出正文中两个导数估计的技术证明, 以避免打断从端点局部展开到相邻步判据的主线.
+
+\paragraph{\cref{lem:normalization-derivative} 的证明.}
+\begin{proof}
+对任意对称正定矩阵 $\bm X$ 使用积分表示
+\begin{align}
+    \bm X^{-1/2}
+    &=\frac2\pi\int_0^\infty(\bm X+t^2\bm I)^{-1}\,\mathrm dt.
+    \label{eq:inverse-sqrt-integral}
+\end{align}
+令 $\bm X=\bm I+\bm Z\bm Z^\T$. 对方向 $\bm H$ 求导, 记
+$\bm K=\bm Z\bm H^\T+\bm H\bm Z^\T$, 得
+\begin{align}
+    D\bm A(\bm Z)[\bm H]
+    &=-\frac2\pi\int_0^\infty
+      (\bm X+t^2\bm I)^{-1}\bm K(\bm X+t^2\bm I)^{-1}\,\mathrm dt.
+    \label{eq:inverse-sqrt-derivative-integral}
+\end{align}
+因为 $\lambda_{\min}(\bm X)\ge1$ 且
+$\norm{\bm K}_2\le2\norm{\bm Z}_2\norm{\bm H}_2$,
+\begin{align}
+    \norm{D\bm A(\bm Z)[\bm H]}_2
+    &\le\frac4\pi\norm{\bm Z}_2\norm{\bm H}_2
+      \int_0^\infty\frac{\mathrm dt}{(1+t^2)^2}
+     =\norm{\bm Z}_2\norm{\bm H}_2,
+    \label{eq:normalization-derivative-bound-proof}
+\end{align}
+其中使用 $\int_0^\infty(1+t^2)^{-2}\,\mathrm dt=\pi/4$.
+\end{proof}
+
+\paragraph{\cref{lem:local-derivative-remainder} 的证明.}
+\begin{proof}
+由\cref{eq:local-L-definition},
+\begin{align}
+    D\bm L(\bm Z)[\bm H]
+    &=D\bm A(\bm Z)[\bm H](\bm T_{\mathrm F}-\bm Z\bm T_\ast)
+      -\bm A(\bm Z)\bm H\bm T_\ast.
+    \label{eq:local-L-derivative}
+\end{align}
+结合\cref{lem:normalization-derivative,eq:local-normalization-exact},
+\begin{align}
+    \norm*{D\bm L(\bm Z)[\bm H]+\bm H\bm T_\ast}_2
+    &\le b(z)\norm{\bm H}_2,
+    \label{eq:local-L-derivative-endpoint-difference}\\
+    \norm{D\bm L(\bm Z)[\bm H]}_2
+    &\le\bigl(\tau+b(z)\bigr)\norm{\bm H}_2.
+    \label{eq:local-L-derivative-bound}
+\end{align}
+由\cref{eq:local-gap-preservation}, $f$ 在该区域可微. 记 $\bm u(\bm Z),\bm v(\bm Z)$ 为 $\bm L(\bm Z)$ 的最大左右单位奇异向量, 则
+\begin{align}
+    Df(\bm Z)[\bm H]
+    &=\bm u(\bm Z)^\T D\bm L(\bm Z)[\bm H]\bm v(\bm Z).
+    \label{eq:local-f-derivative}
+\end{align}
+在对称扩张中令端点与当前位置的最大单位特征向量分别为 $\bm q_0,\bm q_Z$, 相应一维正交投影为
+$\bm P_0=\bm q_0\bm q_0^\T$, $\bm P_Z=\bm q_Z\bm q_Z^\T$.
+由\cref{eq:sv-eigenvector-angle-bound,eq:local-E-sharp-bound},
+\begin{align}
+    \norm{\bm P_Z-\bm P_0}_\ast
+    &=2\sin\angle(\bm q_Z,\bm q_0)
+     \le\frac{2\varepsilon(z)}{\dt-\varepsilon(z)},
+    \label{eq:local-projector-angle-bound}
+\end{align}
+其中 $\norm{\cdot}_\ast$ 为核范数. 对
+\begin{align}
+    \bm K(\bm H)&=
+    \begin{bNiceMatrix}
+      \mathbf O&D\bm L(\bm Z)[\bm H]\\
+      D\bm L(\bm Z)[\bm H]^\T&\mathbf O
+    \end{bNiceMatrix}
+    \label{eq:local-derivative-dilation}
+\end{align}
+有 $\norm{\bm K(\bm H)}_2=\norm{D\bm L(\bm Z)[\bm H]}_2$. 因而
+\begin{align}
+    &\abs*{
+      Df(\bm Z)[\bm H]
+      -\bm u_{\mathrm F}^\T D\bm L(\bm Z)[\bm H]\bm v}
+      \notag\\
+    &\qquad=\abs{\tr(\bm K(\bm H)(\bm P_Z-\bm P_0))}
+     \le2\bigl(\tau+b(z)\bigr)
+       \frac{\varepsilon(z)}{\dt-\varepsilon(z)}
+       \norm{\bm H}_2.
+    \label{eq:local-singular-vector-derivative-error}
+\end{align}
+另一方面, 由\cref{eq:local-L-derivative-endpoint-difference} 与 $\bm y=\bm T_\ast\bm v$,
+\begin{align}
+    \abs*{
+      \bm u_{\mathrm F}^\T D\bm L(\bm Z)[\bm H]\bm v
+      +\bm u_{\mathrm F}^\T\bm H\bm y}
+    &\le b(z)\norm{\bm H}_2.
+    \label{eq:local-endpoint-derivative-error}
+\end{align}
+结合\cref{eq:local-singular-vector-derivative-error,eq:local-endpoint-derivative-error} 并使用 $\norm{\bm H}_2\le\norm{\bm H}_{\mathrm F}$ 得\cref{eq:local-derivative-remainder}. 最后由
+$a(z)=z^2/2+\O(z^4)$, $\varepsilon(z)=\tau z+\O(z^2)$ 与
+$b(z)=\sigma z+\O(z^2)$ 得\cref{eq:local-g-asymptotic}.
+\end{proof}
+
+\section{规则粗点容量估计的技术证明}
+\label{app:capacity-proofs}
+
+\subsection{离散 pinned Poincar\'e 不等式}
+\begin{proof}
+先证明单个粗方格上的估计. 将一个边长为 $q$ 个细网格间隔的闭粗方格记为 $Q$, 其顶点集合与 $\{0,\ldots,q\}^2$ 等同, 并取一个粗顶点 $c_Q$; 通过平移和必要的坐标反射可将其记为局部坐标 $(0,0)$, 且由零延拓有 $\ti x(c_Q)=0$. 记 $n=q+1$, $\bar x_Q$ 为 $Q$ 上的算术平均, 并令 $v=\ti x-\bar x_Q$. 设 $L_n$ 为含 $n$ 个顶点的一维路径图 Laplace 矩阵. 它有单位正交特征向量 $\{\psi_k\}_{k=0}^{n-1}$ 与特征值
+\begin{align}
+    \lambda_k&=4\sin^2\frac{\pi k}{2n},\q k=0,\ldots,n-1,
+    \label{eq:path-neumann-eigenvalues}
+\end{align}
+其中 $\psi_0=n^{-1/2}\bm 1$, 且对 $k\ge1$ 可取
+$\psi_k(j)=\sqrt{2/n}\cos(\pi k(j+1/2)/n)$. 因此
+$\abs{\psi_k(j)}^2\le2/n$, 且由 $\sin t\ge2t/\pi$ 对 $0\le t\le\pi/2$ 有
+\begin{align}
+    \lambda_k&\ge\frac{4k^2}{n^2}.
+    \label{eq:path-neumann-eigenvalue-lower}
+\end{align}
+二维方格图 Laplace 矩阵由 $L_n\otimes I+I\otimes L_n$ 给出, 故
+$\psi_k\otimes\psi_\ell$ 是特征值 $\lambda_k+\lambda_\ell$ 的单位正交特征向量. 因 $v$ 的平均为零, 其常数模态系数消失, 从而离散 Poincar\'e 不等式给出
+\begin{align}
+    \sum_{p\in Q}\abs{v(p)}^2
+    &\le\lambda_1^{-1}\mathcal E_Q(\ti x)
+     \le\frac{n^2}{4}\mathcal E_Q(\ti x),
+    \label{eq:cell-mean-poincare}
+\end{align}
+其中 $\mathcal E_Q$ 只对 $Q$ 内边求和.
+
+再在 $c_Q$ 处评价上述谱展开并使用 Cauchy--Schwarz 不等式,
+\begin{align}
+    \abs{v(c_Q)}^2
+    &\le \mathcal E_Q(\ti x)
+      \sum_{(k,\ell)\ne(0,0)}
+      \frac{\abs{\psi_k(0)}^2\abs{\psi_\ell(0)}^2}
+      {\lambda_k+\lambda_\ell}.
+    \label{eq:cell-point-evaluation-spectral}
+\end{align}
+由\cref{eq:path-neumann-eigenvalue-lower} 与 $\abs{\psi_k(j)}^2\le2/n$, 上式中的和不超过
+\begin{align}
+    \sum_{\substack{0\le k,\ell\le n-1\\(k,\ell)\ne(0,0)}}
+      \frac1{k^2+\ell^2}
+    &\le 6\log(2n).
+    \label{eq:lattice-green-log-bound}
+\end{align}
+为验证最后一步, 先单独处理 $k=0$ 的项
+$\sum_{\ell=1}^{n-1}\ell^{-2}\le\pi^2/6$. 对 $k\ge1$,
+由积分比较
+\begin{align}
+    \sum_{\ell=0}^{n-1}\frac1{k^2+\ell^2}
+    &\le \frac1{k^2}+\int_0^\infty\frac{\mathrm dt}{k^2+t^2}
+     =\frac1{k^2}+\frac\pi{2k}.
+    \label{eq:lattice-green-row-bound}
+\end{align}
+再对 $k=1,\ldots,n-1$ 求和并使用调和级数上界
+$\sum_{k=1}^{n-1}k^{-1}\le1+\log n$, 即可得到
+\cref{eq:lattice-green-log-bound}; 常数 $6$ 对所有 $n\ge3$ 足够, 而 $n=2$ 可直接检验. 由于 $\ti x(c_Q)=0$, 有 $\bar x_Q=-v(c_Q)$, 且 $v$ 与常数向量正交, 因而
+\begin{align}
+    \sum_{p\in Q}\abs{\ti x(p)}^2
+    &=\sum_{p\in Q}\abs{v(p)}^2+n^2\abs{\bar x_Q}^2
+    \le C_\square q^2\log(2q)\,\mathcal E_Q(\ti x),
+    \label{eq:pinned-cell-log-bound}
+\end{align}
+其中 $C_\square$ 为绝对常数; 这里使用 $n=q+1\le3q/2$.
+
+最后用粗格点线划分整个区域并对所有闭粗方格求和. 每个细点至少被覆盖一次, 每条细网格边至多属于两个闭粗方格, 因此\cref{eq:pinned-cell-log-bound} 立即给出\cref{eq:pinned-poincare}, 例如可取 $C_{\mathrm{pin}}=2C_\square$.
+\end{proof}
+
+\subsection{统一尺度的尖锐性}
+\begin{proof}
+下界
+$\lambda_{\min}(\widehat{\bm B}_1)\ge c_0\Lambda_{h,H}$
+已由\cref{eq:jacobi-structured-lambda-min} 在 $\chi=1$ 时得到.
+下面构造匹配的 Rayleigh 商上界.
+
+令 $N=h^{-1}$. 对全部细网格顶点
+$0\le i,j\le N$ 定义
+\begin{align}
+    g_{ij}
+    &:=
+    \sin\frac{\pi i}{N}\sin\frac{\pi j}{N}.
+    \label{eq:capacity-test-global-mode}
+\end{align}
+它在物理边界上为零, 且
+\begin{align}
+    \sum_{i,j=1}^{N-1}g_{ij}^2
+    &=\frac{N^2}{4},\q
+    \mathcal E(g)\le2\pi^2.
+    \label{eq:capacity-test-global-estimates}
+\end{align}
+第二个估计由每条边上的差值绝对值不超过 $\pi/N$ 以及边数小于 $2N^2$ 得到.
+
+若 $q$ 小于某个固定常数 $q_0$, 则
+\begin{align}
+    \Lambda_{h,H}
+    &\ge \frac1{q_0^2\log(2q_0)}=:c(q_0)>0,
+    \label{eq:capacity-small-q-lower}
+\end{align}
+而
+$\lambda_{\min}(\widehat{\bm B}_1)\le
+\tr(\widehat{\bm B}_1)/n_{\mathrm F}=1$.
+因而取 $C_0\ge c(q_0)^{-1}$ 即得所需上界. 以下只考虑 $q\ge q_0$, 并取 $q_0$ 足够大使
+\begin{align}
+    R&:=\left\lfloor\frac q{64}\right\rfloor\ge2.
+    \label{eq:capacity-test-radius}
+\end{align}
+若不存在内部粗点, 直接取 $x=g$. 由
+\cref{eq:capacity-test-global-estimates} 立即有相应 Jacobi Rayleigh 商
+$\O(N^{-2})=\O(\Lambda_{h,H})$, 因而上界成立.
+以下设内部粗点非空. 记其集合为 $\mathcal C_H$, 对网格点 $p$ 记
+$d(p)$ 为到 $\mathcal C_H$ 的 $\ell^1$ 图距离, 并定义
+\begin{align}
+    \eta(p)
+    &:=
+    \min\left\{
+      1,\,
+      \frac{\log(1+d(p))}{\log(1+R)}
+    \right\}.
+    \label{eq:capacity-log-cutoff}
+\end{align}
+于是 $\eta=0$ 于所有内部粗点, $0\le\eta\le1$.
+由于不同粗点的图距离至少为 $q$ 且 $2R<q$,
+集合 $\{d<R\}$ 是互不相交的粗点邻域之并.
+每个半径 $R$ 的 $\ell^1$ 球含至多 $5R^2$ 个点,
+内部粗点数不超过 $(N/q)^2$, 且 $R\le q/64$, 因而
+\begin{align}
+    \#\{p:\eta(p)<1\}
+    &\le 5R^2\left(\frac Nq\right)^2
+     \le \frac{5N^2}{4096}
+     <\frac{N^2}{512}.
+    \label{eq:capacity-cutoff-small-support}
+\end{align}
+令 $x(p):=g(p)\eta(p)$. 则 $x$ 在物理边界与所有粗点上均为零,
+故其细点限制是 $\bm B_1$ 的合法试验向量. 由于 $x=g$ 在集合 $\{\eta=1\}$ 上成立, 而 $x=0$ 于粗点与物理边界,
+故由
+\cref{eq:capacity-test-global-estimates,eq:capacity-cutoff-small-support}
+以及 $0\le g\le1$,
+\begin{align}
+    \sum_{p\in\mathrm F}x(p)^2
+    &\ge
+    \sum_{i,j=1}^{N-1}g_{ij}^2
+      -\#\{p:\eta(p)<1\}
+    \ge
+    \frac{N^2}{4}-\frac{N^2}{512}
+    \ge\frac{N^2}{5}.
+    \label{eq:capacity-test-L2-lower}
+\end{align}
+
+下面估计 $\eta$ 的图能量. 在任一粗点半径 $R$ 邻域内,
+相邻点的距离指标相差至多 $1$, 且
+\begin{align}
+    \abs{\eta(p)-\eta(p')}
+    &\le
+    \frac1{(1+d)\log(1+R)}
+    \label{eq:capacity-cutoff-edge-difference}
+\end{align}
+对位于第 $d$ 层附近的边成立.
+第 $d$ 层涉及的边数至多为 $C(d+1)$.
+因此单个粗点邻域贡献至多
+\begin{align}
+    \frac{C}{\log^2(1+R)}
+    \sum_{d=0}^{R-1}\frac1{d+1}
+    &\le
+    \frac{C}{\log(2q)}.
+    \label{eq:capacity-cutoff-single-energy}
+\end{align}
+这里使用 $q\ge q_0$ 时
+$\log(1+R)\asymp\log(2q)$.
+对全部粗点求和,
+\begin{align}
+    \mathcal E(\eta)
+    &\le
+    C\frac{N^2}{q^2\log(2q)}.
+    \label{eq:capacity-cutoff-total-energy}
+\end{align}
+对每条边使用
+\[
+|g_p\eta_p-g_{p'}\eta_{p'}|^2
+\le
+2|\eta_p|^2|g_p-g_{p'}|^2
++2|g_{p'}|^2|\eta_p-\eta_{p'}|^2
+\]
+并求和, 得
+\begin{align}
+    \mathcal E(x)
+    &\le
+    2\mathcal E(g)+2\mathcal E(\eta)
+    \le
+    C\left(
+      1+\frac{N^2}{q^2\log(2q)}
+    \right).
+    \label{eq:capacity-test-energy-upper}
+\end{align}
+单位系数五点格式中
+$\bm D_{\bm B_1}=4h^{-2}\bm I$,
+且零延拓给出
+$\bm x_{\mathrm F}^\T\bm B_1\bm x_{\mathrm F}
+=h^{-2}\mathcal E(x)$.
+结合\cref{eq:capacity-test-L2-lower,eq:capacity-test-energy-upper},
+\begin{align}
+    \frac{
+      \bm x_{\mathrm F}^\T\bm B_1\bm x_{\mathrm F}
+    }{
+      \bm x_{\mathrm F}^\T\bm D_{\bm B_1}\bm x_{\mathrm F}
+    }
+    &=
+    \frac{\mathcal E(x)}
+    {4\sum_{p\in\mathrm F}x(p)^2}
+    \le
+    C\left(
+      N^{-2}+\frac1{q^2\log(2q)}
+    \right)
+    =
+    C\Lambda_{h,H}.
+    \label{eq:capacity-test-rayleigh-upper}
+\end{align}
+这证明了\cref{eq:capacity-scale-sharp-lambda} 的上界.
+由于 $\widehat{\bm B}_1$ 的所有对角元均为 $1$,
+其特征值平均值为 $1$, 故
+$\lambda_{\max}\ge1$; 上界 $2$ 来自
+\cref{eq:B-diagonal-comparison}. 因而
+\cref{eq:capacity-scale-sharp-kappa} 成立.
+
+最后, 一般系数下
+\[
+\alpha\bm B_1\preceq\bm B\preceq\beta\bm B_1,\qquad
+\alpha\bm D_{\bm B_1}\preceq
+\bm D_{\bm B}\preceq
+\beta\bm D_{\bm B_1}.
+\]
+因此对任意非零 $\bm x$,
+\begin{align}
+    \chi^{-1}
+    \frac{\bm x^\T\bm B_1\bm x}{\bm x^\T\bm D_{\bm B_1}\bm x}
+    &\le
+    \frac{\bm x^\T\bm B\bm x}{\bm x^\T\bm D_{\bm B}\bm x}
+    \le
+    \chi
+    \frac{\bm x^\T\bm B_1\bm x}{\bm x^\T\bm D_{\bm B_1}\bm x}.
+    \label{eq:variable-unit-jacobi-rayleigh-comparison}
+\end{align}
+对 Rayleigh 商取极值得
+$\chi^{-1}\lambda_{\min}(\widehat{\bm B}_1)
+\le\lambda_{\min}(\widehat{\bm B})
+\le\chi\lambda_{\min}(\widehat{\bm B}_1)$.
+又因所有 Jacobi 归一化矩阵的对角元均为 $1$, 且由
+\cref{eq:B-diagonal-comparison} 有
+$1\le\lambda_{\max}(\widehat{\bm B})\le2$.
+结合 $\chi\le\chi_0$ 与\cref{eq:capacity-scale-sharp-lambda} 即得
+\cref{eq:capacity-scale-fixed-contrast-sharp}.
+\end{proof}
+
+\begin{thebibliography}{9}
+
+\bibitem{olson2011energy}
+L.~N. Olson, J.~B. Schroder, and R.~S. Tuminaro,
+\newblock A general interpolation strategy for algebraic multigrid using energy minimization,
+\newblock \emph{SIAM Journal on Scientific Computing}, 33 (2011), pp.~966--991,
+\newblock \url{https://doi.org/10.1137/100803031}.
+
+\bibitem{brannick2018optimal}
+J. Brannick, F. Cao, K. Kahl, R.~D. Falgout, and X. Hu,
+\newblock Optimal interpolation and compatible relaxation in classical algebraic multigrid,
+\newblock \emph{SIAM Journal on Scientific Computing}, 40 (2018), pp.~A1473--A1493,
+\newblock \url{https://doi.org/10.1137/17M1123456}.
+
+\bibitem{janna2023parallel}
+C. Janna, A. Franceschini, J.~B. Schroder, and L. Olson,
+\newblock Parallel energy-minimization prolongation for algebraic multigrid,
+\newblock \emph{SIAM Journal on Scientific Computing}, 45 (2023), pp.~S475--S501,
+\newblock \url{https://doi.org/10.1137/22M1513794}.
+
+\end{thebibliography}
 
 \end{document}

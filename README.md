@@ -1,67 +1,64 @@
-# multiscale_two_grids_iteration v8.4
+# Finite energy-minimization paths for two-grid interpolation (v9.1)
 
-本项目研究高对比扩散问题中的有限 Krylov 能量插值。系数场由随机板块背景叠加高导通道
-构成。固定粗点与磨光器后，插值能量沿 PCG 路径下降，而实际两网格性能对路径位置可以
-呈现非单调变化。项目据此分析有限步插值，并构造按问题尺度选择步数的 adaptive 规则。
+本项目研究一个具体但容易被忽略的机制问题：沿着通向 energy-minimizing/ideal interpolation 的有限 Jacobi--PCG 路径，插值能量严格下降时，固定磨光子下的真实两网格谱半径是否也持续改善？答案是否定的。在所研究的高对比度二维扩散类上，有限路径点可显著优于高精度能量端点，并同时保持更低的 setup、插值密度和粗算子复杂度。
 
-## 方法
+v9.1 不再把经验步数规则包装成“自适应算法”。核心定位是理论机制、真实谱路径与可复现实验；固定 $m=c/h$ 仅作为轻量、可调的经验路径坐标。
 
-记每个坐标方向的细网格区间数为 $n=1/h$，粗网格区间数为 $n_H=1/H$。`adaptive`
-根据 $n_H$ 与矩阵对角尺度比选择
+## 主要结论
 
-$$
-m\in\{\operatorname{round}(n/8),\operatorname{round}(n/4),
-       \operatorname{round}(n/3),\operatorname{round}(n/2)\}.
-$$
+- 对单位注入 $P(W)=[W;I]$，energy endpoint 为 $W^*=-A_{FF}^{-1}A_{FC}$，也是本文坐标下的 ideal interpolation。
+- 对固定前向/后向 Gauss--Seidel 与精确 Galerkin 粗解，
+  \[
+  \rho_{\rm TG}(Z)=\left\|(I+ZZ^T)^{-1/2}(T_F-ZT_*)\right\|_2^2.
+  \]
+  因而能量距离单调缩小不等价于真实两网格目标单调改善。
+- 在简单最大奇异值 gap 且 $T_*v\ne0$ 时，energy endpoint 甚至不是全体单位注入插值中的局部两网格最优点；正文给出显式下降方向与余项控制。
+- 第 $m$ 步 PCG 校正的支撑不会越过初始残差在 $A_{FF}$ 图上的半径 $m-1$ 邻域。fixed-$H$/fixed-$q$ 实验的 16 个组合均得到 0 个传播违例。
+- 二维规则粗化下
+  \[
+  \kappa(D_{FF}^{-1/2}A_{FF}D_{FF}^{-1/2})
+  \lesssim \chi\left(h^2+\frac{1}{q^2\log(2q)}\right)^{-1}.
+  \]
+  正文分别证明网格容量尺度和对比度一次幂不能一般性改进，不声称所有受限系数几何都达到统一乘积下界。
 
-标准 PCG 条件数估计在固定对比度下给出固定比例能量误差压缩的 $O(h^{-1})$ 充分尺度；
-在理论稿的多项式数据假设下，进入能量极小值点局部判据区域的充分尺度为
-$O(h^{-1}\log h^{-1})$。候选比例与尺度比阈值由设计问题组标定，不作最优性声明。在线
-阶段确定单个候选，执行一次 PCG 路径推进、插值组装和 Galerkin 粗算子构造。
+## 全量结果摘要
 
-## 主要内容
+中心问题为 $1/h=128,1/H=16,\chi=10^4$。200 步冷启动 $A$-内积 Lanczos/Ritz 路径给出：
 
-- PCG 正交能量账本与归一化插值误差，能量统一记为
-  $J(W)=\tfrac12\operatorname{tr}(P^\top A P)$；
-- Galerkin 粗矩阵、粗空间主角和两网格投影的统一表达；
-- 最大奇异值简单情形下能量极小值点附近的局部谱展开与显式二阶余项；
-- PCG 相邻步两网格性能双向判据、判据尺度与局部区域的渐近可达性；
-- 四个数值主题、八个独立实验，覆盖两网格主结果、几何插值与能量极小插值的中心问题
-  对照、两类拓扑的完整路径扫描、自适应规则评估、固定物理场加密和三层 V-cycle 初试。
+| 拓扑 | 最小真实 \(\rho_{\rm TG}\) | 所在 \(m\) | 最小 RHS \(\rho_{\rm eff}\) / \(m\) | energy endpoint \(\rho_{\rm TG}\) |
+|---|---:|---:|---:|---:|
+| cross-channel | 0.949431677 | 36 | 0.941763675 / 38 | 0.996163213 |
+| winding-ring | 0.949386203 | 36 | 0.941012129 / 53 | 0.984367546 |
 
-当前分析采用二维规则网格、固定粗点、对称 Gauss--Seidel 和 Galerkin 粗算子。固定物理
-场试验和三层试验分别考察标准网格加密与递归构造；更一般的离散和层次结构是后续方向。
+13 个主比较问题中，固定 $m=\operatorname{round}((1/h)/3)$ 为 13/13 收敛、累计 5,975 个循环；高精度 endpoint 为 13/13 收敛、累计 28,972 个循环。五 seed 和六 RHS 稳健性实验均完整收敛。中心问题五次交替顺序计时中，有限点平均 setup/solve/total 为 0.546/0.325/0.872 s，endpoint 为 2.819/9.078/11.896 s。计时只应在同机同构建下比较。
 
-## 文件
+小规模 $16/4$ 直接诊断得到端点 gap $6.6816\times10^{-3}>0$，理论局部区间内一阶方向符号为 28/28 命中；图公式与直接两网格特征值的最大差为 $4.1\times10^{-14}$。该诊断验证理论对象，不用作停止规则。
 
-| 文件或目录 | 内容 |
-|---|---|
-| `research_report.md` | 研究定位、实验设计、完整数值结果和结论 |
-| `theory.tex` | 定理、命题、证明和假设 |
-| `packages.sty`、`mathstyle.sty`、`reportstyle.sty` | 理论稿调用的自定义样式库 |
-| `code/` | C++17 实现、八个实验入口和运行脚本 |
-| `code/results/` | 正式数值结果、CSV 与曲线 |
-| `VALIDATION_v8.4.md` | 源码、实验、文稿和文件完整性验证记录 |
+## 文件结构
 
-快速验证：
+- `theory.tex`：统一后的完整理论稿；主线在正文，奇异值扰动、余项差和二维容量证明置于附录。
+- `research_report.md`：假设、实验设计、定量结论与边界的中文研究报告。
+- `code/src/`：稀疏线性代数、扩散离散、PCG 路径、两网格/多层循环与谱诊断。
+- `code/experiments/`：7 组正式实验。
+- `code/results/`：本次全量运行生成的文本、CSV 与图。
+- `code/scripts/run_all_experiments.sh`：quick/full 两种复现入口。
 
-```bash
-cd code
-./scripts/run_validation.sh quick
-```
+## 复现
 
-仅复现新增的中心问题插值对照：
+需要 C++17 编译器、Python 3、NumPy、SciPy 和 Matplotlib。若有 CMake 则自动使用；否则脚本执行直接构建。
 
 ```bash
 cd code
-./scripts/run_validation.sh endpoint
+./scripts/run_all_experiments.sh quick
+./scripts/run_all_experiments.sh full
 ```
 
-完整复现：
+可用 `TGI_THREADS`、`TGI_BUILD_DIR`、`TGI_RESULTS_DIR` 和 `TGI_STEP_TIMEOUT_SECONDS` 调整线程、构建目录、结果目录与单步超时。正式结果使用 4 个线程；随机系数与谱初值均固定 seed。
 
-```bash
-cd code
-./scripts/run_validation.sh full
-```
+## 文献边界
 
-理论稿使用 `ctexart`，建议以 XeLaTeX 和完整的 TeX Live 中文组件编译。
+能量极小插值、Krylov/CG 构造和有限能量最小化迭代已有成熟工作；本项目不把它们重新声明为原创算法。Brannick 等所研究的 optimal interpolation 直接最小化特定两层收敛率，并一般区别于 ideal interpolation；二者在特定 $F$-relaxation/经典 AMG 条件下可等价，但不能无条件移植到本文的全变量对称 Gauss--Seidel 设置。准确引用及 DOI 见 `theory.tex`。
+
+## 声明范围
+
+数值结论针对仓库中定义的二维五点高对比度扩散、规则粗点、单位注入、精确粗解和固定对称 Gauss--Seidel 组合。项目没有宣称固定分数对所有 AMG、离散、粗化、磨光子或系数类普适最优；也没有把 RHS 有效因子当成谱半径。

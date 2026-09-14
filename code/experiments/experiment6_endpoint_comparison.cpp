@@ -145,6 +145,6 @@ int main(int argc, char** argv) {
         {19, 22, 10, 16, 16, 12, 16, 10},
         {measurement_row(geometric_measurement),
          measurement_row(energy_measurement)});
-    report.save("experiment8_interpolation_endpoint");
+    report.save("experiment6_endpoint_comparison");
     return 0;
 }

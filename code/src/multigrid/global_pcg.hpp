@@ -9,10 +9,10 @@
 #include <cstddef>
 #include <exception>
 #include <limits>
-#include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace tgi {
@@ -26,6 +26,18 @@ struct GlobalPcgPathReport {
     double maximum_relative_residual = 0.0;
 };
 
+struct ColumnPropagationReport {
+    int coarse_column = 0;
+    int iterations = 0;
+    int initial_residual_support = 0;
+    int correction_support = 0;
+    int reachable_support = 0;
+    int f_unknowns = 0;
+    int maximum_correction_distance = -1;
+    int theoretical_distance_bound = -1;
+    int bound_violations = 0;
+};
+
 class GlobalEnergyPcgPath {
 public:
     GlobalEnergyPcgPath(
@@ -36,6 +48,8 @@ public:
     GlobalPcgPathReport advance_until_relative_residual(
         double tolerance, int maximum_steps = 40000);
     GlobalPcgPathReport report(double tolerance = 0.0) const;
+    ColumnPropagationReport column_propagation_report(
+        int coarse_column, double zero_tolerance = 0.0) const;
     SparseMatrix prolongation();
 
 private:
@@ -45,6 +59,8 @@ private:
         Vector direction;
         double rz = 0.0;
         double initial_residual_norm = 1.0;
+        std::vector<std::pair<int, double>> initial_nonzeros;
+        std::vector<int> initial_residual_support;
         int iterations = 0;
         bool active = true;
     };
@@ -83,6 +99,9 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
                 system_.local_index[static_cast<std::size_t>(fine)];
             state.solution[static_cast<std::size_t>(local)] =
                 initial_transpose.values()[static_cast<std::size_t>(position)];
+            state.initial_nonzeros.push_back({
+                local,
+                initial_transpose.values()[static_cast<std::size_t>(position)]});
         }
 
         Vector rhs(n, 0.0);
@@ -94,6 +113,12 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
         Vector product;
         system_.matrix.multiply(state.solution, product);
         axpy(-1.0, product, state.residual);
+        for (std::size_t local = 0; local < state.residual.size(); ++local) {
+            if (state.residual[local] != 0.0) {
+                state.initial_residual_support.push_back(
+                    static_cast<int>(local));
+            }
+        }
         const double residual_scale = std::max(norm2(rhs), 1.0e-30);
         state.initial_residual_norm = residual_scale;
         state.direction.resize(n);
@@ -264,6 +289,80 @@ GlobalEnergyPcgPath::advance_until_relative_residual(
     return value;
 }
 
+inline ColumnPropagationReport
+GlobalEnergyPcgPath::column_propagation_report(
+    int coarse_column, double zero_tolerance) const {
+    if (coarse_column < 0 || coarse_column >= grid_.coarse_size()) {
+        throw std::out_of_range("coarse column is outside the interpolation");
+    }
+    if (!(zero_tolerance >= 0.0) || !std::isfinite(zero_tolerance)) {
+        throw std::invalid_argument(
+            "support zero tolerance must be finite and nonnegative");
+    }
+    const ColumnState& state =
+        columns_[static_cast<std::size_t>(coarse_column)];
+    const int f_size = static_cast<int>(state.solution.size());
+    std::vector<double> correction = state.solution;
+    for (const auto& [local, value] : state.initial_nonzeros) {
+        correction[static_cast<std::size_t>(local)] -= value;
+    }
+
+    std::vector<int> distance(static_cast<std::size_t>(f_size), -1);
+    std::vector<int> queue;
+    queue.reserve(static_cast<std::size_t>(f_size));
+    for (int local : state.initial_residual_support) {
+        if (distance[static_cast<std::size_t>(local)] == -1) {
+            distance[static_cast<std::size_t>(local)] = 0;
+            queue.push_back(local);
+        }
+    }
+    for (std::size_t head = 0; head < queue.size(); ++head) {
+        const int row = queue[head];
+        const int next_distance =
+            distance[static_cast<std::size_t>(row)] + 1;
+        for (int position =
+                 system_.matrix.row_ptr()[static_cast<std::size_t>(row)];
+             position < system_.matrix.row_ptr()[
+                 static_cast<std::size_t>(row) + 1U]; ++position) {
+            const int column = system_.matrix.col_idx()[
+                static_cast<std::size_t>(position)];
+            if (column == row ||
+                distance[static_cast<std::size_t>(column)] != -1) {
+                continue;
+            }
+            distance[static_cast<std::size_t>(column)] = next_distance;
+            queue.push_back(column);
+        }
+    }
+
+    ColumnPropagationReport report;
+    report.coarse_column = coarse_column;
+    report.iterations = state.iterations;
+    report.initial_residual_support =
+        static_cast<int>(state.initial_residual_support.size());
+    report.f_unknowns = f_size;
+    report.theoretical_distance_bound = state.iterations - 1;
+    for (int local = 0; local < f_size; ++local) {
+        const int graph_distance = distance[static_cast<std::size_t>(local)];
+        if (graph_distance >= 0 &&
+            graph_distance <= report.theoretical_distance_bound) {
+            ++report.reachable_support;
+        }
+        if (std::abs(correction[static_cast<std::size_t>(local)]) <=
+            zero_tolerance) {
+            continue;
+        }
+        ++report.correction_support;
+        report.maximum_correction_distance = std::max(
+            report.maximum_correction_distance, graph_distance);
+        if (graph_distance < 0 ||
+            graph_distance > report.theoretical_distance_bound) {
+            ++report.bound_violations;
+        }
+    }
+    return report;
+}
+
 inline SparseMatrix GlobalEnergyPcgPath::prolongation() {
     std::vector<Triplet> entries;
     std::size_t entry_count = static_cast<std::size_t>(grid_.coarse_size());
@@ -286,66 +385,6 @@ inline SparseMatrix GlobalEnergyPcgPath::prolongation() {
     }
     return SparseMatrix(
         grid_.fine_size(), grid_.coarse_size(), entries, 0.0);
-}
-
-struct AdaptiveGlobalPcgReport {
-    int selected_steps = 0;
-    GlobalPcgPathReport path;
-};
-
-struct AdaptiveGlobalPcgResult {
-    std::shared_ptr<SparseMatrix> prolongation;
-    std::unique_ptr<TwoGridCycle> cycle;
-    AdaptiveGlobalPcgReport report;
-};
-
-namespace adaptive_global_pcg_detail {
-
-inline int scaled_checkpoint(
-    int resolution, int numerator, int denominator) {
-    return (numerator * resolution + denominator / 2) / denominator;
-}
-
-inline int select_steps(
-    const StructuredGrid& grid, const SparseMatrix& a) {
-    const int resolution = grid.intervals();
-    const int coarse_resolution = resolution / grid.ratio();
-    if (coarse_resolution <= 8) {
-        return scaled_checkpoint(resolution, 1, 8);
-    }
-    const Vector diagonal = a.diagonal();
-    const auto extrema = std::minmax_element(
-        diagonal.begin(), diagonal.end());
-    const double stiffness_ratio = *extrema.second / *extrema.first;
-    if (stiffness_ratio < 1.0e3) {
-        return scaled_checkpoint(resolution, 1, 4);
-    }
-    if (stiffness_ratio >= 1.0e5) {
-        return scaled_checkpoint(resolution, 1, 2);
-    }
-    return scaled_checkpoint(resolution, 1, 3);
-}
-
-}
-
-inline AdaptiveGlobalPcgResult build_adaptive_global_pcg_interpolation(
-    const StructuredGrid& grid, const SparseMatrix& a,
-    const SparseMatrix& initial_prolongation,
-    int thread_count = 1) {
-    using namespace adaptive_global_pcg_detail;
-    const int steps = select_steps(grid, a);
-    GlobalEnergyPcgPath path(
-        grid, a, initial_prolongation, thread_count);
-    path.advance_to(steps);
-
-    AdaptiveGlobalPcgResult result;
-    result.prolongation = std::make_shared<SparseMatrix>(
-        path.prolongation());
-    result.cycle = std::make_unique<TwoGridCycle>(
-        a, *result.prolongation, 1, thread_count);
-    result.report.selected_steps = steps;
-    result.report.path = path.report();
-    return result;
 }
 
 }

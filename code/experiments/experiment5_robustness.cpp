@@ -42,8 +42,8 @@ struct TimingSample {
 };
 
 enum class TimingMethod {
-    Adaptive,
-    GlobalReference
+    FiniteOneThird,
+    EnergyEndpoint
 };
 
 struct RhsCase {
@@ -138,7 +138,7 @@ TimingSample timing_sample(
     int maximum_cycles) {
     const auto setup_begin = Clock::now();
     const auto initial = tgi::build_geometric_interpolation(grid);
-    if (method == TimingMethod::GlobalReference) {
+    if (method == TimingMethod::EnergyEndpoint) {
         tgi::GlobalEnergyPcgPath path(
             grid, matrix, initial.prolongation, threads);
         path.advance_until_relative_residual(1.0e-10);
@@ -149,11 +149,15 @@ TimingSample timing_sample(
             rhs, cycle, maximum_cycles);
         return {setup_ms, solved.milliseconds, solved.cycles};
     }
-    const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
+    tgi::GlobalEnergyPcgPath path(
         grid, matrix, initial.prolongation, threads);
+    path.advance_to(experiment_support::fixed_path_steps(
+        grid.intervals(), 1, 3));
+    const tgi::SparseMatrix finite = path.prolongation();
+    const tgi::TwoGridCycle cycle(matrix, finite, 1, threads);
     const double setup_ms = elapsed_ms(setup_begin, Clock::now());
     const SolveResult solved = measure_solve(
-        rhs, *adaptive.cycle, maximum_cycles);
+        rhs, cycle, maximum_cycles);
     return {setup_ms, solved.milliseconds, solved.cycles};
 }
 
@@ -207,30 +211,36 @@ int main(int argc, char** argv) {
         const auto problem = experiment_support::make_problem(
             grid, cross, config, seed);
         const auto initial = tgi::build_geometric_interpolation(grid);
-        const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
+        tgi::GlobalEnergyPcgPath finite_path(
             grid, problem.matrix, initial.prolongation, threads);
-        const SolveResult adaptive_solved = measure_solve(
-            problem.rhs, *adaptive.cycle, maximum_cycles);
-        add_aggregate(seed_aggregates["adaptive"], adaptive_solved);
+        const int finite_steps = experiment_support::fixed_path_steps(
+            config.fine_intervals, 1, 3);
+        finite_path.advance_to(finite_steps);
+        const tgi::SparseMatrix finite = finite_path.prolongation();
+        const tgi::TwoGridCycle finite_cycle(
+            problem.matrix, finite, 1, threads);
+        const SolveResult finite_solved = measure_solve(
+            problem.rhs, finite_cycle, maximum_cycles);
+        add_aggregate(seed_aggregates["finite-1/3"], finite_solved);
         seed_rows.push_back({
-            std::to_string(seed), "adaptive",
-            std::to_string(adaptive.report.selected_steps),
-            std::to_string(adaptive_solved.cycles),
+            std::to_string(seed), "finite-1/3",
+            "m=" + std::to_string(finite_steps),
+            std::to_string(finite_solved.cycles),
             experiment_support::fixed(
-                adaptive_solved.effective_factor, 6),
+                finite_solved.effective_factor, 6),
             experiment_support::fixed(
                 experiment_support::interpolation_density_percent(
-                    *adaptive.prolongation), 4),
-            tgi::stationary_status_name(adaptive_solved.status)});
+                    finite), 4),
+            tgi::stationary_status_name(finite_solved.status)});
         const auto reference = experiment_support::build_global_reference(
             grid, problem.matrix, threads);
         const tgi::TwoGridCycle reference_cycle(
             problem.matrix, reference.prolongation, 1, threads);
         const SolveResult solved = measure_solve(
             problem.rhs, reference_cycle, maximum_cycles);
-        add_aggregate(seed_aggregates["global-reference"], solved);
+        add_aggregate(seed_aggregates["energy-endpoint"], solved);
         seed_rows.push_back({
-            std::to_string(seed), "global-reference", "tol=1e-10",
+            std::to_string(seed), "energy-endpoint", "tol=1e-10",
             std::to_string(solved.cycles),
             experiment_support::fixed(solved.effective_factor, 6),
             experiment_support::fixed(
@@ -239,7 +249,7 @@ int main(int argc, char** argv) {
             tgi::stationary_status_name(solved.status)});
     }
     experiment_support::Rows seed_summary;
-    for (const std::string method : {"adaptive", "global-reference"}) {
+    for (const std::string method : {"finite-1/3", "energy-endpoint"}) {
         const auto& aggregate = seed_aggregates[method];
         seed_summary.push_back({
             method,
@@ -261,9 +271,15 @@ int main(int argc, char** argv) {
     const auto transfer_problem = experiment_support::make_problem(
         grid, cross, config, 1);
     const auto transfer_initial = tgi::build_geometric_interpolation(grid);
-    const auto adaptive = tgi::build_adaptive_global_pcg_interpolation(
+    tgi::GlobalEnergyPcgPath finite_path(
         grid, transfer_problem.matrix, transfer_initial.prolongation,
         threads);
+    const int finite_steps = experiment_support::fixed_path_steps(
+        config.fine_intervals, 1, 3);
+    finite_path.advance_to(finite_steps);
+    const tgi::SparseMatrix finite = finite_path.prolongation();
+    const tgi::TwoGridCycle finite_cycle(
+        transfer_problem.matrix, finite, 1, threads);
     const auto reference = experiment_support::build_global_reference(
         grid, transfer_problem.matrix, threads);
     const tgi::TwoGridCycle reference_cycle(
@@ -274,15 +290,15 @@ int main(int argc, char** argv) {
     for (const auto& rhs_case : rhs_cases) {
         for (const auto& method : {
                  std::pair<const char*, const tgi::TwoGridCycle*>{
-                     "adaptive", adaptive.cycle.get()},
-                 {"global-reference", &reference_cycle}}) {
+                     "finite-1/3", &finite_cycle},
+                 {"energy-endpoint", &reference_cycle}}) {
             const SolveResult solved = measure_solve(
                 rhs_case.values, *method.second, maximum_cycles);
             add_aggregate(rhs_aggregates[method.first], solved);
             rhs_rows.push_back({
                 rhs_case.name, method.first,
-                method.first == std::string("adaptive")
-                    ? std::to_string(adaptive.report.selected_steps)
+                method.first == std::string("finite-1/3")
+                    ? std::to_string(finite_steps)
                     : "-",
                 std::to_string(solved.cycles),
                 experiment_support::fixed(solved.effective_factor, 6),
@@ -290,7 +306,7 @@ int main(int argc, char** argv) {
         }
     }
     experiment_support::Rows rhs_summary;
-    for (const std::string method : {"adaptive", "global-reference"}) {
+    for (const std::string method : {"finite-1/3", "energy-endpoint"}) {
         const auto& aggregate = rhs_aggregates[method];
         rhs_summary.push_back({
             method,
@@ -317,12 +333,12 @@ int main(int argc, char** argv) {
         timing_grid, cross, timing_config, 1);
     (void)timing_sample(
         timing_grid, timing_problem.matrix, timing_problem.rhs,
-        TimingMethod::Adaptive, threads, maximum_cycles);
+        TimingMethod::FiniteOneThird, threads, maximum_cycles);
     (void)timing_sample(
         timing_grid, timing_problem.matrix, timing_problem.rhs,
-        TimingMethod::GlobalReference, threads, maximum_cycles);
-    std::vector<TimingSample> adaptive_timings;
-    std::vector<TimingSample> reference_timings;
+        TimingMethod::EnergyEndpoint, threads, maximum_cycles);
+    std::vector<TimingSample> finite_timings;
+    std::vector<TimingSample> endpoint_timings;
     constexpr int repetitions = 5;
     for (int repetition = 0; repetition < repetitions; ++repetition) {
         experiment_support::progress(
@@ -330,23 +346,23 @@ int main(int argc, char** argv) {
             std::to_string(repetitions));
         const std::array<TimingMethod, 2> order = repetition % 2 == 0
             ? std::array<TimingMethod, 2>{
-                  TimingMethod::Adaptive, TimingMethod::GlobalReference}
+                  TimingMethod::FiniteOneThird, TimingMethod::EnergyEndpoint}
             : std::array<TimingMethod, 2>{
-                  TimingMethod::GlobalReference, TimingMethod::Adaptive};
+                  TimingMethod::EnergyEndpoint, TimingMethod::FiniteOneThird};
         for (TimingMethod method : order) {
             TimingSample sample = timing_sample(
                 timing_grid, timing_problem.matrix, timing_problem.rhs,
                 method, threads, maximum_cycles);
-            if (method == TimingMethod::Adaptive) {
-                adaptive_timings.push_back(sample);
+            if (method == TimingMethod::FiniteOneThird) {
+                finite_timings.push_back(sample);
             } else {
-                reference_timings.push_back(sample);
+                endpoint_timings.push_back(sample);
             }
         }
     }
     experiment_support::Rows timing_rows{
-        timing_row("adaptive", adaptive_timings),
-        timing_row("global-reference", reference_timings)};
+        timing_row("finite-1/3", finite_timings),
+        timing_row("energy-endpoint", endpoint_timings)};
     experiment_support::Report report(
         "Robustness and repeated-timing checks");
     report.add_summary({
@@ -362,9 +378,10 @@ int main(int argc, char** argv) {
         "Five coefficient seeds and six right-hand sides test robustness; "
         "the latter reuse each method's matrix-dependent interpolation. "
         "Timing is restricted to the central 128/16 cross-channel case. "
-        "Adaptive and global-reference are measured in five post-warmup "
+        "The fixed m=(1/h)/3 point and energy endpoint are measured in five "
+        "post-warmup "
         "repetitions with alternating order. Both start from the geometric "
-        "interpolation and use the same Jacobi-PCG path; global-reference "
+        "interpolation and use the same Jacobi-PCG path; the endpoint "
         "continues until every column reaches relative residual 1e-10. "
         "Setup includes interpolation, Galerkin assembly and cycle "
         "construction; solve starts from zero. The table reports arithmetic "
@@ -394,6 +411,6 @@ int main(int argc, char** argv) {
         {"Policy", "Runs", "Setup mean", "Solve mean", "Total mean",
          "Mean cycles"},
         {16, 6, 11, 10, 10, 11}, timing_rows);
-    report.save("experiment4_submission_robustness");
+    report.save("experiment5_robustness");
     return 0;
 }

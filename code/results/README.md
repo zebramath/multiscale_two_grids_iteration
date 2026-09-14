@@ -1,40 +1,21 @@
-# v8.4 数值结果
+# Full numerical results for v9.1
 
-Exp1--3 与 Exp5--7 保留由 v8.1.0 最终源码以 4 线程完整重算的结果；Exp8 保留由
-v8.3.0 源码新增运行的结果。Exp4 因计时呈现改为仅报告平均值，由 v8.4.0 源码重新运行。
-正式求解容差为相对欧氏残量 `1e-6`；`global-reference` 的列相对残量容差为 `1e-10`。
+本目录由 `scripts/run_all_experiments.sh full` 生成。除本索引外，所有正式结果均来自 v9.1 全量运行；不混用旧版本表格。
 
-| 主题 | 结果摘要 |
+| 前缀 | 内容 |
 |---|---|
-| 主比较 | adaptive/global-reference 均为 13/13 收敛，循环和为 4459/28972 |
-| 完整路径扫描 | cross 与 winding-ring 分别在扫描区间的 `m=38`、`m=53` 取得最小 $\rho_{\mathrm{eff}}$；两条能量路径均单调下降 |
-| 离线采样参考 | 设计组平均/最大 gap 为 8.93%/29.65%，验证组为 27.34%/54.20% |
-| 稳健性与计时 | seed 和 RHS 均全部收敛；warm-start 五次测量的平均总时间为 621.755 / 9754.438 ms |
-| 停止消融 | adaptive/fixed-step/fixed-residual 收敛数为 6/6、5/6、5/6 |
-| 固定物理加密 | adaptive 循环数为 122/119/145，$\rho_{\mathrm{eff}}$ 为 0.892425/0.890129/0.909090 |
-| 三层初试 | adaptive V-cycle 为 101/237 次，$\rho_{\mathrm{eff}}$ 为 0.870836/0.943331 |
-| 插值方法对照 | 中心问题上几何/能量极小插值为 85524/3227 个循环，循环数比为 26.503 |
+| `experiment1_` | 13 个主比较问题的完整文本表 |
+| `experiment2_` | cross/ring 各 128 点谱路径 CSV、真实谱/RHS 双曲线 PNG、endpoint CSV 与汇总 |
+| `experiment3_` | fixed-$H$/fixed-$q$ 16 行尺度、传播、复杂度及谱结果 |
+| `experiment4_` | 小规模矩阵导出、gap/一阶方向 CSV、汇总及诊断图 |
+| `experiment5_` | seed/RHS 稳健性与五次交替计时 |
+| `experiment6_` | 几何与 energy endpoint 基线 |
+| `experiment7_` | 三层 V-cycle 试验 |
 
-## 文件
+解释注意：
 
-| 实验 | 文件 |
-|---|---|
-| Exp1 | `experiment1_two_grid_comparison.txt` |
-| Exp2 摘要 | `experiment2_step_scan.txt` |
-| Exp2 cross 全部 128 点 | `experiment2_cross_channel_path.csv` |
-| Exp2 cross 双面板图 | `experiment2_cross_channel_path.png` |
-| Exp2 winding-ring 全部 128 点 | `experiment2_winding_ring_path.csv` |
-| Exp2 winding-ring 双面板图 | `experiment2_winding_ring_path.png` |
-| Exp3 | `experiment3_oracle_validation.txt` |
-| Exp4 | `experiment4_submission_robustness.txt` |
-| Exp5 | `experiment5_stopping_ablation.txt` |
-| Exp6 | `experiment6_fixed_physical_refinement.txt` |
-| Exp7 | `experiment7_multilevel_pilot.txt` |
-| Exp8 | `experiment8_interpolation_endpoint.txt` |
-
-Exp2 的 CSV 列为步数、$J(W_m)=\tfrac12\operatorname{tr}(P_m^\top A_hP_m)$、归一化
-能量差和实际残量历程得到的 $\rho_{\mathrm{eff}}$。这里的 $\rho_{\mathrm{eff}}$ 与理论
-能量范数两网格因子 $\rho_{\mathrm{TG}}$ 严格区分。
-
-Exp8 中两种方法共用中心问题的矩阵、粗点、Galerkin 构造、磨光器、零初值、右端项和
-停止准则，只更换插值矩阵。每种方法单次确定性求解并持续到收敛，不设循环数上限。
+- `rho_TG` 是对称两网格误差算子的 $A$-能量谱半径估计；`rho_eff` 是指定 RHS 残量历史的有效因子，二者不可互换。
+- 谱路径使用 200 步冷启动 Lanczos，`spectral_stage_difference` 比较 100 与 200 步 Ritz 值；双尺度表使用 160 步。
+- `correction_support_percent` 是中心粗列实际校正支撑；`reachable_support_percent` 是理论半径 $m-1$ 邻域。浮点支撑阈值为 $10^{-14}$。
+- setup/solve 时间只适合在同一次运行、同一硬件和构建配置中横向比较。
+- `experiment4_local_diagnostic_matrices.csv` 是稠密理论诊断所需的唯一矩阵输入，保留它可使 gap、主角和一阶方向结果独立复现。
