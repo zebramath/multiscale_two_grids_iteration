@@ -1,6 +1,5 @@
 \documentclass{ctexart}
 
-% Self-contained preamble: only packages and definitions used by this paper.
 \usepackage[
   left=2cm,
   right=2cm,
@@ -28,7 +27,6 @@
 
 \allowdisplaybreaks
 
-% Mathematical notation used in the analysis.
 \newcommand{\q}{\quad}
 \newcommand{\T}{\mathrm{T}}
 \newcommand{\R}{\mathbb{R}}
@@ -47,7 +45,6 @@
 \DeclarePairedDelimiter\avg{\langle}{\rangle}
 \DeclarePairedDelimiter\abs{\lvert}{\rvert}
 
-% Theorem declarations and Chinese cleveref formatting.
 \newtheorem{theorem}{定理}[section]
 \newtheorem{lemma}[theorem]{引理}
 \newtheorem{proposition}[theorem]{命题}
@@ -73,7 +70,6 @@
 \crefmultiformat{theorem}
   {定理~#2#1#3}{ 和~#2#1#3}{, #2#1#3}{ 和~#2#1#3}
 
-% Compact report title and running header.
 \newcommand{\reporttitle}{理论分析}
 \title{\textbf{\reporttitle}}
 \author{崔正平}
@@ -84,25 +80,21 @@
 \rhead{\textbf{\thepage}}
 \renewcommand{\headrulewidth}{0.4pt}
 \let\originalmaketitle\maketitle
-\renewcommand{\maketitle}{%
-  \originalmaketitle
-  \thispagestyle{fancy}%
-}
+\renewcommand{\maketitle}{\originalmaketitle\thispagestyle{fancy}}
 
 \begin{document}
 
 \maketitle
 
 \begin{abstract}
-本文研究能量极小插值的有限 Jacobi--PCG 构造路径, 而不是提出一个复杂的在线自适应器. 在固定粗点、单位注入、一次前向与一次后向 Gauss--Seidel 磨光以及精确 Galerkin 粗解的设定下, 本文把真实两网格谱半径写成能量坐标中的精确图空间目标, 并证明插值能量沿 PCG 路径严格下降并不蕴含两网格谱半径单调下降. 主要结果包括: 能量端点附近带显式余项的奇异值展开与双向步判据; 端点在可检验条件下并非局部求解器最优; PCG 校正的有限图传播; 规则二维粗化下同时覆盖 fixed-$H$ 与 fixed-$q$ 的容量尺度, 以及网格尺寸和系数对比度依赖的分别尖锐性. 这些结论解释了为何 $m=\Theta(h^{-1})$ 量级的有限路径点可能明显优于高精度能量端点, 同时明确指出该量级不是一般 SPD 问题上最佳步数的无条件公式.
+本文研究能量极小插值的有限 Jacobi--PCG 构造路径. 在固定粗点、单位注入、一次前向与一次后向 Gauss--Seidel 磨光以及精确 Galerkin 粗解的设定下, 本文把真实两网格谱半径写成能量坐标中的精确图空间目标, 并刻画插值能量下降与两网格谱目标变化之间的方向错配. 主要结果包括: 能量端点附近带显式余项的奇异值展开与双向步判据; 端点的局部谱下降方向; PCG 校正的有限图传播; 规则二维粗化下同时覆盖 fixed-$H$ 与 fixed-$q$ 的容量尺度, 以及网格尺寸和系数对比度依赖的分别尖锐性. 这些结论解释 $m=\Theta(h^{-1})$ 量级有限路径点的数值优势, 并将其识别为 fixed-$H$ 下的自然 Krylov 传播尺度.
 \end{abstract}
 
 \subsection*{与 ideal/optimal interpolation 文献的关系}
-在本文固定单位注入且不施加额外稀疏约束的坐标中,
+在本文固定单位注入、无额外稀疏约束的坐标中,
 $\bm P_{\rm id}=[-\bm A_{\rm FF}^{-1}\bm A_{\rm FC};\bm I]$
 既是经典 ideal interpolation, 也是本文插值能量的精确端点. 能量极小化、Krylov 构造与为控制 setup 成本而有限迭代已有系统研究
-\cite{olson2011energy,janna2023parallel}. 本文不把这些构造本身作为新贡献.
-另一方面, Brannick 等\cite{brannick2018optimal} 所称 optimal interpolation 直接针对给定两层方法的收敛率; 它一般不同于上述 ideal interpolation. 二者在特定的 $F$-relaxation/经典 AMG 表述下可以等价, 但这种等价不能无条件移植到本文固定的全变量前向/后向 Gauss--Seidel 两网格算子. 因而本文的准确定位是: 在一条已有的能量极小化 PCG 路径上, 研究 ideal 能量端点与固定磨光子下真实两网格谱目标之间的机制性错配, 并给出可复现的定量诊断.
+\cite{olson2011energy,janna2023parallel}. Brannick 等\cite{brannick2018optimal} 的 optimal interpolation 直接针对给定两层方法的收敛率. 本文采用全变量前向/后向 Gauss--Seidel 两网格算子, 在能量极小化 PCG 路径上研究 ideal 能量端点与真实两网格谱目标之间的机制性错配, 并给出可复现的定量诊断.
 
 \section{问题设置、目标与理论路线}
 \label{sec:setup}
@@ -143,12 +135,12 @@ $\bm P_{\rm id}=[-\bm A_{\rm FF}^{-1}\bm A_{\rm FC};\bm I]$
 此外, $\lambda_k(\cdot),\sigma_k(\cdot)$ 分别表示按非增序排列的第 $k$ 个特征值和奇异值, $\Ran(\cdot)$ 表示列空间, $\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^\T\bm A$. 必要时将奇异值序列以零补齐到所需维数. PCG 采用对角预条件共轭梯度法. 除非特别说明, 以下 PCG 恒等式均按精确算术理解, 已精确终止的列在后续全局步中保持不动.
 
 
-本文关注的不是如何更快逼近能量极小插值本身, 而是沿同一条有限 PCG 插值轨迹比较不同粗空间的两网格性能. 为避免混淆, 下文始终区分两个对象: 一是由插值能量定义的端点 $\bm W^\ast$, 二是对固定磨光子和固定粗空间维数而言的求解器最优谱基准. 理论分析依次完成四件事: 首先刻画有限 PCG 轨迹的能量与 Krylov 结构; 其次给出两网格目标的精确粗空间表示并引入求解器最优基准; 再次在能量端点附近定量解释能量下降与两网格性能变化之间的错配; 最后在二维规则粗化下给出显式的 $h,H$ 尺度、局部区域进入复杂度以及对路径形状与最佳步数所能作出的谨慎结论.
+本文沿同一条有限 PCG 插值轨迹比较不同粗空间的两网格性能. 分析区分由插值能量定义的端点 $\bm W^\ast$ 与固定磨光子、固定粗空间维数下的求解器最优谱基准. 理论依次刻画有限 PCG 轨迹的能量与 Krylov 结构, 给出两网格目标的精确粗空间表示, 分析能量端点附近的方向错配, 最后建立二维规则粗化下的 $h,H$ 尺度和局部区域进入复杂度.
 
 \section{有限 PCG 插值轨迹的能量与粗空间几何}
 \label{sec:finite-pcg-trajectory}
 
-本节只研究插值构造本身. 核心事实是: 能量极小端点具有精确二次误差结构, 而有限 PCG 并非任意能量下降过程, 而是嵌套 Krylov 子空间上的谱多项式轨迹. 这为后续比较 ``PCG 自身优化的能量目标'' 与 ``真正关心的两网格目标'' 提供统一坐标.
+能量极小端点具有精确二次误差结构, 有限 PCG 则形成嵌套 Krylov 子空间上的谱多项式轨迹. 该结构为比较 PCG 能量目标与两网格谱目标提供统一坐标.
 
 \subsection{能量极小端点及精确能量分解}
 \label{subsec:energy-endpoint}
@@ -278,7 +270,7 @@ $\bm P_{\rm id}=[-\bm A_{\rm FF}^{-1}\bm A_{\rm FC};\bm I]$
     p_{j,m}(\widehat{\bm B})\widehat{\bm e}_{j,0}.
     \label{eq:pcg-error-polynomial}
 \end{align}
-因此 PCG 路径不是任意能量下降路径, 而是由嵌套 Krylov 子空间上的 Galerkin 极小化所确定的谱多项式路径.
+因此 PCG 路径是由嵌套 Krylov 子空间上的 Galerkin 极小化所确定的谱多项式路径.
 \end{proposition}
 
 \begin{proof}
@@ -509,7 +501,7 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
 \end{proof}
 
 
-上述结果说明, $\norm{\bm Z}$ 精确刻画当前插值相对于能量极小端点的归一化偏离, PCG 则使相应能量距离严格下降. 但这一事实本身并不包含磨光子信息, 因而尚不能推出两网格性能沿 PCG 路径单调改善. 下一节将两网格收敛率直接写成粗空间与磨光子共同决定的谱目标.
+上述结果说明, $\norm{\bm Z}$ 精确刻画当前插值相对于能量极小端点的归一化偏离, PCG 使相应能量距离严格下降. 下一节把磨光子信息引入两网格收敛率, 得到粗空间与磨光子共同决定的谱目标.
 
 \section{固定磨光子下的两网格谱目标与最优粗空间基准}
 \label{sec:tg-objective}
@@ -709,11 +701,8 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
     &:=\Ran(\bm U_1).
     \label{eq:solver-optimal-space}
 \end{align}
-这里的“最优”是对所有 $r$ 维能量坐标粗空间作无约束比较,
-仅针对固定磨光子 $\bm T$、固定维数 $r$ 与精确正交粗校正下的两网格目标
-\cref{eq:tg-objective-exact}. 若 $\mathcal U_{\mathrm{opt}}$ 在固定 C 点注入坐标中不横截,
-它应理解为求解器性能的标准谱基准. 后文只使用其无约束几何性质来解释两网格目标的结构,
-并不假设实际 PCG 路径必然经过、渐近贴近或以某个预设速度接近该空间.
+这里的“最优”针对固定磨光子 $\bm T$、固定维数 $r$ 与精确正交粗校正下的两网格目标
+\cref{eq:tg-objective-exact}, 并在所有 $r$ 维能量坐标粗空间上比较. $\mathcal U_{\mathrm{opt}}$ 作为求解器性能的标准谱基准, 其无约束几何用于刻画两网格目标的结构; 实际 PCG 路径位于固定 C 点注入所定义的图空间族中.
 
 \begin{theorem}
 \label{thm:solver-optimal-space}
@@ -956,9 +945,9 @@ $t_1<t_2$ 且函数值在 $t_2$ 大于 $t_1$, 再取最小值点 $t_3>t_2$,
 \end{proof}
 
 
-需要强调的是, $\mathcal U_{\mathrm{opt}}$ 是固定磨光子和固定维数下对所有粗空间作无约束比较得到的谱基准; 本文并不假设它满足固定 C 点注入结构, 也不假设实际 PCG 轨迹经过该空间. 它的作用是揭示两网格目标自身的几何: 在最优图坐标的低值区域内, 次水平集为凸集, 因而仿射切片具有严格的单盆地结构. 这一区别使后文能够把 ``目标函数本身的几何'' 与 ``实际 PCG 路径的几何'' 分开讨论.
+$\mathcal U_{\mathrm{opt}}$ 是固定磨光子和固定维数下的无约束谱基准. 在最优图坐标的低值区域内, 两网格目标的次水平集为凸集, 仿射切片具有单盆地结构. 实际 PCG 路径则由固定 C 点注入和 Krylov 多项式共同确定.
 
-从以上两节可以看到两个优化目标的根本差异. PCG 在 $J$ 的二次几何中朝 $\bm W^\ast$ 单调前进, 而两网格目标只取决于当前粗空间对磨光后误差 $\bm T$ 的捕获能力. 因而 ``更接近能量极小端点'' 与 ``更接近求解器最优粗空间'' 在一般情形下不是同一方向. 下一节把这一几何错配转化为可定量验证的局部谱结论.
+PCG 在 $J$ 的二次几何中朝 $\bm W^\ast$ 单调前进, 两网格目标则衡量当前粗空间对磨光后误差 $\bm T$ 的捕获能力. 两个目标由此产生不同方向. 下一节把该几何错配转化为局部谱结论.
 
 
 \section{能量端点附近的性能错配机制}
@@ -1132,11 +1121,11 @@ $\norm{\bm L(\bm Z)-\bm T_{\mathrm F}}_2$.
 代入\cref{eq:local-remainder-bound} 得\cref{eq:local-remainder-asymptotic}.
 \end{proof}
 
-\begin{corollary}[能量端点并非局部两网格最优]
+\begin{corollary}[能量端点的局部谱可改进性]
 \label{cor:endpoint-not-local-tg-optimum}
 在\cref{eq:endpoint-singular-gap} 的简单最大奇异值假设下, 若
-$\bm y=\bm T_\ast\bm v\ne\mathbf0$, 则能量极小端点
-$\bm Z=\mathbf O$ 不是 $\rho_{\mathrm{TG}}$ 在全体单位注入插值上的局部极小点. 更具体地, 取
+$\bm y=\bm T_\ast\bm v\ne\mathbf0$, 则能量极小端点存在严格降低
+$\rho_{\mathrm{TG}}$ 的单位注入插值方向. 具体地, 取
 \begin{align}
   \bm H&=\bm u_{\mathrm F}\bm y^\T,
   \label{eq:endpoint-descent-direction}
@@ -1147,7 +1136,7 @@ $\bm Z=\mathbf O$ 不是 $\rho_{\mathrm{TG}}$ 在全体单位注入插值上的�
   &<\rho_{\mathrm{TG}}(\mathbf O).
   \label{eq:endpoint-strict-nonoptimality}
 \end{align}
-该结论只断言存在求解器下降方向; 它不保证实际 PCG 路径恰好沿此方向离开端点.
+实际 PCG 路径的方向由后续相邻步判据刻画.
 \end{corollary}
 
 \begin{proof}
@@ -1401,12 +1390,10 @@ $\norm{\bm Z_m}_2,\norm{\bm Z_{m+1}}_2\le\rho$, 则
 
 
 \paragraph{Krylov 谱解释.}
-上述判据中的 $\nu_m$ 不是额外假定的随机方向量. PCG 的多项式表示允许把其分子精确分解为预条件谱上的滤波增量与有符号交叉谱权之和; 因此判据应被理解为对实际 PCG 谱方向的认证, 而不是由能量单调性自动推出的符号规律.
+PCG 的多项式表示把 $\nu_m$ 的分子精确分解为预条件谱上的滤波增量与有符号交叉谱权之和, 从而直接认证实际 PCG 谱方向.
 
-\cref{thm:pcg-two-sided-step-criterion} 是一个确定性的方向判据,
-但仅由能量正交性不能决定 $\nu_m$ 的符号. PCG 的额外结构来自
-\cref{prop:pcg-krylov-characterization} 中的 Krylov 谱多项式.
-下面给出该方向量的精确谱表示.
+\cref{thm:pcg-two-sided-step-criterion} 是确定性的方向判据. $\nu_m$ 的符号由
+\cref{prop:pcg-krylov-characterization} 中的 Krylov 谱多项式和交叉谱权共同决定. 下面给出精确谱表示.
 
 令
 \begin{align}
@@ -1444,9 +1431,8 @@ $\norm{\bm Z_m}_2,\norm{\bm Z_{m+1}}_2\le\rho$, 则
 因此相邻步对两网格目标的一阶影响由两部分共同决定:
 PCG 多项式滤波增量
 $p_{j,m+1}-p_{j,m}$, 以及由初始插值误差与磨光子敏感方向共同诱导的有符号交叉谱权
-$\omega_{jk}$. 在一般 SPD 假设下, 后者没有统一符号,
-故\cref{thm:pcg-two-sided-step-criterion} 应理解为谱方向的认证条件,
-而不是由 PCG 能量单调性推出的符号定律.
+$\omega_{jk}$. 交叉谱权的符号变化产生相邻步的双向谱响应,
+并由\cref{thm:pcg-two-sided-step-criterion} 进行认证.
 \end{proposition}
 
 \begin{proof}
@@ -1537,12 +1523,12 @@ $\bm M=\bm L(\bm Z)$ 与 $\bm E=\Delta\bm L$ 即得\cref{eq:pathwise-spectral-re
 \end{proof}
 
 
-这一节给出的两个层次互为补充: 端点局部判据解释能量目标与求解器目标为何可以发生方向错配, 任意路径位置的扰动判据则可用于数值诊断远离端点的实际有限 PCG 步. 二者都不要求把当前经验自适应规则解释成理论最优停止准则.
+这一节给出的两个层次互为补充: 端点局部判据解释能量目标与求解器目标的方向错配, 任意路径位置的扰动判据用于诊断整条有限 PCG 路径.
 
 \section{二维规则粗化下的尺度与局部可达性}
 \label{sec:scaling-reachability}
 
-前述谱结论适用于一般 SPD 分块系统. 为回答局部判据中的常数是否随网格恶化, 以及 PCG 需要多少步才能进入端点局部区域, 本节才专门化到单位方形上的二维五点扩散离散. 这里把两个不同问题分开处理: $C_\rho$ 控制进入局部区域后的方向判据, 而 $\kappa$ 控制 PCG 到达该区域的速度. 这一分离是改进后尺度分析的关键.
+前述谱结论适用于一般 SPD 分块系统. 为刻画局部判据常数的网格尺度以及 PCG 进入端点局部区域的步数, 本节专门化到单位方形上的二维五点扩散离散. $C_\rho$ 控制进入局部区域后的方向判据, $\kappa$ 控制 PCG 到达该区域的速度.
 
 \subsection{局部方向阈值的显式尺度}
 \label{subsec:criterion-scaling}
@@ -1658,7 +1644,7 @@ $\widehat\rho_\dt+\widehat\rho_\dt^2/2=\dt/2$.
      =\O\left(\frac1{\alpha\dt}\right).
     \label{eq:sharp-C-scaling}
 \end{align}
-这里隐常数只依赖固定的 $\eta$; 特别地, 不再包含 $h^{-1}$、$\sqrt\chi$ 或 PCG 条件数因子.
+这里隐常数只依赖固定的 $\eta$, 并独立于 $h^{-1}$、$\sqrt\chi$ 和 PCG 条件数.
 
 
 \subsection{规则粗点下统一的 \texorpdfstring{$h,H$}{h,H} 容量尺度}
@@ -1753,7 +1739,7 @@ $(iq,jq)$, $1\le i,j\le N/q-1$, 这与本文数值部分采用的规则 C/F 划�
     \label{eq:kappa-boundary-capacity-scale}
 \end{align}
 其中 $C_{\mathrm{cap}}>0$ 为与 $h,H,q,\chi$ 无关的绝对常数.
-因此 $\Lambda_{h,H}$ 是同时包含物理 Dirichlet 边界约束与规则内部粗点约束的统一尺度, 不需要对两种机制分段讨论.
+因此 $\Lambda_{h,H}$ 将物理 Dirichlet 边界约束与规则内部粗点约束统一在同一尺度中.
 \end{proposition}
 
 \begin{proof}
@@ -1846,10 +1832,8 @@ $[\alpha,\beta]$ 的系数类中, 存在一族合法权重使
   \qquad \chi=\beta/\alpha,
   \label{eq:contrast-lower-sharp}
 \end{align}
-其中 $c>0$ 与 $h,H,\alpha,\beta$ 无关. 因而
-\cref{eq:kappa-structured-unified} 中对比度的一次幂在一般有界权扩散类上不能降低. 结合\cref{prop:structured-kappa-sharpness}, 网格容量因子
-$\Lambda_{h,H}^{-1}$ 与对比度因子 $\chi$ 的幂次分别达到最优; 本文不额外声称对每个受限几何系数子类都存在统一乘积下界
-$\kappa\gtrsim\chi\Lambda_{h,H}^{-1}$.
+其中 $c>0$ 与 $h,H,\alpha,\beta$ 无关. 因而\cref{eq:kappa-structured-unified} 中对比度的一次幂达到尖锐量级. 结合\cref{prop:structured-kappa-sharpness}, 网格容量因子
+$\Lambda_{h,H}^{-1}$ 与对比度因子 $\chi$ 的幂次分别达到最优.
 \end{proposition}
 
 \begin{proof}
@@ -2055,17 +2039,15 @@ $n_{\mathrm F}(h)=\Theta(h^{-2})$,
 \end{align}
 
 
-因此, 改进后的理论把局部判据和到达局部区域的成本清楚地区分开: 在固定局部半径比例下 $C_\rho=\O((\alpha\dt)^{-1})$ 不再含 $h^{-1}$、$\sqrt\chi$ 或 $\sqrt\kappa$; PCG 条件数只通过进入步数出现, 并在规则粗化下由统一的二维边界--容量尺度 $\Lambda_{h,H}$ 控制. 这使 fixed-ratio multigrid 与 fixed-$H$ aggressive two-grid 两种实际 regime 可以在同一个公式中讨论.
+局部判据常数与进入局部区域的成本由两个尺度控制: 固定局部半径比例下 $C_\rho=\O((\alpha\dt)^{-1})$ 独立于 $h^{-1}$、$\sqrt\chi$ 和 $\sqrt\kappa$; PCG 条件数通过进入步数出现, 并由二维边界--容量尺度 $\Lambda_{h,H}$ 控制. 同一公式由此覆盖 fixed-ratio multigrid 与 fixed-$H$ aggressive two-grid.
 
-\section{PCG 路径形状与最佳步数：可证结论及其边界}
+\section{PCG 路径形状与自然迭代尺度}
 \label{sec:pcg-path-shape-mopt}
 
 前述结果已经严格给出三类互补结构: PCG 是由嵌套 Krylov 子空间决定的谱多项式路径;
 两网格目标在求解器最优粗空间的图坐标中具有精确拟凸几何;
 能量极小值点附近以及任意给定路径位置的相邻谱变化可由扰动理论认证.
-另一方面, \cref{eq:pcg-alignment-spectral} 表明实际相邻步还包含有符号交叉谱权,
-因此一般 SPD 理论并不能仅由 $J(\bm W_m)$、$r_m$ 或 $\kappa$ 推出实际 PCG 路径严格单峰,
-也不能据此给出普适的最佳步数公式. 本节只保留可由 PCG 误差界直接推出的自然时间尺度, 不再引入难以独立验证的仿射路径假设.
+\cref{eq:pcg-alignment-spectral} 表明实际相邻步包含有符号交叉谱权. 最佳路径位置由这些谱权和 Krylov 滤波共同决定, 而 $J(\bm W_m)$、$r_m$ 与 $\kappa$ 给出路径尺度. 本节由 PCG 误差界推导自然时间尺度.
 
 令
 \begin{align}
@@ -2080,10 +2062,10 @@ $n_{\mathrm F}(h)=\Theta(h^{-2})$,
 精确算术下每一列 CG 至多在 $n_{\mathrm F}$ 步内终止, 已终止列随后保持不动,
 故上述区间覆盖整条有限 PCG 路径.
 
-\subsection{PCG 的自然时间尺度与最佳步数的理论边界}
+\subsection{PCG 的自然时间尺度}
 \label{subsec:natural-krylov-time-scale}
 
-一般理论不能由条件数单独确定 $m_{\mathrm{opt}}$, 但 PCG 本身给出一个与算法复杂度直接相关的自然时间尺度.
+条件数刻画 PCG 的自然时间尺度, 最佳路径位置进一步取决于交叉谱权.
 固定任意 $0<\theta<1$. 对 $\kappa>1$ 定义
 \begin{align}
     m_{\theta}^{\mathrm{suff}}
@@ -2142,16 +2124,10 @@ $r_m/r_0\le1/\cosh(m\xi_\kappa)$,
 故分别得到\cref{eq:fixed-reduction-fixed-H-scale,eq:fixed-reduction-fixed-q-scale}.
 \end{proof}
 
-\cref{prop:fixed-reduction-krylov-scale} 只刻画把 PCG 能量误差降低固定比例所需的统一充分步数,
-并不把该步数等同于 $m_{\mathrm{opt}}$.
-因此 fixed-$H$ 实验中观察到的 $m_{\mathrm{opt}}\approx c h^{-1}$
-与 PCG 的自然 Krylov 时间尺度一致, 但目前的无条件理论不据此声称
-$m_{\mathrm{opt}}=\Theta(h^{-1})$.
-真正决定最佳路径位置的额外信息仍然是
-\cref{eq:pcg-alignment-spectral} 中由磨光子与 PCG 谱滤波共同产生的有符号方向信息.
+\cref{prop:fixed-reduction-krylov-scale} 给出 PCG 能量误差降低固定比例所需的统一充分步数. fixed-$H$ 实验中的 $m_{\mathrm{opt}}\approx c h^{-1}$ 与该自然 Krylov 时间尺度一致. 最佳路径位置由\cref{eq:pcg-alignment-spectral} 中磨光子与 PCG 谱滤波共同产生的有符号方向信息确定.
 
 
-综合以上分析, 本文能够无条件证明的是有限 PCG 的 Krylov--能量与有限传播结构、两网格目标的精确谱几何、端点非局部最优性与邻步双向判据, 以及规则粗化下网格尺度和对比度幂次分别尖锐的条件数界. 对最佳步数, $\sqrt\kappa$ 是 PCG 的自然时间尺度, 但一般情形下仍不能仅由条件数或能量衰减推出 $m_{\mathrm{opt}}$. 这一边界与数值部分的角色分工一致: 数值实验负责展示真实谱半径路径和有限迭代优势, 理论负责解释这种优势为何可能出现以及其尺度为何合理.
+综合以上分析, 有限 PCG 具有 Krylov--能量与有限传播结构; 两网格目标具有精确谱几何、端点局部下降方向与邻步双向判据; 规则粗化条件数具有网格尺度和对比度幂次分别尖锐的上界. $\sqrt\kappa$ 给出 PCG 的自然时间尺度, 交叉谱权确定具体路径上的谱响应. 数值实验进一步展示真实谱半径路径和有限迭代优势.
 
 \appendix
 
@@ -2229,7 +2205,7 @@ $\norm{\bm z_\perp}_2<1$, 因而 $\gamma\ne0$ 且
 \section{局部余项差估计的技术证明}
 \label{app:local-derivative-proofs}
 
-本节集中给出正文中两个导数估计的技术证明, 以避免打断从端点局部展开到相邻步判据的主线.
+本节给出正文中两个导数估计的技术证明.
 
 \paragraph{\cref{lem:normalization-derivative} 的证明.}
 \begin{proof}

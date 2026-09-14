@@ -4,17 +4,10 @@ set -eu
 mode="${1:-quick}"
 threads="${TGI_THREADS:-4}"
 build_dir="${TGI_BUILD_DIR:-build}"
-step_timeout="${TGI_STEP_TIMEOUT_SECONDS:-10800}"
 case "$mode" in
     quick|full) ;;
     *)
         echo "usage: $0 [quick|full]" >&2
-        exit 2
-        ;;
-esac
-case "$threads" in
-    ''|*[!0-9]*|0)
-        echo "TGI_THREADS must be a positive integer" >&2
         exit 2
         ;;
 esac
@@ -31,11 +24,7 @@ run_step() {
     label="$1"
     shift
     echo "[start] $label"
-    if command -v timeout >/dev/null 2>&1; then
-        timeout --foreground "$step_timeout" "$@"
-    else
-        "$@"
-    fi
+    "$@"
     echo "[done]  $label"
 }
 
@@ -83,14 +72,6 @@ else
         "$build_dir/experiment3_scaling_propagation" --threads="$threads"
     run_step experiment4-export env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment4_local_diagnostic_export" --threads="$threads"
-fi
-
-if [ "$mode" = "full" ]; then
-    run_step experiment2-endpoints env TGI_RESULTS_DIR="$results_dir" \
-        "$build_dir/experiment2_spectral_path" --endpoint-only \
-        --spectral-iterations=200 --threads="$threads"
-    run_step experiment2-summary python3 scripts/summarize_spectral_paths.py \
-        --results "$results_dir"
 fi
 
 run_step experiment4-analysis env MPLCONFIGDIR="$build_dir/matplotlib" \

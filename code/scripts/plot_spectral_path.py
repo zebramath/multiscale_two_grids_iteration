@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Plot the true two-grid spectral path and the RHS-specific factor."""
 
 import csv
 import sys
@@ -8,7 +7,6 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 
 with open(sys.argv[1], newline="", encoding="utf-8") as stream:
     data = list(csv.DictReader(stream))

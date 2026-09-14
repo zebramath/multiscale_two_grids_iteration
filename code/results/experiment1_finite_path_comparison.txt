@@ -1,14 +1,13 @@
 Fixed O(1/h) checkpoints along the energy-minimization path
 ===========================================================
 
-Version                   : 9.1.0
 Cases                     : 13
 Mode                      : full
 Threads                   : 4
 Solve tolerance           : 1e-6
 Endpoint column tolerance : 1e-10
 
-Note: The three finite checkpoints m=(1/h)/4, (1/h)/3 and (1/h)/2 are reported separately.  No online selector and no oracle are used. The endpoint follows the same Jacobi-PCG column paths from geometric interpolation until every column reaches relative residual 1e-10.
+Note: The three finite checkpoints m=(1/h)/4, (1/h)/3 and m=(1/h)/2 are reported separately. The endpoint follows the same Jacobi-PCG column paths from geometric interpolation until every column reaches relative residual 1e-10.
 
 All two-grid cases
 ------------------
@@ -79,4 +78,3 @@ finite-1/4              12/13          6133         22.0446         8225.3
 finite-1/3              13/13          5975         31.0828        10754.2
 finite-1/2              13/13          6122         49.9512        15991.5
 energy-endpoint         13/13         28972         97.6438        62700.4
-

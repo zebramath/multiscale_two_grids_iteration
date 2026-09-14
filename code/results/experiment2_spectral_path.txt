@@ -1,7 +1,6 @@
 True two-grid spectral-radius paths along finite PCG
 ====================================================
 
-Version                   : 9.1.0
 Problems                  : 128/16, contrast 1e4
 Scanned interval          : m=1,...,128
 Lanczos iterations        : 200
@@ -13,4 +12,4 @@ Topology          Min-rho m   Min rho_TG   Min-eff m  Min rho_eff  Endpoint rho_
 cross-channel          36   0.949431677          38  0.941763675     0.996163213       0.995727131       5.899e-05
 winding-ring           36   0.949386203          53  0.941012129     0.984367546       0.982158791       4.414e-06
 
-Note: rho_TG is a cold-start matrix-free Lanczos/Ritz estimate in the A-energy inner product. The stage difference compares the 100- and 200-step Ritz values. rho_eff is the independent constant-RHS residual-history factor. No energy curve, online selector, or oracle is used.
+Note: rho_TG is a cold-start matrix-free Lanczos/Ritz estimate in the A-energy inner product. The stage difference compares the 100- and 200-step Ritz values. rho_eff is the independent constant-RHS residual-history factor.

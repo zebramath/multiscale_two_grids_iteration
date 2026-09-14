@@ -208,15 +208,6 @@ inline SparseMatrix assemble_prolongation(
 inline InterpolationResult solve_global_energy_columns(
     const StructuredGrid& grid, const SparseMatrix& matrix,
     const GlobalEnergyOptions& options) {
-    if (!(options.tolerance > 0.0) ||
-        !std::isfinite(options.tolerance)) {
-        throw std::invalid_argument(
-            "global energy tolerance must be finite and positive");
-    }
-    if (options.maximum_iterations <= 0) {
-        throw std::invalid_argument(
-            "global energy iteration limit must be positive");
-    }
     const GlobalFSystem system = assemble_global_f_system(grid, matrix);
     const int thread_count = std::max(
         1, std::min(grid.coarse_size(), options.thread_count));

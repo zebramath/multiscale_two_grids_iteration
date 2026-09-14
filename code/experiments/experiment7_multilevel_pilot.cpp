@@ -2,7 +2,6 @@
 #include "experiment/reporting.hpp"
 #include "multigrid/global_pcg.hpp"
 #include "multigrid/multilevel_solver.hpp"
-#include "version.hpp"
 
 #include <algorithm>
 #include <array>
@@ -183,7 +182,6 @@ int main(int argc, char** argv) {
     experiment_support::Report report(
         "Three-level V-cycle feasibility study");
     report.add_summary({
-        {"Version", std::string(tgi::version)},
         {"Mode", quick ? "quick" : "full"},
         {"Cases", std::to_string(case_count)},
         {"Hierarchy", quick ? "64/16/8" : "64/16/8, 128/16/8"},

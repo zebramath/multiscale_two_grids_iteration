@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Dense, reproducible diagnostic for the local spectral expansion."""
 
 from __future__ import annotations
 
@@ -11,14 +10,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as la
 
-
 def symmetric_power(matrix: np.ndarray, exponent: float) -> np.ndarray:
     values, vectors = la.eigh(matrix, check_finite=True)
     scale = max(1.0, float(np.max(np.abs(values))))
     if float(np.min(values)) <= 100.0 * np.finfo(float).eps * scale:
         raise RuntimeError("expected a numerically positive-definite matrix")
     return (vectors * values**exponent) @ vectors.T
-
 
 def load_export(path: Path) -> tuple[np.ndarray, dict[int, np.ndarray], np.ndarray]:
     records: list[tuple[str, int, int, int, float]] = []
@@ -56,7 +53,6 @@ def load_export(path: Path) -> tuple[np.ndarray, dict[int, np.ndarray], np.ndarr
             raise RuntimeError(f"unknown record kind {kind!r}")
     return a, finite, endpoint
 
-
 def grid_partition(intervals: int, ratio: int) -> tuple[np.ndarray, np.ndarray]:
     side = intervals - 1
     coarse: list[int] = []
@@ -70,13 +66,11 @@ def grid_partition(intervals: int, ratio: int) -> tuple[np.ndarray, np.ndarray]:
                 fine.append(node)
     return np.asarray(fine, dtype=int), np.asarray(coarse, dtype=int)
 
-
 def graph_factor(
     z: np.ndarray, t_f: np.ndarray, t_star: np.ndarray
 ) -> float:
     left = symmetric_power(np.eye(z.shape[0]) + z @ z.T, -0.5)
     return float(la.svdvals(left @ (t_f - z @ t_star))[0])
-
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -240,8 +234,7 @@ def main() -> None:
             "that of T_F at the energy endpoint; theta_max is the largest "
             "A-principal angle via tan(theta_max)=||Z||_2; and the one-step "
             "prediction is u_F^T (Z_m-Z_{m+1}) y for "
-            "f=sqrt(rho_TG).  It is diagnostic evidence, not an algorithmic "
-            "stopping rule.\n"
+            "f=sqrt(rho_TG). The quantities diagnose the local expansion.\n"
         )
 
     figure, axes = plt.subplots(2, 1, figsize=(7.0, 6.8), sharex=True)
@@ -267,7 +260,6 @@ def main() -> None:
         args.results / "experiment4_local_gap_direction.png", dpi=220
     )
     plt.close(figure)
-
 
 if __name__ == "__main__":
     main()

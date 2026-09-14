@@ -2,7 +2,6 @@
 #include "multigrid/global_pcg.hpp"
 #include "multigrid/spectral_diagnostics.hpp"
 #include "pde/diffusion_problem.hpp"
-#include "version.hpp"
 
 #include <algorithm>
 #include <array>
@@ -78,7 +77,7 @@ void run_checkpoint(
         experiment_support::fixed(setup_ms, 2)});
 }
 
-}  // namespace
+}
 
 int main(int argc, char** argv) {
     int threads = 4;
@@ -147,7 +146,6 @@ int main(int argc, char** argv) {
     experiment_support::Report report(
         "Fixed-H/fixed-q scaling and finite propagation");
     report.add_summary({
-        {"Version", std::string(tgi::version)},
         {"Mode", quick ? "quick" : "full"},
         {"Resolutions", quick ? "32, 64" : "32, 64, 128, 256"},
         {"Fixed-H family", "1/H=8"},
@@ -161,9 +159,9 @@ int main(int argc, char** argv) {
         "with m=(1/h)/4 on the same fixed-physical coefficient rule.  The "
         "support diagnostic uses the central coarse column and graph "
         "distance in B=A_FF.  In exact arithmetic the PCG correction after "
-        "m steps cannot leave the radius-(m-1) neighborhood of the initial "
+        "m steps stays inside the radius-(m-1) neighborhood of the initial "
         "residual; bound_violations should therefore be zero.  A 1e-14 "
-        "threshold is used only when reading floating-point support.");
+        "threshold identifies floating-point support.");
     report.add_table(
         "Scaling measurements",
         {"Regime", "1/h", "1/H", "q", "Rule", "m", "m h",

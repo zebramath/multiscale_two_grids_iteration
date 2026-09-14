@@ -2,7 +2,6 @@
 #include "experiment/reporting.hpp"
 #include "multigrid/global_pcg.hpp"
 #include "multigrid/spectral_diagnostics.hpp"
-#include "version.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -30,7 +29,10 @@ struct ScanSummary {
     int minimum_effective_steps = 0;
     double minimum_effective_factor = 1.0;
     double endpoint_spectral_factor = 1.0;
+    double endpoint_stage_difference = 0.0;
     double endpoint_effective_factor = 1.0;
+    int endpoint_cycles = 0;
+    std::string endpoint_status;
     double maximum_stage_difference = 0.0;
 };
 
@@ -117,37 +119,22 @@ ScanSummary scan_case(
     return {
         spectral_minimum->steps, spectral_minimum->rho_tg,
         effective_minimum->steps, effective_minimum->effective_factor,
-        endpoint_point.rho_tg, endpoint_point.effective_factor,
+        endpoint_point.rho_tg, endpoint_point.spectral_stage_difference,
+        endpoint_point.effective_factor, endpoint_point.cycles,
+        endpoint_point.status,
         maximum_stage_difference};
 }
 
-PathPoint endpoint_measurement(
-    const experiment_support::BasicConfig& config,
-    const experiment_support::FieldCase& field, int spectral_iterations) {
-    const tgi::StructuredGrid grid = experiment_support::make_grid(config);
-    const auto problem = experiment_support::make_problem(grid, field, config);
-    const auto initial = tgi::build_geometric_interpolation(grid);
-    tgi::GlobalEnergyPcgPath path(
-        grid, problem.matrix, initial.prolongation, config.threads);
-    path.advance_until_relative_residual(1.0e-10);
-    const tgi::SparseMatrix endpoint = path.prolongation();
-    return measure(
-        0, problem.matrix, problem.rhs, endpoint, config.threads,
-        spectral_iterations);
 }
-
-}  // namespace
 
 int main(int argc, char** argv) {
     int threads = 4;
     int spectral_iterations = 200;
     bool quick = false;
-    bool endpoint_only = false;
     std::string topology = "both";
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
         if (argument == "--quick") quick = true;
-        if (argument == "--endpoint-only") endpoint_only = true;
         if (argument.rfind("--threads=", 0) == 0) {
             threads = std::stoi(argument.substr(10));
         }
@@ -170,30 +157,6 @@ int main(int argc, char** argv) {
         throw std::invalid_argument(
             "--topology must be cross, ring, or both");
     }
-    if (endpoint_only) {
-        experiment_support::Rows endpoint_rows;
-        for (const auto& selected : {
-                 std::pair<const char*, std::size_t>{"cross-channel", 0U},
-                 {"winding-ring", 5U}}) {
-            if (topology != "both" &&
-                ((topology == "cross") != (selected.second == 0U))) {
-                continue;
-            }
-            const PathPoint point = endpoint_measurement(
-                config, topologies[selected.second], spectral_iterations);
-            endpoint_rows.push_back({
-                selected.first, experiment_support::fixed(point.rho_tg, 10),
-                experiment_support::scientific(
-                    point.spectral_stage_difference, 5),
-                experiment_support::fixed(point.effective_factor, 10),
-                std::to_string(point.cycles), point.status});
-        }
-        experiment_support::save_csv(
-            "experiment2_spectral_endpoints",
-            {"topology", "rho_TG", "spectral_stage_difference", "rho_eff",
-             "cycles", "status"}, endpoint_rows);
-        return 0;
-    }
     std::vector<std::pair<std::string, ScanSummary>> summaries;
     if (topology == "both" || topology == "cross") {
         summaries.push_back({
@@ -212,6 +175,7 @@ int main(int argc, char** argv) {
                 spectral_iterations, maximum_steps)});
     }
     experiment_support::Rows summary_rows;
+    experiment_support::Rows endpoint_rows;
     for (const auto& item : summaries) {
         const ScanSummary& value = item.second;
         summary_rows.push_back({
@@ -224,12 +188,22 @@ int main(int argc, char** argv) {
             experiment_support::fixed(value.endpoint_effective_factor, 9),
             experiment_support::scientific(
                 value.maximum_stage_difference, 3)});
+        endpoint_rows.push_back({
+            item.first,
+            experiment_support::fixed(value.endpoint_spectral_factor, 10),
+            experiment_support::scientific(
+                value.endpoint_stage_difference, 5),
+            experiment_support::fixed(value.endpoint_effective_factor, 10),
+            std::to_string(value.endpoint_cycles), value.endpoint_status});
     }
+    experiment_support::save_csv(
+        "experiment2_spectral_endpoints",
+        {"topology", "rho_TG", "spectral_stage_difference", "rho_eff",
+         "cycles", "status"}, endpoint_rows);
 
     experiment_support::Report report(
         "True two-grid spectral-radius paths along finite PCG");
     report.add_summary({
-        {"Version", std::string(tgi::version)},
         {"Mode", quick ? "quick" : "full"},
         {"Problems", quick ? "32/8, contrast 1e4"
                             : "128/16, contrast 1e4"},

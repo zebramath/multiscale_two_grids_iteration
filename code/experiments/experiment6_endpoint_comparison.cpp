@@ -1,7 +1,6 @@
 #include "experiment/problem.hpp"
 #include "experiment/reporting.hpp"
 #include "multigrid/two_grid_solver.hpp"
-#include "version.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -29,9 +28,6 @@ Measurement measure_until_converged(
     tgi::Vector residual = rhs;
     tgi::TwoGridCycle::Workspace workspace;
     const double initial_norm = tgi::norm2(residual);
-    if (!(initial_norm > 0.0) || !std::isfinite(initial_norm)) {
-        throw std::runtime_error("the comparison RHS must have finite nonzero norm");
-    }
 
     Measurement result;
     result.method = method;
@@ -120,7 +116,6 @@ int main(int argc, char** argv) {
     experiment_support::Report report(
         "Geometric and energy-minimizing interpolation on the center problem");
     report.add_summary({
-        {"Version", std::string(tgi::version)},
         {"Grid 1/h, 1/H", "128, 16"},
         {"Contrast", "1e4"},
         {"Topology", "cross-channel"},
@@ -128,7 +123,6 @@ int main(int argc, char** argv) {
         {"RHS", "constant"},
         {"Threads", std::to_string(threads)},
         {"Solve tolerance", "1e-6"},
-        {"Cycle limit", "none"},
         {"Measurements", "one deterministic solve per method"},
         {"Geometric/energy cycle ratio",
          experiment_support::fixed(cycle_ratio, 3)}});
@@ -136,8 +130,7 @@ int main(int argc, char** argv) {
         "The matrix, coarse nodes, Galerkin construction, one forward and "
         "one backward Gauss--Seidel sweep, zero initial guess, RHS and "
         "stopping tolerance are identical. Only the interpolation matrix "
-        "changes. Each solve continues until the tolerance is attained; no "
-        "cycle cap is imposed.");
+        "changes. Each solve continues until the tolerance is attained.");
     report.add_table(
         "Single-run comparison",
         {"Interpolation", "Construction", "Cycles", "Final relres",

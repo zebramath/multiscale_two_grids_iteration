@@ -1,7 +1,6 @@
 #include "experiment/comparison_cases.hpp"
 #include "experiment/reporting.hpp"
 #include "multigrid/global_pcg.hpp"
-#include "version.hpp"
 
 #include <array>
 #include <chrono>
@@ -65,7 +64,7 @@ void append_measurement(
     }
 }
 
-}  // namespace
+}
 
 int main(int argc, char** argv) {
     int threads = 4;
@@ -149,7 +148,6 @@ int main(int argc, char** argv) {
     experiment_support::Report report(
         "Fixed O(1/h) checkpoints along the energy-minimization path");
     report.add_summary({
-        {"Version", std::string(tgi::version)},
         {"Cases", std::to_string(cases.size())},
         {"Mode", quick ? "quick" : "full"},
         {"Threads", std::to_string(threads)},

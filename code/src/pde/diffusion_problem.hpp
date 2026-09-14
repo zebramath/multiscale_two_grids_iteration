@@ -75,7 +75,6 @@ inline CoefficientField make_fixed_physical_coefficient(
 inline SparseMatrix assemble_diffusion(const StructuredGrid& grid,
                                 const Vector& coefficient);
 
-
 inline StructuredGrid::StructuredGrid(int fine_interior_points, int coarsening_ratio)
     : fine_n_(fine_interior_points), ratio_(coarsening_ratio),
       coarse_n_((fine_interior_points + 1) / coarsening_ratio - 1) {}

@@ -1,7 +1,6 @@
 #include "experiment/problem.hpp"
 #include "experiment/reporting.hpp"
 #include "multigrid/global_pcg.hpp"
-#include "version.hpp"
 
 #include <algorithm>
 #include <array>
@@ -366,7 +365,6 @@ int main(int argc, char** argv) {
     experiment_support::Report report(
         "Robustness and repeated-timing checks");
     report.add_summary({
-        {"Version", std::string(tgi::version)},
         {"Grid", "64/16"},
         {"Timing grid", "128/16"},
         {"Contrast", "1e4"},

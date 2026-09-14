@@ -693,15 +693,6 @@ template <class Cycle>
 inline StationaryIterationResult solve_stationary_cycles(
     const Vector& rhs, const Cycle& cycle, double relative_tolerance,
     int max_cycles) {
-    if (!(relative_tolerance > 0.0) ||
-        !std::isfinite(relative_tolerance)) {
-        throw std::invalid_argument(
-            "stationary tolerance must be finite and positive");
-    }
-    if (max_cycles < 0) {
-        throw std::invalid_argument(
-            "stationary cycle limit must be nonnegative");
-    }
     constexpr int tail_window = 32;
     StationaryIterationResult result;
     result.solution.assign(rhs.size(), 0.0);
@@ -710,9 +701,6 @@ inline StationaryIterationResult solve_stationary_cycles(
     std::array<double, static_cast<std::size_t>(tail_window + 1)>
         recent_residuals{};
     const double initial_norm = norm2(residual);
-    if (!std::isfinite(initial_norm)) {
-        throw std::invalid_argument("stationary RHS norm must be finite");
-    }
     if (initial_norm == 0.0) {
         result.relative_residual = 0.0;
         result.best_relative_residual = 0.0;

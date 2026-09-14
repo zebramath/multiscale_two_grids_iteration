@@ -1,7 +1,6 @@
 Three-level V-cycle feasibility study
 =====================================
 
-Version         : 9.1.0
 Mode            : full
 Cases           : 2
 Hierarchy       : 64/16/8, 128/16/8

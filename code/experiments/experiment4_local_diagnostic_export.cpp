@@ -1,7 +1,6 @@
 #include "experiment/problem.hpp"
 #include "experiment/reporting.hpp"
 #include "multigrid/global_pcg.hpp"
-#include "version.hpp"
 
 #include <cstddef>
 #include <fstream>
@@ -29,7 +28,7 @@ void write_sparse(
     }
 }
 
-}  // namespace
+}
 
 int main(int argc, char** argv) {
     int threads = 4;
@@ -60,7 +59,7 @@ int main(int argc, char** argv) {
     std::ofstream stream(output_path);
     if (!stream) {
         throw std::runtime_error(
-            "cannot open local diagnostic export " + output_path.string());
+            "local diagnostic export open failure: " + output_path.string());
     }
     stream << std::setprecision(17);
     stream << "kind,m,row,col,value\n";
@@ -76,35 +75,12 @@ int main(int argc, char** argv) {
         path.advance_to(step);
         write_sparse(stream, "P", step, path.prolongation());
     }
-    const auto endpoint_report = path.advance_until_relative_residual(
-        1.0e-12, 40000);
+    path.advance_until_relative_residual(1.0e-12, 40000);
     write_sparse(stream, "P_endpoint", -1, path.prolongation());
     if (!stream) {
         throw std::runtime_error(
             "failed while writing local diagnostic matrices");
     }
 
-    experiment_support::Report report(
-        "Small-scale local-theory diagnostic matrix export");
-    report.add_summary({
-        {"Version", std::string(tgi::version)},
-        {"Grid 1/h, 1/H", "16, 4"},
-        {"Contrast", "1e4"},
-        {"Topology", "cross-channel"},
-        {"Stored finite path", "m=0,...," +
-             std::to_string(maximum_steps)},
-        {"Endpoint column tolerance", "1e-12"},
-        {"Endpoint maximum column steps",
-         std::to_string(endpoint_report.maximum_iterations)},
-        {"Endpoint maximum relative residual",
-         experiment_support::scientific(
-             endpoint_report.maximum_relative_residual, 6)},
-        {"Threads", std::to_string(threads)}});
-    report.add_note(
-        "This executable only exports the exact assembled A and the PCG "
-        "interpolation path.  scripts/analyze_local_diagnostic.py computes "
-        "the singular-value gap, principal-angle objective and first-order "
-        "directional prediction with dense symmetric eigensolvers.");
-    report.save("experiment4_local_diagnostic_export");
     return 0;
 }

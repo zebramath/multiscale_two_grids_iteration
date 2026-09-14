@@ -1,7 +1,6 @@
 Fixed-H/fixed-q scaling and finite propagation
 ==============================================
 
-Version            : 9.1.0
 Mode               : full
 Resolutions        : 32, 64, 128, 256
 Fixed-H family     : 1/H=8
@@ -10,7 +9,7 @@ Coefficient field  : fixed physical cross-channel, contrast 1e4
 Lanczos iterations : 160
 Threads            : 4
 
-Note: The two families separate growth of the coarsening ratio q from growth of the global resolution 1/h.  Each family compares m=q with m=(1/h)/4 on the same fixed-physical coefficient rule.  The support diagnostic uses the central coarse column and graph distance in B=A_FF.  In exact arithmetic the PCG correction after m steps cannot leave the radius-(m-1) neighborhood of the initial residual; bound_violations should therefore be zero.  A 1e-14 threshold is used only when reading floating-point support.
+Note: The two families separate growth of the coarsening ratio q from growth of the global resolution 1/h. Each family compares m=q with m=(1/h)/4 on the same fixed-physical coefficient rule. The support diagnostic uses the central coarse column and graph distance in B=A_FF. In exact arithmetic the PCG correction after m steps stays inside the radius-(m-1) neighborhood of the initial residual; bound_violations should therefore be zero. A 1e-14 threshold identifies floating-point support.
 
 Scaling measurements
 --------------------
@@ -33,4 +32,3 @@ fixed-q      128     16     8          m=q      8  0.062500    5.0553    5.0553 
 fixed-q      128     16     8    m=(1/h)/4     32  0.250000   25.2767   25.5785      31      31      0  20.45467      31025  0.904914363   6.892e-08       132  0.899882804   converged      336.45
 fixed-q      256     32     8          m=q      8  0.031250    1.2550    1.2550       7       7      0   1.20403      38889  0.887542938   3.064e-13       124  0.894447746   converged     5761.09
 fixed-q      256     32     8    m=(1/h)/4     64  0.250000   17.4232   18.6501      63      63      0  15.14694     442761  0.923734949   6.378e-05       161  0.917507144   converged    14054.65
-

@@ -1,7 +1,6 @@
 Geometric and energy-minimizing interpolation on the center problem
 ===================================================================
 
-Version                      : 9.1.0
 Grid 1/h, 1/H                : 128, 16
 Contrast                     : 1e4
 Topology                     : cross-channel
@@ -9,11 +8,10 @@ Coefficient seed             : 1
 RHS                          : constant
 Threads                      : 4
 Solve tolerance              : 1e-6
-Cycle limit                  : none
 Measurements                 : one deterministic solve per method
 Geometric/energy cycle ratio : 26.503
 
-Note: The matrix, coarse nodes, Galerkin construction, one forward and one backward Gauss--Seidel sweep, zero initial guess, RHS and stopping tolerance are identical. Only the interpolation matrix changes. Each solve continues until the tolerance is attained; no cycle cap is imposed.
+Note: The matrix, coarse nodes, Galerkin construction, one forward and one backward Gauss--Seidel sweep, zero initial guess, RHS and stopping tolerance are identical. Only the interpolation matrix changes. Each solve continues until the tolerance is attained.
 
 Single-run comparison
 ---------------------
@@ -21,4 +19,3 @@ Interpolation                  Construction      Cycles      Final relres  Effec
 -------------------  ----------------------  ----------  ----------------  ----------------  ------------  ----------------  ----------
 geometric                          bilinear       85524    9.99896215e-07       0.999838472      1.395003    2.40960908e+10        1849
 energy-minimizing       column relres=1e-10        3227    9.97423567e-07       0.995727131     97.841982    8.41927184e+09       50625
-

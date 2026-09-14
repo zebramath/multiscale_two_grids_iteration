@@ -1,7 +1,6 @@
 Robustness and repeated-timing checks
 =====================================
 
-Version         : 9.1.0
 Grid            : 64/16
 Timing grid     : 128/16
 Contrast        : 1e4

@@ -170,14 +170,6 @@ inline bool GlobalEnergyPcgPath::advance_one_iteration(
 }
 
 inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
-    if (target_steps < 0) {
-        throw std::invalid_argument("global PCG step count must be nonnegative");
-    }
-    for (const ColumnState& state : columns_) {
-        if (state.iterations > target_steps) {
-            throw std::invalid_argument("global PCG path cannot move backward");
-        }
-    }
     std::atomic<int> next_column{0};
     std::exception_ptr worker_error;
     std::mutex error_mutex;
@@ -238,14 +230,6 @@ inline GlobalPcgPathReport GlobalEnergyPcgPath::report(
 inline GlobalPcgPathReport
 GlobalEnergyPcgPath::advance_until_relative_residual(
     double tolerance, int maximum_steps) {
-    if (!(tolerance > 0.0) || !std::isfinite(tolerance)) {
-        throw std::invalid_argument(
-            "global PCG tolerance must be finite and positive");
-    }
-    if (maximum_steps < 0) {
-        throw std::invalid_argument(
-            "global PCG step limit must be nonnegative");
-    }
     std::atomic<int> next_column{0};
     std::exception_ptr worker_error;
     std::mutex error_mutex;
@@ -292,13 +276,6 @@ GlobalEnergyPcgPath::advance_until_relative_residual(
 inline ColumnPropagationReport
 GlobalEnergyPcgPath::column_propagation_report(
     int coarse_column, double zero_tolerance) const {
-    if (coarse_column < 0 || coarse_column >= grid_.coarse_size()) {
-        throw std::out_of_range("coarse column is outside the interpolation");
-    }
-    if (!(zero_tolerance >= 0.0) || !std::isfinite(zero_tolerance)) {
-        throw std::invalid_argument(
-            "support zero tolerance must be finite and nonnegative");
-    }
     const ColumnState& state =
         columns_[static_cast<std::size_t>(coarse_column)];
     const int f_size = static_cast<int>(state.solution.size());
