@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
 
         auto start = std::chrono::steady_clock::now();
         tgi::GlobalEnergyPcgPath path(
-            grid, problem.matrix, initial.prolongation, threads);
+            grid, problem.matrix, initial, threads);
         double cumulative_pcg_ms = elapsed_ms(start);
         for (const auto& fraction : fractions) {
             const int steps = experiment_support::fixed_path_steps(
@@ -120,7 +120,7 @@ int main(int argc, char** argv) {
 
         start = std::chrono::steady_clock::now();
         tgi::GlobalEnergyPcgPath endpoint_path(
-            grid, problem.matrix, initial.prolongation, threads);
+            grid, problem.matrix, initial, threads);
         endpoint_path.advance_until_relative_residual(1.0e-10);
         const auto endpoint = endpoint_path.prolongation();
         const double endpoint_setup_ms = elapsed_ms(start);

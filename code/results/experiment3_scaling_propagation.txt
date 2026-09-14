@@ -9,26 +9,27 @@ Coefficient field  : fixed physical cross-channel, contrast 1e4
 Lanczos iterations : 160
 Threads            : 4
 
-Note: The two families separate growth of the coarsening ratio q from growth of the global resolution 1/h. Each family compares m=q with m=(1/h)/4 on the same fixed-physical coefficient rule. The support diagnostic uses the central coarse column and graph distance in B=A_FF. In exact arithmetic the PCG correction after m steps stays inside the radius-(m-1) neighborhood of the initial residual; bound_violations should therefore be zero. A 1e-14 threshold identifies floating-point support.
+Note: The two families separate growth of the coarsening ratio q from growth of the global resolution 1/h.  Each family compares m=q with m=(1/h)/4 on the same fixed-physical coefficient rule.  The support diagnostic uses the central coarse column and graph distance in B=A_FF.  In exact arithmetic the PCG correction after m steps stays inside the radius-(m-1) neighborhood of the initial residual; bound_violations should therefore be zero.  A 1e-14 threshold identifies floating-point support.
 
 Scaling measurements
 --------------------
 Regime       1/h    1/H     q         Rule      m       m h    Corr %   Reach %    dmax   bound   viol       P %     Ac nnz       rho_TG     stage d    cycles      rho_eff      status    setup ms
 ---------  -----  -----  ----  -----------  -----  --------  --------  --------  ------  ------  -----  --------  ---------  -----------  ----------  --------  -----------  ----------  ----------
-fixed-H       32      8     4          m=q      4  0.125000   18.8596   18.8596       3       3      0  15.90393       1305  0.665638896   6.661e-16        37  0.682668513   converged        5.20
-fixed-H       32      8     4    m=(1/h)/4      8  0.250000   39.4737   39.4737       7       7      0  29.59715       2045  0.680098684   2.220e-16        40  0.703341005   converged        5.28
-fixed-H       64      8     8          m=q      8  0.125000   20.5102   20.5102       7       7      0  17.86138       1305  0.886356220   4.960e-13       119  0.890128527   converged       14.06
-fixed-H       64      8     8    m=(1/h)/4     16  0.250000   41.8367   41.8367      15      15      0  32.43967       2045  0.914032838   8.882e-16       132  0.900283566   converged       18.41
-fixed-H      128      8    16          m=q     16  0.125000   21.2189   21.2189      15      15      0  18.62749       1305  0.968075093   9.752e-07       437  0.968840096   converged       66.93
-fixed-H      128      8    16    m=(1/h)/4     32  0.250000   42.3818   42.8358      31      31      0  33.49133       2045  0.978969461   2.115e-10       507  0.973085897   converged       97.85
-fixed-H      256      8    32          m=q     32  0.125000   21.3356   21.5526      31      31      0  18.96015       1305  0.991529068   6.067e-06      1683  0.991823275   converged      397.09
-fixed-H      256      8    32    m=(1/h)/4     64  0.250000   40.5350   43.3021      63      63      0  33.92959       2045  0.994787958   7.690e-06      2109  0.993468906   converged      738.92
+fixed-H       32      8     4          m=q      4  0.125000   18.8596   18.8596       3       3      0  15.90393       1305  0.665638896   6.661e-16        37  0.682668513   converged        2.10
+fixed-H       32      8     4    m=(1/h)/4      8  0.250000   39.4737   39.4737       7       7      0  29.59715       2045  0.680098684   2.220e-16        40  0.703341005   converged        2.27
+fixed-H       64      8     8          m=q      8  0.125000   20.5102   20.5102       7       7      0  17.86138       1305  0.886356220   4.960e-13       119  0.890128527   converged        9.52
+fixed-H       64      8     8    m=(1/h)/4     16  0.250000   41.8367   41.8367      15      15      0  32.43967       2045  0.914032838   8.882e-16       132  0.900283566   converged       13.31
+fixed-H      128      8    16          m=q     16  0.125000   21.2189   21.2189      15      15      0  18.62749       1305  0.968075093   9.752e-07       437  0.968840096   converged       47.57
+fixed-H      128      8    16    m=(1/h)/4     32  0.250000   42.3818   42.8358      31      31      0  33.49133       2045  0.978969461   2.115e-10       507  0.973085897   converged       90.26
+fixed-H      256      8    32          m=q     32  0.125000   21.3356   21.5526      31      31      0  18.96015       1305  0.991529068   6.067e-06      1683  0.991823275   converged      346.89
+fixed-H      256      8    32    m=(1/h)/4     64  0.250000   40.5350   43.3021      63      63      0  33.92959       2045  0.994787958   7.690e-06      2109  0.993468906   converged      593.37
 
-fixed-q       32      4     8          m=q      8  0.250000   84.4538   84.4538       7       7      0  61.15158         81  0.891667393   2.220e-16        91  0.858666831   converged        0.93
-fixed-q       32      4     8    m=(1/h)/4      8  0.250000   84.4538   84.4538       7       7      0  61.15158         81  0.891667393   2.220e-16        91  0.858666831   converged        0.86
-fixed-q       64      8     8          m=q      8  0.125000   20.5102   20.5102       7       7      0  17.86138       1305  0.886356220   4.960e-13       119  0.890128527   converged        7.61
-fixed-q       64      8     8    m=(1/h)/4     16  0.250000   41.8367   41.8367      15      15      0  32.43967       2045  0.914032838   8.882e-16       132  0.900283566   converged       37.21
-fixed-q      128     16     8          m=q      8  0.062500    5.0553    5.0553       7       7      0   4.70961       8073  0.880660926   6.568e-13       101  0.871635758   converged      155.93
-fixed-q      128     16     8    m=(1/h)/4     32  0.250000   25.2767   25.5785      31      31      0  20.45467      31025  0.904914363   6.892e-08       132  0.899882804   converged      336.45
-fixed-q      256     32     8          m=q      8  0.031250    1.2550    1.2550       7       7      0   1.20403      38889  0.887542938   3.064e-13       124  0.894447746   converged     5761.09
-fixed-q      256     32     8    m=(1/h)/4     64  0.250000   17.4232   18.6501      63      63      0  15.14694     442761  0.923734949   6.378e-05       161  0.917507144   converged    14054.65
+fixed-q       32      4     8          m=q      8  0.250000   84.4538   84.4538       7       7      0  61.15158         81  0.891667393   2.220e-16        91  0.858666831   converged        0.66
+fixed-q       32      4     8    m=(1/h)/4      8  0.250000   84.4538   84.4538       7       7      0  61.15158         81  0.891667393   2.220e-16        91  0.858666831   converged        0.74
+fixed-q       64      8     8          m=q      8  0.125000   20.5102   20.5102       7       7      0  17.86138       1305  0.886356220   4.960e-13       119  0.890128527   converged        6.90
+fixed-q       64      8     8    m=(1/h)/4     16  0.250000   41.8367   41.8367      15      15      0  32.43967       2045  0.914032838   8.882e-16       132  0.900283566   converged       10.49
+fixed-q      128     16     8          m=q      8  0.062500    5.0553    5.0553       7       7      0   4.70961       8073  0.880660926   6.568e-13       101  0.871635758   converged      138.39
+fixed-q      128     16     8    m=(1/h)/4     32  0.250000   25.2767   25.5785      31      31      0  20.45467      31025  0.904914363   6.892e-08       132  0.899882804   converged      336.87
+fixed-q      256     32     8          m=q      8  0.031250    1.2550    1.2550       7       7      0   1.20403      38889  0.887542938   3.064e-13       124  0.894447746   converged     4524.70
+fixed-q      256     32     8    m=(1/h)/4     64  0.250000   17.4232   18.6501      63      63      0  15.14694     442761  0.923734949   6.378e-05       161  0.917507144   converged    11519.21
+

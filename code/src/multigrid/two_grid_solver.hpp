@@ -80,11 +80,6 @@ inline StationaryIterationResult solve_two_grid(
     const Vector& rhs, const TwoGridCycle& cycle,
     double relative_tolerance = 1e-8, int max_cycles = 40000);
 
-template <class Cycle>
-inline StationaryIterationResult solve_stationary_cycles(
-    const Vector& rhs, const Cycle& cycle, double relative_tolerance,
-    int max_cycles);
-
 namespace two_grid_solver_detail {
 
 inline void nested_dissection_rectangle(int side, int separator_width,
@@ -689,15 +684,14 @@ inline double TwoGridCycle::iterate(
         solution, rhs, residual, application_threads_);
 }
 
-template <class Cycle>
-inline StationaryIterationResult solve_stationary_cycles(
-    const Vector& rhs, const Cycle& cycle, double relative_tolerance,
+inline StationaryIterationResult solve_two_grid(
+    const Vector& rhs, const TwoGridCycle& cycle, double relative_tolerance,
     int max_cycles) {
     constexpr int tail_window = 32;
     StationaryIterationResult result;
     result.solution.assign(rhs.size(), 0.0);
     Vector residual = rhs;
-    typename Cycle::Workspace workspace;
+    TwoGridCycle::Workspace workspace;
     std::array<double, static_cast<std::size_t>(tail_window + 1)>
         recent_residuals{};
     const double initial_norm = norm2(residual);
@@ -771,13 +765,6 @@ inline StationaryIterationResult solve_stationary_cycles(
         }
     }
     return result;
-}
-
-inline StationaryIterationResult solve_two_grid(
-    const Vector& rhs, const TwoGridCycle& cycle,
-    double relative_tolerance, int max_cycles) {
-    return solve_stationary_cycles(
-        rhs, cycle, relative_tolerance, max_cycles);
 }
 
 }

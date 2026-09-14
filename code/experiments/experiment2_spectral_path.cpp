@@ -61,7 +61,7 @@ ScanSummary scan_case(
     const auto problem = experiment_support::make_problem(grid, field, config);
     const auto initial = tgi::build_geometric_interpolation(grid);
     tgi::GlobalEnergyPcgPath path(
-        grid, problem.matrix, initial.prolongation, config.threads);
+        grid, problem.matrix, initial, config.threads);
 
     std::vector<PathPoint> points;
     points.reserve(static_cast<std::size_t>(maximum_steps));
@@ -77,7 +77,7 @@ ScanSummary scan_case(
     }
 
     tgi::GlobalEnergyPcgPath endpoint_path(
-        grid, problem.matrix, initial.prolongation, config.threads);
+        grid, problem.matrix, initial, config.threads);
     endpoint_path.advance_until_relative_residual(1.0e-10);
     const tgi::SparseMatrix endpoint = endpoint_path.prolongation();
     const PathPoint endpoint_point = measure(

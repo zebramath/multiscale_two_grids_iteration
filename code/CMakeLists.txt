@@ -56,10 +56,8 @@ tgi_add_program(experiment5_robustness
     experiments/experiment5_robustness.cpp)
 tgi_add_program(experiment6_endpoint_comparison
     experiments/experiment6_endpoint_comparison.cpp)
-tgi_add_program(experiment7_multilevel_pilot
-    experiments/experiment7_multilevel_pilot.cpp)
 add_custom_target(experiments
     DEPENDS experiment1_finite_path_comparison experiment2_spectral_path
             experiment3_scaling_propagation
             experiment4_local_diagnostic_export experiment5_robustness
-            experiment6_endpoint_comparison experiment7_multilevel_pilot)
+            experiment6_endpoint_comparison)

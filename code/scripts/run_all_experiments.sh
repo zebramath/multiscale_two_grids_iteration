@@ -92,7 +92,5 @@ if [ "$mode" = "full" ]; then
         "$build_dir/experiment5_robustness" --threads="$threads"
     run_step experiment6 env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment6_endpoint_comparison" --threads="$threads"
-    run_step experiment7 env TGI_RESULTS_DIR="$results_dir" \
-        "$build_dir/experiment7_multilevel_pilot" --threads="$threads"
 fi
 echo "[info] results directory: $results_dir"

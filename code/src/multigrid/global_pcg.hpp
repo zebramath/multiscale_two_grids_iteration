@@ -58,6 +58,7 @@ private:
         Vector residual;
         Vector direction;
         double rz = 0.0;
+        double residual_squared = 0.0;
         double initial_residual_norm = 1.0;
         std::vector<std::pair<int, double>> initial_nonzeros;
         std::vector<int> initial_residual_support;
@@ -122,15 +123,19 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
         const double residual_scale = std::max(norm2(rhs), 1.0e-30);
         state.initial_residual_norm = residual_scale;
         state.direction.resize(n);
+        state.rz = 0.0;
+        state.residual_squared = 0.0;
         for (std::size_t index = 0; index < n; ++index) {
             state.direction[index] = system_.inverse_diagonal[index] *
                 state.residual[index];
+            state.rz += state.residual[index] * state.direction[index];
+            state.residual_squared +=
+                state.residual[index] * state.residual[index];
         }
-        state.rz = dot(state.residual, state.direction);
         const double threshold = std::numeric_limits<double>::epsilon() *
             residual_scale;
         state.active = std::isfinite(state.rz) && state.rz > 0.0 &&
-            norm2(state.residual) > threshold;
+            state.residual_squared > threshold * threshold;
     }
 }
 
@@ -146,16 +151,21 @@ inline bool GlobalEnergyPcgPath::advance_one_iteration(
     axpy(alpha, state.direction, state.solution);
     axpy(-alpha, product, state.residual);
     ++state.iterations;
+    double rz_new = 0.0;
+    state.residual_squared = 0.0;
     for (std::size_t index = 0; index < z.size(); ++index) {
         z[index] = system_.inverse_diagonal[index] * state.residual[index];
+        rz_new += state.residual[index] * z[index];
+        state.residual_squared +=
+            state.residual[index] * state.residual[index];
     }
-    const double rz_new = dot(state.residual, z);
     if (!(rz_new > 0.0) || !std::isfinite(rz_new)) {
         state.rz = rz_new;
         state.active = false;
         const double threshold = std::numeric_limits<double>::epsilon() *
             state.initial_residual_norm;
-        if (!std::isfinite(rz_new) || norm2(state.residual) > threshold) {
+        if (!std::isfinite(rz_new) ||
+            state.residual_squared > threshold * threshold) {
             throw std::runtime_error(
                 "global PCG path broke down before convergence");
         }
@@ -216,8 +226,8 @@ inline GlobalPcgPathReport GlobalEnergyPcgPath::report(
             value.minimum_iterations, state.iterations);
         value.maximum_iterations = std::max(
             value.maximum_iterations, state.iterations);
-        const double relative =
-            norm2(state.residual) / state.initial_residual_norm;
+        const double relative = std::sqrt(state.residual_squared) /
+            state.initial_residual_norm;
         value.maximum_relative_residual = std::max(
             value.maximum_relative_residual, relative);
         if (tolerance > 0.0 && relative > tolerance) {
@@ -244,7 +254,7 @@ GlobalEnergyPcgPath::advance_until_relative_residual(
                 ColumnState& state = columns_[static_cast<std::size_t>(coarse)];
                 const double target = tolerance * state.initial_residual_norm;
                 while (state.active && state.iterations < maximum_steps &&
-                       norm2(state.residual) > target) {
+                       state.residual_squared > target * target) {
                     if (!advance_one_iteration(state, product, z)) break;
                 }
             }
@@ -341,27 +351,45 @@ GlobalEnergyPcgPath::column_propagation_report(
 }
 
 inline SparseMatrix GlobalEnergyPcgPath::prolongation() {
-    std::vector<Triplet> entries;
-    std::size_t entry_count = static_cast<std::size_t>(grid_.coarse_size());
-    for (const ColumnState& state : columns_) {
-        entry_count += static_cast<std::size_t>(std::count_if(
-            state.solution.begin(), state.solution.end(),
-            [](double value) { return value != 0.0; }));
-    }
-    entries.reserve(entry_count);
+    std::vector<int> row_ptr(
+        static_cast<std::size_t>(grid_.fine_size()) + 1U, 0);
     for (int coarse = 0; coarse < grid_.coarse_size(); ++coarse) {
-        entries.push_back({grid_.coarse_fine_id(coarse), coarse, 1.0});
+        ++row_ptr[static_cast<std::size_t>(
+            grid_.coarse_fine_id(coarse)) + 1U];
         const Vector& weights =
             columns_[static_cast<std::size_t>(coarse)].solution;
         for (std::size_t local = 0; local < weights.size(); ++local) {
             if (weights[local] != 0.0) {
-                entries.push_back(
-                    {system_.f_nodes[local], coarse, weights[local]});
+                ++row_ptr[static_cast<std::size_t>(
+                    system_.f_nodes[local]) + 1U];
             }
         }
     }
+    for (int row = 0; row < grid_.fine_size(); ++row) {
+        row_ptr[static_cast<std::size_t>(row) + 1U] +=
+            row_ptr[static_cast<std::size_t>(row)];
+    }
+    std::vector<int> next = row_ptr;
+    std::vector<int> col_idx(static_cast<std::size_t>(row_ptr.back()));
+    Vector values(static_cast<std::size_t>(row_ptr.back()));
+    for (int coarse = 0; coarse < grid_.coarse_size(); ++coarse) {
+        const int injection_row = grid_.coarse_fine_id(coarse);
+        int target = next[static_cast<std::size_t>(injection_row)]++;
+        col_idx[static_cast<std::size_t>(target)] = coarse;
+        values[static_cast<std::size_t>(target)] = 1.0;
+        const Vector& weights =
+            columns_[static_cast<std::size_t>(coarse)].solution;
+        for (std::size_t local = 0; local < weights.size(); ++local) {
+            if (weights[local] == 0.0) continue;
+            target = next[static_cast<std::size_t>(
+                system_.f_nodes[local])]++;
+            col_idx[static_cast<std::size_t>(target)] = coarse;
+            values[static_cast<std::size_t>(target)] = weights[local];
+        }
+    }
     return SparseMatrix(
-        grid_.fine_size(), grid_.coarse_size(), entries, 0.0);
+        grid_.fine_size(), grid_.coarse_size(), std::move(row_ptr),
+        std::move(col_idx), std::move(values));
 }
 
 }

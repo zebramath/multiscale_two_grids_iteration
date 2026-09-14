@@ -74,13 +74,4 @@ inline ExperimentProblem make_problem(
     return {std::move(matrix), std::move(rhs)};
 }
 
-inline tgi::InterpolationResult build_global_reference(
-    const tgi::StructuredGrid& grid, const tgi::SparseMatrix& matrix,
-    int threads) {
-    tgi::GlobalEnergyOptions options;
-    options.tolerance = 1.0e-10;
-    options.thread_count = threads;
-    return tgi::build_global_energy_interpolation(grid, matrix, options);
-}
-
 }

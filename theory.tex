@@ -91,15 +91,21 @@
 \end{abstract}
 
 \subsection*{与 ideal/optimal interpolation 文献的关系}
+经典 AMG 与两层收敛理论可参见
+\cite{ruge1987amg,trottenberg2001multigrid,falgout2005twogrid,xu2017amg}.
 在本文固定单位注入、无额外稀疏约束的坐标中,
 $\bm P_{\rm id}=[-\bm A_{\rm FF}^{-1}\bm A_{\rm FC};\bm I]$
-既是经典 ideal interpolation, 也是本文插值能量的精确端点. 能量极小化、Krylov 构造与为控制 setup 成本而有限迭代已有系统研究
-\cite{olson2011energy,janna2023parallel}. Brannick 等\cite{brannick2018optimal} 的 optimal interpolation 直接针对给定两层方法的收敛率. 本文采用全变量前向/后向 Gauss--Seidel 两网格算子, 在能量极小化 PCG 路径上研究 ideal 能量端点与真实两网格谱目标之间的机制性错配, 并给出可复现的定量诊断.
+既是 ideal interpolation, 也是插值能量的精确端点. 能量极小基与约束能量插值已由
+\cite{mandel1999energy,wan2000energy,kolev2006energy,brannick2007energy}
+奠定; Krylov/CG 插值构造及其并行实现见
+\cite{olson2011energy,janna2023parallel}, 其线性代数基础见
+\cite{hestenes1952cg,saad2003iterative}. Compatible relaxation 与直接优化两层收敛率的 optimal interpolation 分别见
+\cite{brannick2010compatible,brannick2018optimal}. 本文在同一有限 PCG 路径上建立 energy/ideal endpoint 与真实两网格谱目标的定量联系.
 
 \section{问题设置、目标与理论路线}
 \label{sec:setup}
 
-考虑高对比度多尺度问题, 对其采用有限差分或者有限元格式得到对称正定线性方程组 $\bm A\bm u=\bm b$. 按细点与粗点分块,
+考虑高对比度多尺度问题离散得到的对称正定线性方程组 $\bm A\bm u=\bm b$. 按细点与粗点分块,
 \begin{align}
     \bm A&=\begin{bmatrix}
         \bm B & \bm C\\
@@ -132,10 +138,11 @@ $\bm P_{\rm id}=[-\bm A_{\rm FF}^{-1}\bm A_{\rm FC};\bm I]$
     \norm{\bm X}_{\bm M}&=\norm{\bm M^{1/2}\bm X\bm M^{-1/2}}_2.
     \label{eq:notation-induced-energy}
 \end{align}
-此外, $\lambda_k(\cdot),\sigma_k(\cdot)$ 分别表示按非增序排列的第 $k$ 个特征值和奇异值, $\Ran(\cdot)$ 表示列空间, $\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^\T\bm A$. 必要时将奇异值序列以零补齐到所需维数. PCG 采用对角预条件共轭梯度法. 除非特别说明, 以下 PCG 恒等式均按精确算术理解, 已精确终止的列在后续全局步中保持不动.
+此外, $\lambda_k(\cdot),\sigma_k(\cdot)$ 分别表示按非增序排列的第 $k$ 个特征值和奇异值, $\Ran(\cdot)$ 表示列空间, $\bm G^{\dagger_{\bm A}}=\bm A^{-1}\bm G^\T\bm A$. 奇异值序列以零补齐到所需维数. PCG 恒等式采用精确算术, 已终止列在后续全局步中保持不动.
 
-
-本文沿同一条有限 PCG 插值轨迹比较不同粗空间的两网格性能. 分析区分由插值能量定义的端点 $\bm W^\ast$ 与固定磨光子、固定粗空间维数下的求解器最优谱基准. 理论依次刻画有限 PCG 轨迹的能量与 Krylov 结构, 给出两网格目标的精确粗空间表示, 分析能量端点附近的方向错配, 最后建立二维规则粗化下的 $h,H$ 尺度和局部区域进入复杂度.
+加权主角与矩阵扰动工具分别参见
+\cite{knyazev2002angles,stewart1990perturbation}; 配套的矩阵自由 Lanczos/Ritz 谱诊断采用
+\cite{bai2000templates} 的对称特征值框架.
 
 \section{有限 PCG 插值轨迹的能量与粗空间几何}
 \label{sec:finite-pcg-trajectory}
@@ -2124,10 +2131,7 @@ $r_m/r_0\le1/\cosh(m\xi_\kappa)$,
 故分别得到\cref{eq:fixed-reduction-fixed-H-scale,eq:fixed-reduction-fixed-q-scale}.
 \end{proof}
 
-\cref{prop:fixed-reduction-krylov-scale} 给出 PCG 能量误差降低固定比例所需的统一充分步数. fixed-$H$ 实验中的 $m_{\mathrm{opt}}\approx c h^{-1}$ 与该自然 Krylov 时间尺度一致. 最佳路径位置由\cref{eq:pcg-alignment-spectral} 中磨光子与 PCG 谱滤波共同产生的有符号方向信息确定.
-
-
-综合以上分析, 有限 PCG 具有 Krylov--能量与有限传播结构; 两网格目标具有精确谱几何、端点局部下降方向与邻步双向判据; 规则粗化条件数具有网格尺度和对比度幂次分别尖锐的上界. $\sqrt\kappa$ 给出 PCG 的自然时间尺度, 交叉谱权确定具体路径上的谱响应. 数值实验进一步展示真实谱半径路径和有限迭代优势.
+\cref{prop:fixed-reduction-krylov-scale} 表明 $\sqrt\kappa$ 是 PCG 能量误差降低固定比例的自然时间尺度. fixed-$H$ 下的 $m_{\mathrm{opt}}\approx c h^{-1}$ 与此一致; 具体最佳位置由\cref{eq:pcg-alignment-spectral} 中的有符号交叉谱权确定.
 
 \appendix
 
@@ -2552,26 +2556,7 @@ $1\le\lambda_{\max}(\widehat{\bm B})\le2$.
 \cref{eq:capacity-scale-fixed-contrast-sharp}.
 \end{proof}
 
-\begin{thebibliography}{9}
-
-\bibitem{olson2011energy}
-L.~N. Olson, J.~B. Schroder, and R.~S. Tuminaro,
-\newblock A general interpolation strategy for algebraic multigrid using energy minimization,
-\newblock \emph{SIAM Journal on Scientific Computing}, 33 (2011), pp.~966--991,
-\newblock \url{https://doi.org/10.1137/100803031}.
-
-\bibitem{brannick2018optimal}
-J. Brannick, F. Cao, K. Kahl, R.~D. Falgout, and X. Hu,
-\newblock Optimal interpolation and compatible relaxation in classical algebraic multigrid,
-\newblock \emph{SIAM Journal on Scientific Computing}, 40 (2018), pp.~A1473--A1493,
-\newblock \url{https://doi.org/10.1137/17M1123456}.
-
-\bibitem{janna2023parallel}
-C. Janna, A. Franceschini, J.~B. Schroder, and L. Olson,
-\newblock Parallel energy-minimization prolongation for algebraic multigrid,
-\newblock \emph{SIAM Journal on Scientific Computing}, 45 (2023), pp.~S475--S501,
-\newblock \url{https://doi.org/10.1137/22M1513794}.
-
-\end{thebibliography}
+\bibliographystyle{plain}
+\bibliography{references}
 
 \end{document}

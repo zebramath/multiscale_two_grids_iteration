@@ -2,6 +2,7 @@
 #include "experiment/reporting.hpp"
 #include "multigrid/global_pcg.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <fstream>
 #include <iomanip>
@@ -32,7 +33,7 @@ void write_sparse(
 
 int main(int argc, char** argv) {
     int threads = 4;
-    int maximum_steps = 80;
+    int maximum_steps = 56;
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
         if (argument.rfind("--threads=", 0) == 0) {
@@ -66,8 +67,8 @@ int main(int argc, char** argv) {
     write_sparse(stream, "A", -2, problem.matrix);
 
     tgi::GlobalEnergyPcgPath path(
-        grid, problem.matrix, geometric.prolongation, threads);
-    write_sparse(stream, "P", 0, geometric.prolongation);
+        grid, problem.matrix, geometric, threads);
+    write_sparse(stream, "P", 0, geometric);
     for (int step = 1; step <= maximum_steps; ++step) {
         experiment_support::progress(
             "local diagnostic export " + std::to_string(step) + "/" +
@@ -75,6 +76,7 @@ int main(int argc, char** argv) {
         path.advance_to(step);
         write_sparse(stream, "P", step, path.prolongation());
     }
+    path.advance_to(std::max(maximum_steps, 80));
     path.advance_until_relative_residual(1.0e-12, 40000);
     write_sparse(stream, "P_endpoint", -1, path.prolongation());
     if (!stream) {

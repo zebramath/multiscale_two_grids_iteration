@@ -1,6 +1,6 @@
 #include "experiment/problem.hpp"
 #include "experiment/reporting.hpp"
-#include "multigrid/two_grid_solver.hpp"
+#include "multigrid/global_pcg.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -96,19 +96,21 @@ int main(int argc, char** argv) {
     experiment_support::progress("geometric interpolation comparison");
     const auto geometric = tgi::build_geometric_interpolation(grid);
     const tgi::TwoGridCycle geometric_cycle(
-        problem.matrix, geometric.prolongation, 1, threads);
+        problem.matrix, geometric, 1, threads);
     const Measurement geometric_measurement = measure_until_converged(
-        "geometric", "bilinear", geometric.prolongation,
+        "geometric", "bilinear", geometric,
         geometric_cycle, problem.rhs, 1.0e-6);
 
     experiment_support::progress("energy-minimizing interpolation comparison");
-    const auto energy = experiment_support::build_global_reference(
-        grid, problem.matrix, threads);
+    tgi::GlobalEnergyPcgPath endpoint_path(
+        grid, problem.matrix, geometric, threads);
+    endpoint_path.advance_until_relative_residual(1.0e-10);
+    const auto energy = endpoint_path.prolongation();
     const tgi::TwoGridCycle energy_cycle(
-        problem.matrix, energy.prolongation, 1, threads);
+        problem.matrix, energy, 1, threads);
     const Measurement energy_measurement = measure_until_converged(
         "energy-minimizing", "column relres=1e-10",
-        energy.prolongation, energy_cycle, problem.rhs, 1.0e-6);
+        energy, energy_cycle, problem.rhs, 1.0e-6);
 
     const double cycle_ratio =
         static_cast<double>(geometric_measurement.cycles) /

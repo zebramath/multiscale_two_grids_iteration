@@ -7,10 +7,9 @@
 | `experiment1_` | 13 个主比较问题的完整文本表 |
 | `experiment2_` | cross/ring 各 128 点谱路径、双曲线图、endpoint 数据与汇总 |
 | `experiment3_` | fixed-$H$/fixed-$q$ 的尺度、传播、复杂度及谱结果 |
-| `experiment4_` | 小规模矩阵、gap/一阶方向数据、汇总及诊断图 |
-| `experiment5_` | seed/RHS 稳健性与五次交替计时 |
+| `experiment4_` | 56 步小规模矩阵、gap/一阶方向数据、汇总及对称对数诊断图 |
+| `experiment5_` | coefficient-seed 稳健性与五次交替计时 |
 | `experiment6_` | 几何插值与 energy endpoint 基线 |
-| `experiment7_` | 三层 V-cycle 试验 |
 
 - `rho_TG` 是对称两网格误差算子的 $A$-能量谱半径；`rho_eff` 是指定 RHS 残量历史的有效因子。
 - 谱路径使用 200 步冷启动 Lanczos，`spectral_stage_difference` 比较 100 与 200 步 Ritz 值；双尺度表使用 160 步。

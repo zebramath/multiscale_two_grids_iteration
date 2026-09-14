@@ -126,10 +126,10 @@ int main(int argc, char** argv) {
             const int h_steps = std::max(1, fine / 4);
             run_checkpoint(
                 item, "m=q", q_steps, grid, matrix, rhs,
-                geometric.prolongation, threads, spectral_iterations, rows);
+                geometric, threads, spectral_iterations, rows);
             run_checkpoint(
                 item, "m=(1/h)/4", h_steps, grid, matrix, rhs,
-                geometric.prolongation, threads, spectral_iterations, rows);
+                geometric, threads, spectral_iterations, rows);
         }
     }
 

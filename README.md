@@ -30,16 +30,17 @@
 | cross-channel | 0.949431677 | 36 | 0.941763675 / 38 | 0.996163213 |
 | winding-ring | 0.949386203 | 36 | 0.941012129 / 53 | 0.984367546 |
 
-13 个主比较问题中，$m=\operatorname{round}((1/h)/3)$ 全部收敛，累计 5,975 个循环；高精度 endpoint 累计 28,972 个循环。中心问题五次交替计时中，有限点平均 setup/solve/total 为 0.546/0.325/0.872 s，endpoint 为 2.819/9.078/11.896 s。
+13 个主比较问题中，$m=\operatorname{round}((1/h)/3)$ 全部收敛，累计 5,975 个循环；高精度 endpoint 累计 28,972 个循环。中心问题五次交替计时中，有限点平均 setup/solve/total 为 0.456/0.244/0.699 s，endpoint 为 2.602/8.179/10.781 s。
 
 小规模 $16/4$ 诊断得到 gap $6.6816\times10^{-3}$，理论局部区间内一阶方向符号为 28/28 命中，图公式与直接两网格特征值的最大差为 $4.1\times10^{-14}$。
 
 ## 文件结构
 
 - `theory.tex`：自包含理论稿，宏包、数学宏和版式配置均位于导言区，技术证明置于附录。
+- `references.bib`：论文写作所需的完整 BibTeX 文献库。
 - `research_report.md`：理论链条、实验设计和定量结论。
-- `code/src/`：线性代数、扩散离散、PCG 路径、两网格/多层循环与谱诊断。
-- `code/experiments/`：7 组正式实验。
+- `code/src/`：线性代数、扩散离散、PCG 路径、两网格循环与谱诊断。
+- `code/experiments/`：6 组正式实验。
 - `code/results/`：完整文本、CSV 与图。
 - `code/scripts/run_all_experiments.sh`：quick/full 复现入口。
 
@@ -59,6 +60,7 @@ cd code
 
 ```bash
 xelatex theory.tex
+bibtex theory
 xelatex theory.tex
 xelatex theory.tex
 ```
@@ -67,4 +69,4 @@ xelatex theory.tex
 
 ## 文献关系与实验配置
 
-能量极小插值、Krylov/CG 构造和有限能量极小化迭代构成本文的路径基础。Brannick 等的 optimal interpolation 直接优化特定两层收敛率。本文研究单位注入、规则粗点、精确粗解及全变量对称 Gauss--Seidel 下，energy/ideal endpoint 与真实两网格谱目标之间的机制关系。准确引用及 DOI 见 `theory.tex`。
+能量极小插值、Krylov/CG 构造和有限能量极小化迭代构成本文的路径基础。Brannick 等的 optimal interpolation 直接优化特定两层收敛率。本文研究单位注入、规则粗点、精确粗解及全变量对称 Gauss--Seidel 下，energy/ideal endpoint 与真实两网格谱目标之间的机制关系。准确引用及 DOI 见 `references.bib`。

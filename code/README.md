@@ -1,6 +1,6 @@
 # Numerical implementation
 
-代码实现从双线性几何插值出发的全局列 Jacobi--PCG 路径、固定路径点、energy endpoint、真实两网格谱诊断、有限传播诊断和三层 V-cycle。
+代码实现从双线性几何插值出发的全局列 Jacobi--PCG 路径、固定路径点、energy endpoint、真实两网格谱诊断和有限传播诊断。
 
 ## 实验
 
@@ -9,12 +9,11 @@
 | `experiment1_finite_path_comparison` | 13 个问题上比较 $m=(1/h)/4,(1/h)/3,(1/h)/2$ 与 endpoint |
 | `experiment2_spectral_path` | 两种拓扑的 $m=1,\ldots,128$ 真实 $\rho_{TG}$ 与 RHS 因子路径 |
 | `experiment3_scaling_propagation` | fixed-$H$/fixed-$q$ 双尺度及有限图传播 |
-| `experiment4_local_diagnostic_export` | 导出小规模矩阵与 PCG 路径，供 gap/方向诊断使用 |
-| `experiment5_robustness` | 5 个 coefficient seed、6 个 RHS、5 次交替计时 |
+| `experiment4_local_diagnostic_export` | 导出 56 步小规模 PCG 路径，供 gap/方向诊断使用 |
+| `experiment5_robustness` | 5 个 coefficient seed 与 5 次交替计时 |
 | `experiment6_endpoint_comparison` | 几何插值与 energy endpoint 基线 |
-| `experiment7_multilevel_pilot` | 两个三层 V-cycle 案例 |
 
-`scripts/analyze_local_diagnostic.py` 构造 $A^{1/2},B^{1/2},S^{-1/2},T_F,T_*,Z_m$，并核对图空间公式与稠密特征值。`spectral_diagnostics.hpp` 对 $A$-自伴正半定的对称两网格误差传播算子执行矩阵自由 Lanczos；CSV 中的 stage difference 为半程与全程 Ritz 值之差。
+`scripts/analyze_local_diagnostic.py` 构造 $A^{1/2},B^{1/2},S^{-1/2},T_F,T_*,Z_m$，并核对图空间公式与稠密特征值；方向差图采用对称对数纵轴保留符号和机器精度尺度。`spectral_diagnostics.hpp` 对 $A$-自伴正半定的对称两网格误差传播算子执行矩阵自由 Lanczos；CSV 中的 stage difference 为半程与全程 Ritz 值之差。
 
 ## 构建与运行
 

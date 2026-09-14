@@ -12,8 +12,8 @@ relative gap                 : 8.461126200458e-03
 endpoint W consistency       : 3.436434908491e-15
 basis orthogonality defect   : 1.276816049596e-11
 max formula/direct rho defect: 4.074518500374e-14
-local-condition steps         : 24..80
+local-condition steps         : 24..56
 all informative sign matches  : 42/52
 local informative sign matches: 28/28
 
-The diagnostic tests the theorem's actual objects. The gap is that of T_F at the energy endpoint; theta_max is the largest A-principal angle via tan(theta_max)=||Z||_2; and the one-step prediction is u_F^T (Z_m-Z_{m+1}) y for f=sqrt(rho_TG). The quantities diagnose the local expansion.
+The diagnostic tests the theorem's actual objects.  The gap is that of T_F at the energy endpoint; theta_max is the largest A-principal angle via tan(theta_max)=||Z||_2; and the one-step prediction is u_F^T (Z_m-Z_{m+1}) y for f=sqrt(rho_TG). The quantities diagnose the local expansion.

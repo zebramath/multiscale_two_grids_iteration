@@ -6,6 +6,9 @@ import argparse
 import csv
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as la
@@ -251,10 +254,11 @@ def main() -> None:
         label="first order", lw=1.3, ls="--",
     )
     axes[1].axhline(0.0, color="black", lw=0.7)
+    axes[1].set_yscale("symlog", linthresh=1.0e-12, linscale=1.2, base=10)
     axes[1].set_xlabel("PCG step m")
     axes[1].set_ylabel(r"$f_{m+1}-f_m$")
     axes[1].legend(frameon=False)
-    axes[1].grid(alpha=0.25)
+    axes[1].grid(which="both", alpha=0.25)
     figure.tight_layout()
     figure.savefig(
         args.results / "experiment4_local_gap_direction.png", dpi=220

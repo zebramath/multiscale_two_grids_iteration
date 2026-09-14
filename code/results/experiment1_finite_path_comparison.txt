@@ -7,74 +7,75 @@ Threads                   : 4
 Solve tolerance           : 1e-6
 Endpoint column tolerance : 1e-10
 
-Note: The three finite checkpoints m=(1/h)/4, (1/h)/3 and m=(1/h)/2 are reported separately. The endpoint follows the same Jacobi-PCG column paths from geometric interpolation until every column reaches relative residual 1e-10.
+Note: The three finite checkpoints m=(1/h)/4, (1/h)/3 and (1/h)/2 are reported separately. The endpoint follows the same Jacobi-PCG column paths from geometric interpolation until every column reaches relative residual 1e-10.
 
 All two-grid cases
 ------------------
 Axis            1/h    1/H    Contrast              Topology         Path point               Parameter  P density %     Ac nnz    Setup ms    Cycles      Status  Effective factor  Tail factor
 ------------  -----  -----  ----------  --------------------  -----------------  ----------------------  -----------  ---------  ----------  --------  ----------  ----------------  -----------
-size             32      8       1e+04         cross-channel         finite-1/4                     m=8      29.5971       2045        3.27        40   converged          0.703341     0.678138
-size             32      8       1e+04         cross-channel         finite-1/3                    m=11      40.2408       2261        3.94        40   converged          0.702550     0.665400
-size             32      8       1e+04         cross-channel         finite-1/2                    m=16      58.5806       2397        5.47        49   converged          0.753742     0.733339
-size             32      8       1e+04         cross-channel    energy-endpoint    column relres<=1e-10      95.0052       2401       48.30        54   converged          0.772358     0.787326
-size             64      8       1e+04         cross-channel         finite-1/4                    m=16      32.4397       2045       20.35       225   converged          0.940312     0.944129
-size             64      8       1e+04         cross-channel         finite-1/3                    m=21      41.7691       2261       24.62       251   converged          0.946341     0.947535
-size             64      8       1e+04         cross-channel         finite-1/2                    m=32      62.5835       2397      159.02       251   converged          0.946256     0.948037
-size             64      8       1e+04         cross-channel    energy-endpoint    column relres<=1e-10      98.7906       2401      103.37       264   converged          0.948901     0.954615
-size             64     16       1e+04         cross-channel         finite-1/4                    m=16      18.7750      31025      240.66        60   converged          0.790885     0.748576
-size             64     16       1e+04         cross-channel         finite-1/3                    m=21      26.6650      38325      251.54        65   converged          0.806080     0.803424
-size             64     16       1e+04         cross-channel         finite-1/2                    m=32      45.1146      48645      360.76       114   converged          0.885032     0.896010
-size             64     16       1e+04         cross-channel    energy-endpoint    column relres<=1e-10      92.9948      50625      246.84       321   converged          0.957779     0.962692
+size             32      8       1e+04         cross-channel         finite-1/4                     m=8      29.5971       2045        2.56        40   converged          0.703341     0.678138
+size             32      8       1e+04         cross-channel         finite-1/3                    m=11      40.2408       2261        2.96        40   converged          0.702550     0.665400
+size             32      8       1e+04         cross-channel         finite-1/2                    m=16      58.5806       2397        3.51        49   converged          0.753742     0.733339
+size             32      8       1e+04         cross-channel    energy-endpoint    column relres<=1e-10      95.0052       2401       11.85        54   converged          0.772358     0.787326
+size             64      8       1e+04         cross-channel         finite-1/4                    m=16      32.4397       2045       11.61       225   converged          0.940312     0.944129
+size             64      8       1e+04         cross-channel         finite-1/3                    m=21      41.7691       2261       14.07       251   converged          0.946341     0.947535
+size             64      8       1e+04         cross-channel         finite-1/2                    m=32      62.5835       2397       19.02       251   converged          0.946256     0.948037
+size             64      8       1e+04         cross-channel    energy-endpoint    column relres<=1e-10      98.7906       2401      106.79       264   converged          0.948901     0.954615
+size             64     16       1e+04         cross-channel         finite-1/4                    m=16      18.7750      31025       43.25        60   converged          0.790885     0.748576
+size             64     16       1e+04         cross-channel         finite-1/3                    m=21      26.6650      38325       54.35        65   converged          0.806080     0.803424
+size             64     16       1e+04         cross-channel         finite-1/2                    m=32      45.1146      48645       77.63       114   converged          0.885032     0.896010
+size             64     16       1e+04         cross-channel    energy-endpoint    column relres<=1e-10      92.9948      50625      240.91       321   converged          0.957779     0.962692
 
-center          128     16       1e+04         cross-channel         finite-1/4                    m=32      20.4547      31025      345.51       347   converged          0.960874     0.956522
-center          128     16       1e+04         cross-channel         finite-1/3                    m=43      29.4678      40701      471.58       242   converged          0.944407     0.948869
-center          128     16       1e+04         cross-channel         finite-1/2                    m=64      48.1166      48645      659.04       366   converged          0.962855     0.960083
-center          128     16       1e+04         cross-channel    energy-endpoint    column relres<=1e-10      98.2099      50625     2409.49      3227   converged          0.995727     0.996163
+center          128     16       1e+04         cross-channel         finite-1/4                    m=32      20.4547      31025      331.76       347   converged          0.960874     0.956522
+center          128     16       1e+04         cross-channel         finite-1/3                    m=43      29.4678      40701      439.03       242   converged          0.944407     0.948869
+center          128     16       1e+04         cross-channel         finite-1/2                    m=64      48.1166      48645      631.50       366   converged          0.962855     0.960083
+center          128     16       1e+04         cross-channel    energy-endpoint    column relres<=1e-10      98.2099      50625     2501.76      3227   converged          0.995727     0.996163
 
-large-scale     256     16       1e+04         cross-channel         finite-1/4                    m=64      21.0653      31025     2681.05      1673   converged          0.991775     0.991049
-large-scale     256     16       1e+04         cross-channel         finite-1/3                    m=85      29.8295      40701     3726.81       998   converged          0.986251     0.987807
-large-scale     256     16       1e+04         cross-channel         finite-1/2                   m=128      49.0768      48645     5728.91      1084   converged          0.987332     0.987479
-large-scale     256     16       1e+04         cross-channel    energy-endpoint    column relres<=1e-10      99.4537      50625    20475.16     13948   converged          0.999010     0.999098
-large-scale     256     16       1e+04          winding-ring         finite-1/4                    m=64      21.0653      31025     2573.27      1776   converged          0.992249     0.991412
-large-scale     256     16       1e+04          winding-ring         finite-1/3                    m=85      29.8295      40701     3222.89      1002   converged          0.986299     0.987034
-large-scale     256     16       1e+04          winding-ring         finite-1/2                   m=128      49.0768      48645     4621.50       950   converged          0.985560     0.986328
-large-scale     256     16       1e+04          winding-ring    energy-endpoint    column relres<=1e-10      99.4272      50625    23505.55      3950   converged          0.996508     0.996801
+large-scale     256     16       1e+04         cross-channel         finite-1/4                    m=64      21.0653      31025     2417.58      1673   converged          0.991775     0.991049
+large-scale     256     16       1e+04         cross-channel         finite-1/3                    m=85      29.8295      40701     3135.06       998   converged          0.986251     0.987807
+large-scale     256     16       1e+04         cross-channel         finite-1/2                   m=128      49.0768      48645     4650.46      1084   converged          0.987332     0.987479
+large-scale     256     16       1e+04         cross-channel    energy-endpoint    column relres<=1e-10      99.4537      50625    21194.61     13948   converged          0.999010     0.999098
+large-scale     256     16       1e+04          winding-ring         finite-1/4                    m=64      21.0653      31025     2708.52      1776   converged          0.992249     0.991412
+large-scale     256     16       1e+04          winding-ring         finite-1/3                    m=85      29.8295      40701     3453.84      1002   converged          0.986299     0.987034
+large-scale     256     16       1e+04          winding-ring         finite-1/2                   m=128      49.0768      48645     4940.69       950   converged          0.985560     0.986328
+large-scale     256     16       1e+04          winding-ring    energy-endpoint    column relres<=1e-10      99.4272      50625    20060.21      3950   converged          0.996508     0.996801
 
-contrast        128     16       1e+02         cross-channel         finite-1/4                    m=32      20.4547      31025      388.43       293   converged          0.953841     0.965704
-contrast        128     16       1e+02         cross-channel         finite-1/3                    m=43      29.4678      40701      491.89       387   converged          0.964918     0.969992
-contrast        128     16       1e+02         cross-channel         finite-1/2                    m=64      48.1166      48645      700.83       682   converged          0.979929     0.982950
-contrast        128     16       1e+02         cross-channel    energy-endpoint    column relres<=1e-10      98.5111      50625     2605.69       756   converged          0.981886     0.983815
-contrast        128     16       1e+06         cross-channel         finite-1/4                    m=32      20.4547      31025      350.17     20000  slow-limit          0.999374     0.999264
-contrast        128     16       1e+06         cross-channel         finite-1/3                    m=43      29.4678      40701      449.77      1564   converged          0.991201     0.989041
-contrast        128     16       1e+06         cross-channel         finite-1/2                    m=64      48.1166      48645      671.77       273   converged          0.950536     0.949075
-contrast        128     16       1e+06         cross-channel    energy-endpoint    column relres<=1e-10      97.2628      50625     2482.04      3471   converged          0.996027     0.996432
+contrast        128     16       1e+02         cross-channel         finite-1/4                    m=32      20.4547      31025      309.22       293   converged          0.953841     0.965704
+contrast        128     16       1e+02         cross-channel         finite-1/3                    m=43      29.4678      40701      392.76       387   converged          0.964918     0.969992
+contrast        128     16       1e+02         cross-channel         finite-1/2                    m=64      48.1166      48645      568.55       682   converged          0.979929     0.982950
+contrast        128     16       1e+02         cross-channel    energy-endpoint    column relres<=1e-10      98.5111      50625     2012.78       756   converged          0.981886     0.983815
+contrast        128     16       1e+06         cross-channel         finite-1/4                    m=32      20.4547      31025      305.79     20000  slow-limit          0.999374     0.999264
+contrast        128     16       1e+06         cross-channel         finite-1/3                    m=43      29.4678      40701      402.68      1564   converged          0.991201     0.989041
+contrast        128     16       1e+06         cross-channel         finite-1/2                    m=64      48.1166      48645      593.83       273   converged          0.950536     0.949075
+contrast        128     16       1e+06         cross-channel    energy-endpoint    column relres<=1e-10      97.2628      50625     2429.66      3471   converged          0.996027     0.996432
 
-topology        128     16       1e+04    meandering-channel         finite-1/4                    m=32      20.4547      31025      293.79       344   converged          0.960599     0.956650
-topology        128     16       1e+04    meandering-channel         finite-1/3                    m=43      29.4678      40701      380.47       266   converged          0.949319     0.948051
-topology        128     16       1e+04    meandering-channel         finite-1/2                    m=64      48.1166      48645      572.17       690   converged          0.980172     0.982339
-topology        128     16       1e+04    meandering-channel    energy-endpoint    column relres<=1e-10      97.9320      50625     1924.86       759   converged          0.981959     0.984424
-topology        128     16       1e+04     diagonal-channels         finite-1/4                    m=32      20.4547      31025      343.70       348   converged          0.961041     0.956480
-topology        128     16       1e+04     diagonal-channels         finite-1/3                    m=43      29.4678      40701      443.58       346   converged          0.960851     0.963726
-topology        128     16       1e+04     diagonal-channels         finite-1/2                    m=64      48.1166      48645      642.30       346   converged          0.960855     0.967751
-topology        128     16       1e+04     diagonal-channels    energy-endpoint    column relres<=1e-10      97.9663      50625     2011.88       418   converged          0.967481     0.970696
-topology        128     16       1e+04     parallel-channels         finite-1/4                    m=32      20.4547      31025      340.17       322   converged          0.957955     0.953188
-topology        128     16       1e+04     parallel-channels         finite-1/3                    m=43      29.4678      40701      451.77       260   converged          0.948151     0.948407
-topology        128     16       1e+04     parallel-channels         finite-1/2                    m=64      48.1166      48645      643.38       381   converged          0.964381     0.970749
-topology        128     16       1e+04     parallel-channels    energy-endpoint    column relres<=1e-10      97.9498      50625     2239.60       421   converged          0.967700     0.972055
-topology        128     16       1e+04    branching-channels         finite-1/4                    m=32      20.4547      31025      330.74       347   converged          0.960860     0.956394
-topology        128     16       1e+04    branching-channels         finite-1/3                    m=43      29.4678      40701      430.35       317   converged          0.957333     0.957133
-topology        128     16       1e+04    branching-channels         finite-1/2                    m=64      48.1166      48645      643.67       524   converged          0.973937     0.976256
-topology        128     16       1e+04    branching-channels    energy-endpoint    column relres<=1e-10      98.0489      50625     2612.07       615   converged          0.977776     0.980299
-topology        128     16       1e+04          winding-ring         finite-1/4                    m=32      20.4547      31025      314.21       358   converged          0.962131     0.957839
-topology        128     16       1e+04          winding-ring         finite-1/3                    m=43      29.4678      40701      404.95       237   converged          0.943169     0.948960
-topology        128     16       1e+04          winding-ring         finite-1/2                    m=64      48.1166      48645      582.71       412   converged          0.966957     0.966663
-topology        128     16       1e+04          winding-ring    energy-endpoint    column relres<=1e-10      97.8169      50625     2035.53       768   converged          0.982159     0.983993
+topology        128     16       1e+04    meandering-channel         finite-1/4                    m=32      20.4547      31025      333.19       344   converged          0.960599     0.956650
+topology        128     16       1e+04    meandering-channel         finite-1/3                    m=43      29.4678      40701      435.18       266   converged          0.949319     0.948051
+topology        128     16       1e+04    meandering-channel         finite-1/2                    m=64      48.1166      48645      648.27       690   converged          0.980172     0.982339
+topology        128     16       1e+04    meandering-channel    energy-endpoint    column relres<=1e-10      97.9320      50625     1968.66       759   converged          0.981959     0.984424
+topology        128     16       1e+04     diagonal-channels         finite-1/4                    m=32      20.4547      31025      329.66       348   converged          0.961041     0.956480
+topology        128     16       1e+04     diagonal-channels         finite-1/3                    m=43      29.4678      40701      419.75       346   converged          0.960851     0.963726
+topology        128     16       1e+04     diagonal-channels         finite-1/2                    m=64      48.1166      48645      591.85       346   converged          0.960855     0.967751
+topology        128     16       1e+04     diagonal-channels    energy-endpoint    column relres<=1e-10      97.9663      50625     2034.06       418   converged          0.967481     0.970696
+topology        128     16       1e+04     parallel-channels         finite-1/4                    m=32      20.4547      31025      331.59       322   converged          0.957955     0.953188
+topology        128     16       1e+04     parallel-channels         finite-1/3                    m=43      29.4678      40701      433.04       260   converged          0.948151     0.948407
+topology        128     16       1e+04     parallel-channels         finite-1/2                    m=64      48.1166      48645      619.12       381   converged          0.964381     0.970749
+topology        128     16       1e+04     parallel-channels    energy-endpoint    column relres<=1e-10      97.9498      50625     1967.06       421   converged          0.967700     0.972055
+topology        128     16       1e+04    branching-channels         finite-1/4                    m=32      20.4547      31025      337.22       347   converged          0.960860     0.956394
+topology        128     16       1e+04    branching-channels         finite-1/3                    m=43      29.4678      40701      437.06       317   converged          0.957333     0.957133
+topology        128     16       1e+04    branching-channels         finite-1/2                    m=64      48.1166      48645      632.55       524   converged          0.973937     0.976256
+topology        128     16       1e+04    branching-channels    energy-endpoint    column relres<=1e-10      98.0489      50625     2206.46       615   converged          0.977776     0.980299
+topology        128     16       1e+04          winding-ring         finite-1/4                    m=32      20.4547      31025      338.05       358   converged          0.962131     0.957839
+topology        128     16       1e+04          winding-ring         finite-1/3                    m=43      29.4678      40701      427.33       237   converged          0.943169     0.948960
+topology        128     16       1e+04          winding-ring         finite-1/2                    m=64      48.1166      48645      625.41       412   converged          0.966957     0.966663
+topology        128     16       1e+04          winding-ring    energy-endpoint    column relres<=1e-10      97.8169      50625     2001.53       768   converged          0.982159     0.983993
 
 Aggregate summary
 -----------------
 Path point          Converged     Cycle sum  Mean density %   Setup sum ms
 -----------------  ----------  ------------  --------------  -------------
-finite-1/4              12/13          6133         22.0446         8225.3
-finite-1/3              13/13          5975         31.0828        10754.2
-finite-1/2              13/13          6122         49.9512        15991.5
-energy-endpoint         13/13         28972         97.6438        62700.4
+finite-1/4              12/13          6133         22.0446         7800.0
+finite-1/3              13/13          5975         31.0828        10047.1
+finite-1/2              13/13          6122         49.9512        14602.4
+energy-endpoint         13/13         28972         97.6438        58736.3
+
