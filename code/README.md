@@ -1,4 +1,4 @@
-# Numerical implementation (v9.1)
+# Numerical implementation (v9.2)
 
 代码只保留研究主线所需的组件：从几何插值出发的全局列 Jacobi--PCG 路径、固定路径点、energy endpoint、真实两网格谱诊断、有限传播诊断以及受控的三层扩展。旧版经验 adaptive API、oracle 扫描和 stopping-rule 消融已删除。
 

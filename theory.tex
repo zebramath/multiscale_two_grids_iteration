@@ -1,10 +1,93 @@
 \documentclass{ctexart}
 
-\usepackage{packages}
-\usepackage{mathstyle}
-\usepackage{reportstyle}
+% Self-contained preamble: only packages and definitions used by this paper.
+\usepackage[
+  left=2cm,
+  right=2cm,
+  top=1.75cm,
+  bottom=1.75cm,
+  headheight=15pt,
+  headsep=0.5cm,
+  includehead,
+  includefoot
+]{geometry}
+\usepackage{fancyhdr}
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage[
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue,
+  pdfstartview=FitH
+]{hyperref}
+\usepackage[nameinlink]{cleveref}
 
-\setinfo{理论分析}{崔正平}
+\allowdisplaybreaks
+
+% Mathematical notation used in the analysis.
+\newcommand{\q}{\quad}
+\newcommand{\T}{\mathrm{T}}
+\newcommand{\R}{\mathbb{R}}
+\renewcommand{\O}{\mathcal{O}}
+\newcommand{\ti}[1]{\widetilde{#1}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\dt}{\delta}
+\renewcommand{\ge}{\geqslant}
+\renewcommand{\le}{\leqslant}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\supp}{supp}
+\DeclareMathOperator{\arccosh}{arccosh}
+\DeclareMathOperator{\Ran}{Ran}
+\DeclarePairedDelimiter\norm{\lVert}{\rVert}
+\DeclarePairedDelimiter\avg{\langle}{\rangle}
+\DeclarePairedDelimiter\abs{\lvert}{\rvert}
+
+% Theorem declarations and Chinese cleveref formatting.
+\newtheorem{theorem}{定理}[section]
+\newtheorem{lemma}[theorem]{引理}
+\newtheorem{proposition}[theorem]{命题}
+\newtheorem{corollary}[theorem]{推论}
+\newtheorem{assumption}[theorem]{假设}
+
+\crefname{equation}{}{}
+\crefname{section}{节}{节}
+\crefname{theorem}{定理}{定理}
+\crefname{lemma}{引理}{引理}
+\crefname{proposition}{命题}{命题}
+\crefname{corollary}{推论}{推论}
+\crefname{assumption}{假设}{假设}
+\crefformat{equation}{~(#2#1#3)}
+\crefformat{section}{第~#2#1#3~节}
+\crefformat{theorem}{定理~#2#1#3}
+\crefformat{lemma}{引理~#2#1#3}
+\crefformat{proposition}{命题~#2#1#3}
+\crefformat{corollary}{推论~#2#1#3}
+\crefformat{assumption}{假设~#2#1#3}
+\crefmultiformat{equation}
+  {~#2(#1)#3}{ 和~#2(#1)#3}{, #2(#1)#3}{ 和~#2(#1)#3}
+\crefmultiformat{theorem}
+  {定理~#2#1#3}{ 和~#2#1#3}{, #2#1#3}{ 和~#2#1#3}
+
+% Compact report title and running header.
+\newcommand{\reporttitle}{理论分析}
+\title{\textbf{\reporttitle}}
+\author{崔正平}
+\date{}
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\textbf{\reporttitle}}
+\rhead{\textbf{\thepage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\let\originalmaketitle\maketitle
+\renewcommand{\maketitle}{%
+  \originalmaketitle
+  \thispagestyle{fancy}%
+}
 
 \begin{document}
 
@@ -26,18 +109,18 @@ $\bm P_{\rm id}=[-\bm A_{\rm FF}^{-1}\bm A_{\rm FC};\bm I]$
 
 考虑高对比度多尺度问题, 对其采用有限差分或者有限元格式得到对称正定线性方程组 $\bm A\bm u=\bm b$. 按细点与粗点分块,
 \begin{align}
-    \bm A&=\begin{bNiceMatrix}
+    \bm A&=\begin{bmatrix}
         \bm B & \bm C\\
         \bm C^\T & \bm A_{\mathrm{CC}}
-    \end{bNiceMatrix}\succ \mathbf{O},\q \bm B=\bm A_{\mathrm{FF}}\succ \mathbf{O},
+    \end{bmatrix}\succ \mathbf{O},\q \bm B=\bm A_{\mathrm{FF}}\succ \mathbf{O},
     \label{eq:setup-block-A}
 \end{align}
 其中 $n_{\mathrm{F}},n_{\mathrm{C}}$ 分别为细点和粗点的个数. 固定粗点为单位注入后, 插值算子可写成
 \begin{align}
-    \bm P(\bm W)&=\begin{bNiceMatrix}
+    \bm P(\bm W)&=\begin{bmatrix}
         \bm W\\
         \bm I
-    \end{bNiceMatrix},\q \bm W\in\R^{n_{\mathrm{F}}\times n_{\mathrm{C}}}.
+    \end{bmatrix},\q \bm W\in\R^{n_{\mathrm{F}}\times n_{\mathrm{C}}}.
     \label{eq:setup-interpolation}
 \end{align}
 取前、后磨光子分别为前向、后向 Gauss--Seidel 迭代, 前磨光误差传播算子记为 $\bm G$, 后磨光误差传播算子取其 $\bm A$-伴随, Galerkin 粗解精确求解.
@@ -323,10 +406,10 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
 \begin{align}
     \bm Z&=\bm B^{1/2}\bm\Delta\bm S^{-1/2},
     \label{eq:normalized-error}\\
-    \bm Q_{\mathrm{F}}&=\begin{bNiceMatrix}
+    \bm Q_{\mathrm{F}}&=\begin{bmatrix}
         \bm B^{-1/2}\\
         \mathbf{O}
-    \end{bNiceMatrix},\q
+    \end{bmatrix},\q
     \bm Q_{\ast}=\bm P(\bm W^{\ast})\bm S^{-1/2}.
     \label{eq:A-orthonormal-basis}
 \end{align}
@@ -344,9 +427,9 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
 \end{align}
 因此
 \begin{align}
-    \begin{bNiceMatrix}\bm Q_{\mathrm F}&\bm Q_\ast\end{bNiceMatrix}^\T
+    \begin{bmatrix}\bm Q_{\mathrm F}&\bm Q_\ast\end{bmatrix}^\T
     \bm A
-    \begin{bNiceMatrix}\bm Q_{\mathrm F}&\bm Q_\ast\end{bNiceMatrix}
+    \begin{bmatrix}\bm Q_{\mathrm F}&\bm Q_\ast\end{bmatrix}
     &=\bm I,
     \label{eq:A-orthonormal-combined}
 \end{align}
@@ -356,7 +439,7 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
     \ti{\bm Q}_{\ast}=\bm A^{1/2}\bm Q_{\ast},
     \label{eq:euclidean-orthonormal-basis}
 \end{align}
-则 $\begin{bNiceMatrix}\ti{\bm Q}_{\mathrm F}&\ti{\bm Q}_\ast\end{bNiceMatrix}$ 为欧氏正交矩阵.
+则 $\begin{bmatrix}\ti{\bm Q}_{\mathrm F}&\ti{\bm Q}_\ast\end{bmatrix}$ 为欧氏正交矩阵.
 
 \begin{proposition}
 \label{prop:normalized-geometry}
@@ -366,13 +449,13 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
     \label{eq:normalized-energy-gap}\\
     \bm P(\bm W)^\T\bm A\bm P(\bm W)&=\bm S^{1/2}(\bm I+\bm Z^\T\bm Z)\bm S^{1/2},
     \label{eq:normalized-coarse-matrix}\\
-    \bm P(\bm W)&=\begin{bNiceMatrix}
+    \bm P(\bm W)&=\begin{bmatrix}
         \bm Q_{\mathrm{F}} & \bm Q_{\ast}
-    \end{bNiceMatrix}
-    \begin{bNiceMatrix}
+    \end{bmatrix}
+    \begin{bmatrix}
         \bm Z\\
         \bm I
-    \end{bNiceMatrix}\bm S^{1/2}.
+    \end{bmatrix}\bm S^{1/2}.
     \label{eq:interpolation-graph-factorization}
 \end{align}
 令 $\theta_k$ 为 $\Ran(\bm P(\bm W))$ 与能量极小粗空间 $\Ran(\bm P(\bm W^\ast))$ 关于 $\bm A$-内积的主角, 按非增序排列, 则 $\tan\theta_k=\sigma_k(\bm Z)$.
@@ -398,14 +481,14 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
 另一方面, 由\cref{eq:A-orthonormal-basis,eq:normalized-delta-substitution},
 \begin{align}
     \bm P(\bm W)=\bm P(\bm W^\ast)
-      +\begin{bNiceMatrix}\bm\Delta\\\mathbf O\end{bNiceMatrix}=\bm Q_\ast\bm S^{1/2}
-      +\bm Q_{\mathrm F}\bm Z\bm S^{1/2}=\begin{bNiceMatrix}\bm Q_{\mathrm F}&\bm Q_\ast\end{bNiceMatrix}
-      \begin{bNiceMatrix}\bm Z\\\bm I\end{bNiceMatrix}\bm S^{1/2},
+      +\begin{bmatrix}\bm\Delta\\\mathbf O\end{bmatrix}=\bm Q_\ast\bm S^{1/2}
+      +\bm Q_{\mathrm F}\bm Z\bm S^{1/2}=\begin{bmatrix}\bm Q_{\mathrm F}&\bm Q_\ast\end{bmatrix}
+      \begin{bmatrix}\bm Z\\\bm I\end{bmatrix}\bm S^{1/2},
     \label{eq:interpolation-graph-factorization-proof}
 \end{align}
 故在 $\bm A$-单位正交坐标中, 当前粗空间恰是图空间
 \begin{align}
-    \mathcal G(\bm Z)&:=\Ran\begin{bNiceMatrix}\bm Z\\\bm I\end{bNiceMatrix},
+    \mathcal G(\bm Z)&:=\Ran\begin{bmatrix}\bm Z\\\bm I\end{bmatrix},
     \label{eq:graph-space-definition}
 \end{align}
 而能量极小粗空间对应 $\mathcal G(\mathbf O)$.
@@ -414,12 +497,12 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
 \begin{align}
     \bm q_k
     &=\frac{1}{\sqrt{1+\sigma_k(\bm Z)^2}}
-      \begin{bNiceMatrix}\bm Z\bm v_k\\\bm v_k\end{bNiceMatrix},
+      \begin{bmatrix}\bm Z\bm v_k\\\bm v_k\end{bmatrix},
     \label{eq:graph-principal-vector}
 \end{align}
 而 $\mathcal G(\mathbf O)$ 中对应的单位向量为
 \begin{align}
-    \bm q_k^\ast&=\begin{bNiceMatrix}\mathbf O\\\bm v_k\end{bNiceMatrix}.
+    \bm q_k^\ast&=\begin{bmatrix}\mathbf O\\\bm v_k\end{bmatrix}.
     \label{eq:endpoint-principal-vector}
 \end{align}
 由\cref{eq:graph-principal-vector,eq:endpoint-principal-vector}, $\{\bm q_k\}$ 与 $\{\bm q_k^\ast\}$ 分别构成两个子空间的单位正交基, 且交叉 Gram 矩阵在该配对下为对角阵, 第 $k$ 个对角元为 $(1+\sigma_k(\bm Z)^2)^{-1/2}$. 因而相应主角满足 $\tan\theta_k=\sigma_k(\bm Z)$.
@@ -529,26 +612,26 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
 
 在\cref{eq:euclidean-orthonormal-basis} 的正交基底下, 定义
 \begin{align}
-    \begin{bNiceMatrix}
+    \begin{bmatrix}
         \bm T_{\mathrm F}\\
         \bm T_\ast
-    \end{bNiceMatrix}
-    &=\begin{bNiceMatrix}
+    \end{bmatrix}
+    &=\begin{bmatrix}
         \ti{\bm Q}_{\mathrm F}^\T\\
         \ti{\bm Q}_{\ast}^\T
-    \end{bNiceMatrix}\bm T.
+    \end{bmatrix}\bm T.
     \label{eq:T-block-coordinates}
 \end{align}
 由\cref{eq:gs-nonexpansive} 有 $\norm{\bm T_{\mathrm F}}_2,\norm{\bm T_\ast}_2\le1$.
 
 \begin{proposition}
 \label{prop:graph-projector}
-在\cref{eq:euclidean-orthonormal-basis} 的坐标下, 图空间 $\Ran\begin{bNiceMatrix}\bm Z\\\bm I\end{bNiceMatrix}$ 的正交补具有欧氏单位正交基
+在\cref{eq:euclidean-orthonormal-basis} 的坐标下, 图空间 $\Ran\begin{bmatrix}\bm Z\\\bm I\end{bmatrix}$ 的正交补具有欧氏单位正交基
 \begin{align}
-    \bm N(\bm Z)&=\begin{bNiceMatrix}
+    \bm N(\bm Z)&=\begin{bmatrix}
         \bm I\\
         -\bm Z^\T
-    \end{bNiceMatrix}(\bm I+\bm Z\bm Z^\T)^{-1/2}.
+    \end{bmatrix}(\bm I+\bm Z\bm Z^\T)^{-1/2}.
     \label{eq:graph-complement-basis}
 \end{align}
 因此
@@ -560,9 +643,9 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
 \end{proposition}
 
 \begin{proof}
-记 $\ti{\bm Q}=\begin{bNiceMatrix}\ti{\bm Q}_{\mathrm F}&\ti{\bm Q}_\ast\end{bNiceMatrix}$. 由\cref{eq:interpolation-graph-factorization-proof}, 在该正交坐标中当前粗空间就是 $\mathcal G(\bm Z)$. 先直接验证
+记 $\ti{\bm Q}=\begin{bmatrix}\ti{\bm Q}_{\mathrm F}&\ti{\bm Q}_\ast\end{bmatrix}$. 由\cref{eq:interpolation-graph-factorization-proof}, 在该正交坐标中当前粗空间就是 $\mathcal G(\bm Z)$. 先直接验证
 \begin{align}
-    \begin{bNiceMatrix}\bm Z^\T&\bm I\end{bNiceMatrix}\bm N(\bm Z)
+    \begin{bmatrix}\bm Z^\T&\bm I\end{bmatrix}\bm N(\bm Z)
     &=\bigl(\bm Z^\T-\bm Z^\T\bigr)
       (\bm I+\bm Z\bm Z^\T)^{-1/2}
      =\mathbf O,
@@ -585,8 +668,8 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
     \rho_{\mathrm{TG}}(\bm Z)
     &=\norm{\bm N(\bm Z)^\T\ti{\bm Q}^\T\bm T}_2^2=\norm*{
         (\bm I+\bm Z\bm Z^\T)^{-1/2}
-        \begin{bNiceMatrix}\bm I&-\bm Z\end{bNiceMatrix}
-        \begin{bNiceMatrix}\bm T_{\mathrm F}\\\bm T_\ast\end{bNiceMatrix}
+        \begin{bmatrix}\bm I&-\bm Z\end{bmatrix}
+        \begin{bmatrix}\bm T_{\mathrm F}\\\bm T_\ast\end{bmatrix}
       }_2^2=\norm*{
         (\bm I+\bm Z\bm Z^\T)^{-1/2}
         (\bm T_{\mathrm F}-\bm Z\bm T_\ast)
@@ -605,12 +688,12 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
 \begin{align}
     \bm T
     &=
-    \begin{bNiceMatrix}\bm U_1&\bm U_2\end{bNiceMatrix}
-    \begin{bNiceMatrix}
+    \begin{bmatrix}\bm U_1&\bm U_2\end{bmatrix}
+    \begin{bmatrix}
       \bm\Sigma_1&\mathbf O\\
       \mathbf O&\bm\Sigma_2
-    \end{bNiceMatrix}
-    \begin{bNiceMatrix}\bm V_1&\bm V_2\end{bNiceMatrix}^{\T},
+    \end{bmatrix}
+    \begin{bmatrix}\bm V_1&\bm V_2\end{bmatrix}^{\T},
     \label{eq:solver-optimal-svd}
 \end{align}
 其中
@@ -645,11 +728,11 @@ $\bm e_{j,m+1}\perp_{\bm B}\bm s_{j,m}$,
 \end{align}
 进一步, 任取
 $\bm X\in\R^{(n-r)\times r}$ 并在
-$\begin{bNiceMatrix}\bm U_1&\bm U_2\end{bNiceMatrix}$ 坐标下定义图空间
+$\begin{bmatrix}\bm U_1&\bm U_2\end{bmatrix}$ 坐标下定义图空间
 \begin{align}
     \mathcal U_{\mathrm{opt}}(\bm X)
     &:=
-    \Ran\begin{bNiceMatrix}\bm I\\\bm X\end{bNiceMatrix}.
+    \Ran\begin{bmatrix}\bm I\\\bm X\end{bmatrix}.
     \label{eq:solver-optimal-graph-space}
 \end{align}
 则
@@ -700,10 +783,10 @@ $\mathcal U_{\mathrm{opt}}=\Ran(\bm U_1)$,
 \begin{align}
     \bm N_{\mathrm{opt}}(\bm X)
     &=
-    \begin{bNiceMatrix}
+    \begin{bmatrix}
       -\bm X^\T\\
       \bm I
-    \end{bNiceMatrix}
+    \end{bmatrix}
     (\bm I+\bm X\bm X^\T)^{-1/2}.
     \label{eq:solver-optimal-complement}
 \end{align}
@@ -713,27 +796,27 @@ $\mathcal U_{\mathrm{opt}}=\Ran(\bm U_1)$,
     &=
     \norm*{
       \bm N_{\mathrm{opt}}(\bm X)^\T
-      \begin{bNiceMatrix}\bm U_1&\bm U_2\end{bNiceMatrix}^{\T}
+      \begin{bmatrix}\bm U_1&\bm U_2\end{bmatrix}^{\T}
       \bm T
     }_2^2\notag\\
     &=
     \norm*{
       (\bm I+\bm X\bm X^\T)^{-1/2}
-      \begin{bNiceMatrix}
+      \begin{bmatrix}
         -\bm X\bm\Sigma_1&\bm\Sigma_2
-      \end{bNiceMatrix}
-      \begin{bNiceMatrix}\bm V_1&\bm V_2\end{bNiceMatrix}^{\T}
+      \end{bmatrix}
+      \begin{bmatrix}\bm V_1&\bm V_2\end{bmatrix}^{\T}
     }_2^2\notag\\
     &=
     \norm*{
       (\bm I+\bm X\bm X^\T)^{-1/2}
-      \begin{bNiceMatrix}
+      \begin{bmatrix}
         -\bm X\bm\Sigma_1&\bm\Sigma_2
-      \end{bNiceMatrix}
+      \end{bmatrix}
     }_2^2,
     \label{eq:solver-optimal-graph-proof}
 \end{align}
-其中最后一步使用了 $\begin{bNiceMatrix}\bm V_1&\bm V_2\end{bNiceMatrix}$ 的正交性. 因而最后一个矩阵乘积的 Gram 矩阵恰为
+其中最后一步使用了 $\begin{bmatrix}\bm V_1&\bm V_2\end{bmatrix}$ 的正交性. 因而最后一个矩阵乘积的 Gram 矩阵恰为
 $\bm\Sigma_2^2+\bm X\bm\Sigma_1^2\bm X^\T$, 即得
 \cref{eq:solver-optimal-exact-graph}.
 \end{proof}
@@ -1487,9 +1570,9 @@ $\bm M=\bm L(\bm Z)$ 与 $\bm E=\Delta\bm L$ 即得\cref{eq:pathwise-spectral-re
 \begin{align}
     \bm x_{\mathrm C}^\T\bm S\bm x_{\mathrm C}
     &=\min_{\bm x_{\mathrm F}}
-      \begin{bNiceMatrix}\bm x_{\mathrm F}^\T&\bm x_{\mathrm C}^\T\end{bNiceMatrix}
+      \begin{bmatrix}\bm x_{\mathrm F}^\T&\bm x_{\mathrm C}^\T\end{bmatrix}
       \bm A
-      \begin{bNiceMatrix}\bm x_{\mathrm F}\\\bm x_{\mathrm C}\end{bNiceMatrix},
+      \begin{bmatrix}\bm x_{\mathrm F}\\\bm x_{\mathrm C}\end{bmatrix},
     \label{eq:schur-variational-characterization}
 \end{align}
 对任意 $\bm x_{\mathrm C}$ 有
@@ -1578,7 +1661,7 @@ $\widehat\rho_\dt+\widehat\rho_\dt^2/2=\dt/2$.
 这里隐常数只依赖固定的 $\eta$; 特别地, 不再包含 $h^{-1}$、$\sqrt\chi$ 或 PCG 条件数因子.
 
 
-\subsection{规则粗点下统一的 $h,H$ 容量尺度}
+\subsection{规则粗点下统一的 \texorpdfstring{$h,H$}{h,H} 容量尺度}
 \label{subsec:structured-kappa}
 
 记
@@ -2079,11 +2162,11 @@ $m_{\mathrm{opt}}=\Theta(h^{-1})$.
 作对称扩张
 \begin{align}
     \bm M_0&=
-    \begin{bNiceMatrix}\mathbf O&\bm M\\\bm M^\T&\mathbf O\end{bNiceMatrix},\q
+    \begin{bmatrix}\mathbf O&\bm M\\\bm M^\T&\mathbf O\end{bmatrix},\q
     \bm E_0=
-    \begin{bNiceMatrix}\mathbf O&\bm E\\\bm E^\T&\mathbf O\end{bNiceMatrix},\q
+    \begin{bmatrix}\mathbf O&\bm E\\\bm E^\T&\mathbf O\end{bmatrix},\q
     \bm q=\frac1{\sqrt2}
-    \begin{bNiceMatrix}\bm u\\\bm v\end{bNiceMatrix}.
+    \begin{bmatrix}\bm u\\\bm v\end{bmatrix}.
     \label{eq:sv-symmetric-dilation}
 \end{align}
 则 $\bm M_0\bm q=\sigma\bm q$, $\norm{\bm E_0}_2=e$, 且 $\bm M_0$ 的第二大特征值不超过 $\sigma_2(\bm M)=\sigma-\dt$. 记
@@ -2212,10 +2295,10 @@ $\bm P_0=\bm q_0\bm q_0^\T$, $\bm P_Z=\bm q_Z\bm q_Z^\T$.
 其中 $\norm{\cdot}_\ast$ 为核范数. 对
 \begin{align}
     \bm K(\bm H)&=
-    \begin{bNiceMatrix}
+    \begin{bmatrix}
       \mathbf O&D\bm L(\bm Z)[\bm H]\\
       D\bm L(\bm Z)[\bm H]^\T&\mathbf O
-    \end{bNiceMatrix}
+    \end{bmatrix}
     \label{eq:local-derivative-dilation}
 \end{align}
 有 $\norm{\bm K(\bm H)}_2=\norm{D\bm L(\bm Z)[\bm H]}_2$. 因而

@@ -249,8 +249,7 @@ int main(int argc, char** argv) {
         "the A-energy norm for the symmetric forward-GS/coarse/backward-GS "
         "error propagator.  The stage difference is the absolute change "
         "between the halfway and final Rayleigh-factor estimates.  rho_eff "
-        "is a separate constant-RHS residual-history statistic.  No energy "
-        "curve, online selector or oracle enters this experiment.");
+        "is a separate constant-RHS residual-history statistic.");
     report.save(
         topology == "both" ? "experiment2_spectral_path"
                            : "experiment2_spectral_path_" + topology);

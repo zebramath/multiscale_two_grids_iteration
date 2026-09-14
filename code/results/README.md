@@ -1,6 +1,6 @@
-# Full numerical results for v9.1
+# Numerical results retained in v9.2
 
-本目录由 `scripts/run_all_experiments.sh full` 生成。除本索引外，所有正式结果均来自 v9.1 全量运行；不混用旧版本表格。
+本目录中的正式结果来自 v9.1 全量运行。v9.2 只精简项目、合并理论稿导言区并更新版本标识，没有改动数值内核；按要求不重复运行实验，因此原始输出中的 `Version: 9.1.0` 被如实保留。后续用 v9.2 源码复现时会输出 `9.2.0`。
 
 | 前缀 | 内容 |
 |---|---|

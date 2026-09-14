@@ -1,8 +1,8 @@
-# Finite energy-minimization paths for two-grid interpolation (v9.1)
+# Finite energy-minimization paths for two-grid interpolation (v9.2)
 
 本项目研究一个具体但容易被忽略的机制问题：沿着通向 energy-minimizing/ideal interpolation 的有限 Jacobi--PCG 路径，插值能量严格下降时，固定磨光子下的真实两网格谱半径是否也持续改善？答案是否定的。在所研究的高对比度二维扩散类上，有限路径点可显著优于高精度能量端点，并同时保持更低的 setup、插值密度和粗算子复杂度。
 
-v9.1 不再把经验步数规则包装成“自适应算法”。核心定位是理论机制、真实谱路径与可复现实验；固定 $m=c/h$ 仅作为轻量、可调的经验路径坐标。
+v9.2 不再把经验步数规则包装成“自适应算法”。核心定位是理论机制、真实谱路径与可复现实验；固定 $m=c/h$ 仅作为轻量、可调的经验路径坐标。理论稿已改为单文件自包含形式，不再依赖仓库内的自定义样式包。
 
 ## 主要结论
 
@@ -25,6 +25,8 @@ v9.1 不再把经验步数规则包装成“自适应算法”。核心定位是
 
 中心问题为 $1/h=128,1/H=16,\chi=10^4$。200 步冷启动 $A$-内积 Lanczos/Ritz 路径给出：
 
+v9.2 未改动数值内核并按要求不重复运行实验；`code/results/` 保留原始 v9.1 全量输出及其版本标识，数值内容与本版源码一致。
+
 | 拓扑 | 最小真实 \(\rho_{\rm TG}\) | 所在 \(m\) | 最小 RHS \(\rho_{\rm eff}\) / \(m\) | energy endpoint \(\rho_{\rm TG}\) |
 |---|---:|---:|---:|---:|
 | cross-channel | 0.949431677 | 36 | 0.941763675 / 38 | 0.996163213 |
@@ -36,7 +38,7 @@ v9.1 不再把经验步数规则包装成“自适应算法”。核心定位是
 
 ## 文件结构
 
-- `theory.tex`：统一后的完整理论稿；主线在正文，奇异值扰动、余项差和二维容量证明置于附录。
+- `theory.tex`：单文件自包含的完整理论稿；所需宏包、数学宏和版式配置均在导言区，技术证明置于附录。
 - `research_report.md`：假设、实验设计、定量结论与边界的中文研究报告。
 - `code/src/`：稀疏线性代数、扩散离散、PCG 路径、两网格/多层循环与谱诊断。
 - `code/experiments/`：7 组正式实验。
@@ -54,6 +56,16 @@ cd code
 ```
 
 可用 `TGI_THREADS`、`TGI_BUILD_DIR`、`TGI_RESULTS_DIR` 和 `TGI_STEP_TIMEOUT_SECONDS` 调整线程、构建目录、结果目录与单步超时。正式结果使用 4 个线程；随机系数与谱初值均固定 seed。
+
+理论稿使用 XeLaTeX 编译：
+
+```bash
+xelatex theory.tex
+xelatex theory.tex
+xelatex theory.tex
+```
+
+除 `ctexart` 文档类外，只需 `geometry`、`fancyhdr`、`mathtools`、`amssymb`、`amsthm`、`bm`、`xcolor`、`hyperref` 和 `cleveref`；仓库内不再需要自定义 `.sty` 文件。
 
 ## 文献边界
 

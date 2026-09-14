@@ -51,7 +51,7 @@ def main() -> None:
     with output.open("w", encoding="utf-8") as stream:
         stream.write("True two-grid spectral-radius paths along finite PCG\n")
         stream.write("====================================================\n\n")
-        stream.write("Version                   : 9.1.0\n")
+        stream.write("Version                   : 9.2.0\n")
         stream.write("Problems                  : 128/16, contrast 1e4\n")
         stream.write("Scanned interval          : m=1,...,128\n")
         stream.write("Lanczos iterations        : 200\n")
@@ -72,8 +72,7 @@ def main() -> None:
             "\nNote: rho_TG is a cold-start matrix-free Lanczos/Ritz estimate "
             "in the A-energy inner product. The stage difference compares "
             "the 100- and 200-step Ritz values. rho_eff is the independent "
-            "constant-RHS residual-history factor. No energy curve, online "
-            "selector, or oracle is used.\n"
+            "constant-RHS residual-history factor.\n"
         )
 
 

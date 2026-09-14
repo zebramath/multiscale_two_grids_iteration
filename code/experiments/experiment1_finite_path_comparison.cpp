@@ -157,8 +157,8 @@ int main(int argc, char** argv) {
         {"Endpoint column tolerance", "1e-10"}});
     report.add_note(
         "The three finite checkpoints m=(1/h)/4, (1/h)/3 and (1/h)/2 "
-        "are reported separately.  No online selector and no oracle are used. "
-        "The endpoint follows the same Jacobi-PCG column paths from geometric "
+        "are reported separately. The endpoint follows the same Jacobi-PCG "
+        "column paths from geometric "
         "interpolation until every column reaches relative residual 1e-10.");
     report.add_table(
         "All two-grid cases",
