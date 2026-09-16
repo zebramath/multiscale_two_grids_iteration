@@ -1,22 +1,16 @@
 #!/usr/bin/env python3
-
 import csv
 import sys
-
 import matplotlib
-
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-
 with open(sys.argv[1], newline="", encoding="utf-8") as stream:
     data = list(csv.DictReader(stream))
-
 steps = [int(row["m"]) for row in data]
 spectral = [float(row["rho_TG"]) for row in data]
 effective = [float(row["rho_eff"]) for row in data]
 spectral_best = min(range(len(spectral)), key=spectral.__getitem__)
 effective_best = min(range(len(effective)), key=effective.__getitem__)
-
 figure, axis = plt.subplots(figsize=(7.2, 4.5))
 axis.plot(
     steps, spectral, color="#174a7e", linewidth=1.7,

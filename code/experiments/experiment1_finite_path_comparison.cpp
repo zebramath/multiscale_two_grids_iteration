@@ -1,16 +1,13 @@
 #include "experiment/comparison_cases.hpp"
 #include "experiment/reporting.hpp"
 #include "multigrid/global_pcg.hpp"
-
 #include <array>
 #include <chrono>
 #include <cmath>
 #include <map>
 #include <memory>
 #include <string>
-
 namespace {
-
 struct Aggregate {
     int cases = 0;
     int converged = 0;
@@ -18,13 +15,11 @@ struct Aggregate {
     double setup_ms = 0.0;
     double density = 0.0;
 };
-
 double elapsed_ms(const std::chrono::steady_clock::time_point& start) {
     return std::chrono::duration<double, std::milli>(
                std::chrono::steady_clock::now() - start)
         .count();
 }
-
 void append_measurement(
     const experiment_support::ComparisonCase& item,
     const std::string& method, const std::string& parameter,
@@ -53,7 +48,6 @@ void append_measurement(
         tgi::stationary_status_name(solved.status),
         experiment_support::fixed(solved.effective_factor, 6),
         experiment_support::fixed(solved.tail_factor, 6)});
-
     Aggregate& aggregate = aggregates[method];
     ++aggregate.cases;
     aggregate.setup_ms += setup_ms;
@@ -63,9 +57,7 @@ void append_measurement(
         aggregate.cycles += solved.cycles;
     }
 }
-
 }
-
 int main(int argc, char** argv) {
     int threads = 4;
     bool quick = false;
@@ -76,14 +68,12 @@ int main(int argc, char** argv) {
             threads = std::stoi(argument.substr(10));
         }
     }
-
     const auto cases = experiment_support::comparison_cases(quick);
     experiment_support::Rows rows;
     std::map<std::string, Aggregate> aggregates;
     const std::array<std::array<int, 2>, 3> fractions{{
         {{1, 4}}, {{1, 3}}, {{1, 2}}
     }};
-
     for (std::size_t case_index = 0; case_index < cases.size(); ++case_index) {
         const auto& item = cases[case_index];
         experiment_support::progress(
@@ -94,7 +84,6 @@ int main(int argc, char** argv) {
         const auto problem = experiment_support::make_problem(
             grid, item.field, config);
         const auto initial = tgi::build_geometric_interpolation(grid);
-
         auto start = std::chrono::steady_clock::now();
         tgi::GlobalEnergyPcgPath path(
             grid, problem.matrix, initial, threads);
@@ -117,7 +106,6 @@ int main(int argc, char** argv) {
                 problem.matrix, problem.rhs, prolongation, threads,
                 cumulative_pcg_ms + snapshot_ms, rows, aggregates);
         }
-
         start = std::chrono::steady_clock::now();
         tgi::GlobalEnergyPcgPath endpoint_path(
             grid, problem.matrix, initial, threads);
@@ -129,7 +117,6 @@ int main(int argc, char** argv) {
             problem.matrix, problem.rhs, endpoint, threads,
             endpoint_setup_ms, rows, aggregates);
     }
-
     experiment_support::Rows aggregate_rows;
     for (const std::string& method : {
              std::string("finite-1/4"), std::string("finite-1/3"),
@@ -144,7 +131,6 @@ int main(int argc, char** argv) {
                 value.density / static_cast<double>(value.cases), 4),
             experiment_support::fixed(value.setup_ms, 1)});
     }
-
     experiment_support::Report report(
         "Fixed O(1/h) checkpoints along the energy-minimization path");
     report.add_summary({

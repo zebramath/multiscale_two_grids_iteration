@@ -1,7 +1,5 @@
 #pragma once
-
 #include "core/linear_algebra.hpp"
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -12,13 +10,10 @@
 #include <thread>
 #include <utility>
 #include <vector>
-
 namespace tgi {
-
 struct CoarseSetupReport {
     double interpolation_energy = 0.0;
 };
-
 class TwoGridCycle {
 public:
     struct Workspace {
@@ -26,21 +21,17 @@ public:
         Vector coarse_solution;
         Vector coarse_work;
     };
-
     TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
                  int smoothing_steps = 1, int setup_threads = 1);
-
     double iterate(const Vector& rhs, Vector& solution, Vector& residual,
                    Workspace& workspace) const;
     const SparseMatrix& coarse_matrix() const { return coarse_matrix_; }
     const CoarseSetupReport& setup_report() const { return setup_report_; }
-
 private:
     void solve_gauss_seidel_sweep(const Vector& rhs, bool forward,
                                   Vector& solution) const;
     void restrict_fine_residual(const Vector& rhs, const Vector& solution,
                                 Vector& coarse_rhs) const;
-
     const SparseMatrix& a_;
     const SparseMatrix& p_;
     Vector inverse_diagonal_;
@@ -52,19 +43,16 @@ private:
     SparseCholesky coarse_solver_;
     CoarseSetupReport setup_report_;
 };
-
 enum class StationaryIterationStatus {
     Converged,
     SlowAtLimit,
     Diverged
 };
-
 inline const char* stationary_status_name(StationaryIterationStatus status) {
     if (status == StationaryIterationStatus::Converged) return "converged";
     if (status == StationaryIterationStatus::SlowAtLimit) return "slow-limit";
     return "diverged";
 }
-
 struct StationaryIterationResult {
     Vector solution;
     int cycles = 0;
@@ -75,13 +63,10 @@ struct StationaryIterationResult {
     StationaryIterationStatus status = StationaryIterationStatus::SlowAtLimit;
     bool converged = false;
 };
-
 inline StationaryIterationResult solve_two_grid(
     const Vector& rhs, const TwoGridCycle& cycle,
     double relative_tolerance = 1e-8, int max_cycles = 40000);
-
 namespace two_grid_solver_detail {
-
 inline void nested_dissection_rectangle(int side, int separator_width,
                                         int xmin, int xmax,
                                         int ymin, int ymax,
@@ -132,7 +117,6 @@ inline void nested_dissection_rectangle(int side, int separator_width,
         }
     }
 }
-
 inline std::vector<int> coarse_ordering(const SparseMatrix& matrix) {
     const int size = matrix.rows();
     const int side = static_cast<int>(
@@ -160,7 +144,6 @@ inline std::vector<int> coarse_ordering(const SparseMatrix& matrix) {
         side, separator_width, 0, side, 0, side, permutation);
     return permutation;
 }
-
 inline SparseMatrix symmetrize_upper(const SparseMatrix& upper) {
     std::vector<int> lower_counts(
         static_cast<std::size_t>(upper.rows()), 0);
@@ -187,7 +170,6 @@ inline SparseMatrix symmetrize_upper(const SparseMatrix& upper) {
             row_ptr[static_cast<std::size_t>(row)] +
             lower_counts[static_cast<std::size_t>(row)];
     }
-
     std::vector<int> lower_next = row_ptr;
     std::vector<int> upper_next(static_cast<std::size_t>(upper.rows()));
     for (int row = 0; row < upper.rows(); ++row) {
@@ -223,11 +205,9 @@ inline SparseMatrix symmetrize_upper(const SparseMatrix& upper) {
         upper.rows(), upper.cols(), std::move(row_ptr),
         std::move(col_idx), std::move(values));
 }
-
 inline SparseMatrix multiply_sparse_matrices(
     const SparseMatrix& lhs, const SparseMatrix& rhs,
     double drop_tolerance, int thread_count, bool upper_triangle_only);
-
 inline void multiply_parallel(const SparseMatrix& matrix, const Vector& x,
                               Vector& result, int thread_count) {
 #if defined(_OPENMP)
@@ -264,7 +244,6 @@ inline void multiply_parallel(const SparseMatrix& matrix, const Vector& x,
     for (auto& thread : workers) thread.join();
 #endif
 }
-
 inline void multiply_add_parallel(const SparseMatrix& matrix, double alpha,
                                   const Vector& x, Vector& result,
                                   int thread_count) {
@@ -301,7 +280,6 @@ inline void multiply_add_parallel(const SparseMatrix& matrix, double alpha,
     for (auto& thread : workers) thread.join();
 #endif
 }
-
 inline void gauss_seidel_sweep(
     const SparseMatrix& matrix, const Vector& inverse_diagonal,
     const std::vector<int>& diagonal_position, const Vector& rhs,
@@ -330,16 +308,13 @@ inline void gauss_seidel_sweep(
             inverse_diagonal[static_cast<std::size_t>(row)];
     }
 }
-
 }
-
 inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
     const SparseMatrix& lhs, const SparseMatrix& rhs,
     double drop_tolerance, int thread_count,
     bool upper_triangle_only) {
     const int worker_count = std::max(
         1, std::min(lhs.rows(), thread_count));
-
     struct RowBlockProduct {
         int first_row = 0;
         int last_row = 0;
@@ -351,7 +326,6 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
         static_cast<std::size_t>(worker_count));
     std::exception_ptr worker_error;
     std::mutex error_mutex;
-
     auto worker = [&](int worker_id) {
         try {
             RowBlockProduct& product =
@@ -370,7 +344,6 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
                     std::min(rhs.cols(), 64));
             product.columns.reserve(reserve_entries);
             product.entries.reserve(reserve_entries);
-
             std::vector<double> accumulator(
                 static_cast<std::size_t>(rhs.cols()), 0.0);
             std::vector<int> marker(
@@ -433,7 +406,6 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
                         static_cast<int>(product.entries.size());
                     continue;
                 }
-
                 touched.clear();
                 for (int lhs_position =
                          lhs.row_ptr()[static_cast<std::size_t>(row)];
@@ -501,7 +473,6 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
             if (!worker_error) worker_error = std::current_exception();
         }
     };
-
     if (worker_count == 1) {
         worker(0);
     } else {
@@ -521,7 +492,6 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
 #endif
     }
     if (worker_error) std::rethrow_exception(worker_error);
-
     if (worker_count == 1) {
         RowBlockProduct& product = products.front();
         SparseMatrix result(
@@ -531,7 +501,6 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
             ? symmetrize_upper(result)
             : std::move(result);
     }
-
     std::vector<int> row_ptr(
         static_cast<std::size_t>(lhs.rows()) + 1U, 0);
     for (const RowBlockProduct& product : products) {
@@ -563,7 +532,6 @@ inline SparseMatrix two_grid_solver_detail::multiply_sparse_matrices(
         ? symmetrize_upper(result)
         : std::move(result);
 }
-
 inline SparseMatrix galerkin_coarse_operator(
     const SparseMatrix& fine_matrix, const SparseMatrix& prolongation,
     int setup_threads = 1) {
@@ -575,7 +543,6 @@ inline SparseMatrix galerkin_coarse_operator(
     return two_grid_solver_detail::multiply_sparse_matrices(
         restriction, action, 0.0, setup_threads, true);
 }
-
 inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
                                   int smoothing_steps, int setup_threads)
     : a_(a), p_(p), smoothing_steps_(smoothing_steps) {
@@ -594,7 +561,6 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
         inverse_diagonal_[i] = 1.0 / diagonal;
         diagonal_position_[i] = position;
     }
-
     p_transpose_ = p_.transpose(setup_threads);
     const SparseMatrix ap = two_grid_solver_detail::multiply_sparse_matrices(
         a_, p_, 0.0, setup_threads, false);
@@ -603,7 +569,6 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
     for (double value : coarse_matrix_.diagonal()) {
         setup_report_.interpolation_energy += 0.5 * value;
     }
-
     const std::vector<int> ordering =
         two_grid_solver_detail::coarse_ordering(coarse_matrix_);
     coarse_solver_.factorize(coarse_matrix_, ordering);
@@ -619,13 +584,11 @@ inline TwoGridCycle::TwoGridCycle(const SparseMatrix& a, const SparseMatrix& p,
                       p_.rows(), p_.cols()}))
         : 1;
 }
-
 inline void TwoGridCycle::solve_gauss_seidel_sweep(
     const Vector& rhs, bool forward, Vector& solution) const {
     two_grid_solver_detail::gauss_seidel_sweep(
         a_, inverse_diagonal_, diagonal_position_, rhs, forward, solution);
 }
-
 inline void TwoGridCycle::restrict_fine_residual(
     const Vector& rhs, const Vector& solution, Vector& coarse_rhs) const {
     coarse_rhs.assign(static_cast<std::size_t>(p_.cols()), 0.0);
@@ -653,14 +616,12 @@ inline void TwoGridCycle::restrict_fine_residual(
         }
     }
 }
-
 inline double TwoGridCycle::iterate(
     const Vector& rhs, Vector& solution, Vector& residual,
     Workspace& workspace) const {
     for (int step = 0; step < smoothing_steps_; ++step) {
         solve_gauss_seidel_sweep(rhs, true, solution);
     }
-
     if (application_threads_ == 1) {
         restrict_fine_residual(rhs, solution, workspace.coarse_rhs);
     } else {
@@ -676,22 +637,21 @@ inline double TwoGridCycle::iterate(
     two_grid_solver_detail::multiply_add_parallel(
         p_, 1.0, workspace.coarse_solution, solution,
         application_threads_);
-
     for (int step = 0; step < smoothing_steps_; ++step) {
         solve_gauss_seidel_sweep(rhs, false, solution);
     }
     return a_.residual_squared(
         solution, rhs, residual, application_threads_);
 }
-
-inline StationaryIterationResult solve_two_grid(
-    const Vector& rhs, const TwoGridCycle& cycle, double relative_tolerance,
+template <class Cycle>
+inline StationaryIterationResult solve_stationary_cycles(
+    const Vector& rhs, const Cycle& cycle, double relative_tolerance,
     int max_cycles) {
     constexpr int tail_window = 32;
     StationaryIterationResult result;
     result.solution.assign(rhs.size(), 0.0);
     Vector residual = rhs;
-    TwoGridCycle::Workspace workspace;
+    typename Cycle::Workspace workspace;
     std::array<double, static_cast<std::size_t>(tail_window + 1)>
         recent_residuals{};
     const double initial_norm = norm2(residual);
@@ -766,5 +726,10 @@ inline StationaryIterationResult solve_two_grid(
     }
     return result;
 }
-
+inline StationaryIterationResult solve_two_grid(
+    const Vector& rhs, const TwoGridCycle& cycle, double relative_tolerance,
+    int max_cycles) {
+    return solve_stationary_cycles(
+        rhs, cycle, relative_tolerance, max_cycles);
+}
 }

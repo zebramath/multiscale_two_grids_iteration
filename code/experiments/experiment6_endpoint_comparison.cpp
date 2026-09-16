@@ -1,14 +1,11 @@
 #include "experiment/problem.hpp"
 #include "experiment/reporting.hpp"
 #include "multigrid/global_pcg.hpp"
-
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
-
 namespace {
-
 struct Measurement {
     std::string method;
     std::string construction;
@@ -19,7 +16,6 @@ struct Measurement {
     double energy = 0.0;
     std::size_t coarse_nnz = 0;
 };
-
 Measurement measure_until_converged(
     const std::string& method, const std::string& construction,
     const tgi::SparseMatrix& prolongation, const tgi::TwoGridCycle& cycle,
@@ -28,7 +24,6 @@ Measurement measure_until_converged(
     tgi::Vector residual = rhs;
     tgi::TwoGridCycle::Workspace workspace;
     const double initial_norm = tgi::norm2(residual);
-
     Measurement result;
     result.method = method;
     result.construction = construction;
@@ -36,7 +31,6 @@ Measurement measure_until_converged(
         experiment_support::interpolation_density_percent(prolongation);
     result.energy = cycle.setup_report().interpolation_energy;
     result.coarse_nnz = cycle.coarse_matrix().nnz();
-
     while (result.relative_residual > tolerance) {
         const double residual_squared =
             cycle.iterate(rhs, solution, residual, workspace);
@@ -58,7 +52,6 @@ Measurement measure_until_converged(
     }
     return result;
 }
-
 experiment_support::Row measurement_row(const Measurement& value) {
     return {
         value.method,
@@ -70,9 +63,7 @@ experiment_support::Row measurement_row(const Measurement& value) {
         experiment_support::scientific(value.energy, 8),
         std::to_string(value.coarse_nnz)};
 }
-
 }
-
 int main(int argc, char** argv) {
     int threads = 4;
     for (int index = 1; index < argc; ++index) {
@@ -81,7 +72,6 @@ int main(int argc, char** argv) {
             threads = std::stoi(argument.substr(10));
         }
     }
-
     experiment_support::BasicConfig config;
     config.fine_intervals = 128;
     config.coarse_intervals = 16;
@@ -92,7 +82,6 @@ int main(int argc, char** argv) {
     const tgi::StructuredGrid grid = experiment_support::make_grid(config);
     const auto problem = experiment_support::make_problem(
         grid, field, config, 1);
-
     experiment_support::progress("geometric interpolation comparison");
     const auto geometric = tgi::build_geometric_interpolation(grid);
     const tgi::TwoGridCycle geometric_cycle(
@@ -100,7 +89,6 @@ int main(int argc, char** argv) {
     const Measurement geometric_measurement = measure_until_converged(
         "geometric", "bilinear", geometric,
         geometric_cycle, problem.rhs, 1.0e-6);
-
     experiment_support::progress("energy-minimizing interpolation comparison");
     tgi::GlobalEnergyPcgPath endpoint_path(
         grid, problem.matrix, geometric, threads);
@@ -111,7 +99,6 @@ int main(int argc, char** argv) {
     const Measurement energy_measurement = measure_until_converged(
         "energy-minimizing", "column relres=1e-10",
         energy, energy_cycle, problem.rhs, 1.0e-6);
-
     const double cycle_ratio =
         static_cast<double>(geometric_measurement.cycles) /
         static_cast<double>(energy_measurement.cycles);

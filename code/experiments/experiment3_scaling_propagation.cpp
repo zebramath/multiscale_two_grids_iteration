@@ -2,34 +2,27 @@
 #include "multigrid/global_pcg.hpp"
 #include "multigrid/spectral_diagnostics.hpp"
 #include "pde/diffusion_problem.hpp"
-
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
 #include <string>
-
 namespace {
-
 using Clock = std::chrono::steady_clock;
-
 struct ScaleCase {
     std::string regime;
     int fine_intervals = 0;
     int coarse_intervals = 0;
 };
-
 double elapsed_ms(const Clock::time_point& begin) {
     return std::chrono::duration<double, std::milli>(
                Clock::now() - begin)
         .count();
 }
-
 int center_coarse_column(const tgi::StructuredGrid& grid) {
     const int center = grid.coarse_n() / 2;
     return grid.coarse_id(center, center);
 }
-
 void run_checkpoint(
     const ScaleCase& item, const std::string& rule, int steps,
     const tgi::StructuredGrid& grid, const tgi::SparseMatrix& matrix,
@@ -47,7 +40,6 @@ void run_checkpoint(
         matrix, cycle, 0x13198a2e03707344ULL, spectral_iterations);
     const auto solved = tgi::solve_two_grid(
         rhs, cycle, 1.0e-6, 20000);
-
     const double correction_percent = 100.0 *
         static_cast<double>(propagation.correction_support) /
         static_cast<double>(propagation.f_unknowns);
@@ -76,9 +68,7 @@ void run_checkpoint(
         tgi::stationary_status_name(solved.status),
         experiment_support::fixed(setup_ms, 2)});
 }
-
 }
-
 int main(int argc, char** argv) {
     int threads = 4;
     int spectral_iterations = 160;
@@ -93,7 +83,6 @@ int main(int argc, char** argv) {
             spectral_iterations = std::stoi(argument.substr(22));
         }
     }
-
     const std::array<int, 4> resolutions{{32, 64, 128, 256}};
     const std::size_t count = quick ? 2U : resolutions.size();
     experiment_support::Rows rows;
@@ -121,7 +110,6 @@ int main(int argc, char** argv) {
             const tgi::Vector rhs(
                 static_cast<std::size_t>(grid.fine_size()), 1.0);
             const auto geometric = tgi::build_geometric_interpolation(grid);
-
             const int q_steps = grid.ratio();
             const int h_steps = std::max(1, fine / 4);
             run_checkpoint(
@@ -132,7 +120,6 @@ int main(int argc, char** argv) {
                 geometric, threads, spectral_iterations, rows);
         }
     }
-
     experiment_support::save_csv(
         "experiment3_scaling_propagation",
         {"regime", "1/h", "1/H", "q", "rule", "m", "m*h",
@@ -142,7 +129,6 @@ int main(int argc, char** argv) {
          "spectral_stage_difference", "cycles", "rho_eff", "status",
          "setup_ms"},
         rows);
-
     experiment_support::Report report(
         "Fixed-H/fixed-q scaling and finite propagation");
     report.add_summary({

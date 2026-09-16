@@ -1,16 +1,13 @@
 #include "experiment/problem.hpp"
 #include "experiment/reporting.hpp"
 #include "multigrid/global_pcg.hpp"
-
 #include <algorithm>
 #include <cstddef>
 #include <fstream>
 #include <iomanip>
 #include <stdexcept>
 #include <string>
-
 namespace {
-
 void write_sparse(
     std::ofstream& stream, const std::string& kind, int step,
     const tgi::SparseMatrix& matrix) {
@@ -28,9 +25,7 @@ void write_sparse(
         }
     }
 }
-
 }
-
 int main(int argc, char** argv) {
     int threads = 4;
     int maximum_steps = 56;
@@ -43,7 +38,6 @@ int main(int argc, char** argv) {
             maximum_steps = std::stoi(argument.substr(16));
         }
     }
-
     experiment_support::BasicConfig config;
     config.fine_intervals = 16;
     config.coarse_intervals = 4;
@@ -54,7 +48,6 @@ int main(int argc, char** argv) {
     const auto problem = experiment_support::make_problem(
         grid, field, config, 1);
     const auto geometric = tgi::build_geometric_interpolation(grid);
-
     const auto output_path = experiment_support::results_directory() /
         "experiment4_local_diagnostic_matrices.csv";
     std::ofstream stream(output_path);
@@ -65,7 +58,6 @@ int main(int argc, char** argv) {
     stream << std::setprecision(17);
     stream << "kind,m,row,col,value\n";
     write_sparse(stream, "A", -2, problem.matrix);
-
     tgi::GlobalEnergyPcgPath path(
         grid, problem.matrix, geometric, threads);
     write_sparse(stream, "P", 0, geometric);
@@ -83,6 +75,5 @@ int main(int argc, char** argv) {
         throw std::runtime_error(
             "failed while writing local diagnostic matrices");
     }
-
     return 0;
 }

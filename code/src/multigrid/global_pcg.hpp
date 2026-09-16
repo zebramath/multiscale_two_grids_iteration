@@ -1,8 +1,6 @@
 #pragma once
-
 #include "multigrid/energy_interpolation.hpp"
 #include "multigrid/two_grid_solver.hpp"
-
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -14,9 +12,7 @@
 #include <thread>
 #include <utility>
 #include <vector>
-
 namespace tgi {
-
 struct GlobalPcgPathReport {
     int systems = 0;
     int total_iterations = 0;
@@ -25,7 +21,6 @@ struct GlobalPcgPathReport {
     int failed_systems = 0;
     double maximum_relative_residual = 0.0;
 };
-
 struct ColumnPropagationReport {
     int coarse_column = 0;
     int iterations = 0;
@@ -37,13 +32,11 @@ struct ColumnPropagationReport {
     int theoretical_distance_bound = -1;
     int bound_violations = 0;
 };
-
 class GlobalEnergyPcgPath {
 public:
     GlobalEnergyPcgPath(
         const StructuredGrid& grid, const SparseMatrix& a,
         const SparseMatrix& initial_prolongation, int thread_count = 1);
-
     void advance_to(int target_steps);
     GlobalPcgPathReport advance_until_relative_residual(
         double tolerance, int maximum_steps = 40000);
@@ -51,7 +44,6 @@ public:
     ColumnPropagationReport column_propagation_report(
         int coarse_column, double zero_tolerance = 0.0) const;
     SparseMatrix prolongation();
-
 private:
     struct ColumnState {
         Vector solution;
@@ -65,16 +57,13 @@ private:
         int iterations = 0;
         bool active = true;
     };
-
     bool advance_one_iteration(
         ColumnState& state, Vector& product, Vector& z) const;
-
     const StructuredGrid& grid_;
     energy_interpolation_detail::GlobalFSystem system_;
     std::vector<ColumnState> columns_;
     int thread_count_ = 1;
 };
-
 inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
     const StructuredGrid& grid, const SparseMatrix& a,
     const SparseMatrix& initial_prolongation, int thread_count)
@@ -84,7 +73,6 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
     columns_.resize(static_cast<std::size_t>(grid.coarse_size()));
     const SparseMatrix initial_transpose =
         initial_prolongation.transpose(thread_count_);
-
     for (int coarse = 0; coarse < grid.coarse_size(); ++coarse) {
         ColumnState& state = columns_[static_cast<std::size_t>(coarse)];
         const std::size_t n = system_.f_nodes.size();
@@ -104,7 +92,6 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
                 local,
                 initial_transpose.values()[static_cast<std::size_t>(position)]});
         }
-
         Vector rhs(n, 0.0);
         for (const auto& [row, value] :
              system_.rhs_entries[static_cast<std::size_t>(coarse)]) {
@@ -138,7 +125,6 @@ inline GlobalEnergyPcgPath::GlobalEnergyPcgPath(
             state.residual_squared > threshold * threshold;
     }
 }
-
 inline bool GlobalEnergyPcgPath::advance_one_iteration(
     ColumnState& state, Vector& product, Vector& z) const {
     system_.matrix.multiply(state.direction, product);
@@ -178,7 +164,6 @@ inline bool GlobalEnergyPcgPath::advance_one_iteration(
     state.rz = rz_new;
     return true;
 }
-
 inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
     std::atomic<int> next_column{0};
     std::exception_ptr worker_error;
@@ -214,7 +199,6 @@ inline void GlobalEnergyPcgPath::advance_to(int target_steps) {
     }
     if (worker_error) std::rethrow_exception(worker_error);
 }
-
 inline GlobalPcgPathReport GlobalEnergyPcgPath::report(
     double tolerance) const {
     GlobalPcgPathReport value;
@@ -236,7 +220,6 @@ inline GlobalPcgPathReport GlobalEnergyPcgPath::report(
     }
     return value;
 }
-
 inline GlobalPcgPathReport
 GlobalEnergyPcgPath::advance_until_relative_residual(
     double tolerance, int maximum_steps) {
@@ -282,7 +265,6 @@ GlobalEnergyPcgPath::advance_until_relative_residual(
     }
     return value;
 }
-
 inline ColumnPropagationReport
 GlobalEnergyPcgPath::column_propagation_report(
     int coarse_column, double zero_tolerance) const {
@@ -293,7 +275,6 @@ GlobalEnergyPcgPath::column_propagation_report(
     for (const auto& [local, value] : state.initial_nonzeros) {
         correction[static_cast<std::size_t>(local)] -= value;
     }
-
     std::vector<int> distance(static_cast<std::size_t>(f_size), -1);
     std::vector<int> queue;
     queue.reserve(static_cast<std::size_t>(f_size));
@@ -321,7 +302,6 @@ GlobalEnergyPcgPath::column_propagation_report(
             queue.push_back(column);
         }
     }
-
     ColumnPropagationReport report;
     report.coarse_column = coarse_column;
     report.iterations = state.iterations;
@@ -349,7 +329,6 @@ GlobalEnergyPcgPath::column_propagation_report(
     }
     return report;
 }
-
 inline SparseMatrix GlobalEnergyPcgPath::prolongation() {
     std::vector<int> row_ptr(
         static_cast<std::size_t>(grid_.fine_size()) + 1U, 0);
@@ -391,5 +370,4 @@ inline SparseMatrix GlobalEnergyPcgPath::prolongation() {
         grid_.fine_size(), grid_.coarse_size(), std::move(row_ptr),
         std::move(col_idx), std::move(values));
 }
-
 }

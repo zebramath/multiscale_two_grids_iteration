@@ -1,42 +1,33 @@
 #pragma once
-
 #include "multigrid/energy_interpolation.hpp"
 #include "pde/diffusion_problem.hpp"
-
 #include <algorithm>
 #include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
-
 namespace experiment_support {
-
 inline constexpr int maximum_two_grid_cycles = 20000;
-
 inline int fixed_path_steps(
     int fine_intervals, int numerator, int denominator) {
     return std::max(
         1, (numerator * fine_intervals + denominator / 2) / denominator);
 }
-
 struct BasicConfig {
     int fine_intervals = 128;
     int coarse_intervals = 16;
     int threads = 4;
     double contrast = 1.0e4;
 };
-
 inline tgi::StructuredGrid make_grid(const BasicConfig& config) {
     return tgi::StructuredGrid(
         config.fine_intervals - 1,
         config.fine_intervals / config.coarse_intervals);
 }
-
 struct FieldCase {
     std::string name;
     tgi::CoefficientDistribution distribution;
 };
-
 inline const std::vector<FieldCase>& channel_topologies() {
     static const std::vector<FieldCase> fields{
         {"cross-channel", tgi::CoefficientDistribution::ChannelizedBinary},
@@ -53,12 +44,10 @@ inline const std::vector<FieldCase>& channel_topologies() {
     };
     return fields;
 }
-
 struct ExperimentProblem {
     tgi::SparseMatrix matrix;
     tgi::Vector rhs;
 };
-
 inline ExperimentProblem make_problem(
     const tgi::StructuredGrid& grid, const FieldCase& field,
     const BasicConfig& config, std::uint64_t seed = 1) {
@@ -73,5 +62,4 @@ inline ExperimentProblem make_problem(
     tgi::Vector rhs(static_cast<std::size_t>(grid.fine_size()), 1.0);
     return {std::move(matrix), std::move(rhs)};
 }
-
 }

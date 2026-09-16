@@ -1,15 +1,10 @@
 #pragma once
-
 #include "pde/diffusion_problem.hpp"
-
 #include <cstddef>
 #include <utility>
 #include <vector>
-
 namespace tgi {
-
 namespace energy_interpolation_detail {
-
 struct GlobalFSystem {
     SparseMatrix matrix;
     std::vector<int> f_nodes;
@@ -17,7 +12,6 @@ struct GlobalFSystem {
     Vector inverse_diagonal;
     std::vector<std::vector<std::pair<int, double>>> rhs_entries;
 };
-
 inline int coarse_id_from_fine_node(
     const StructuredGrid& grid, int fine) {
     const auto [ix, iy] = grid.fine_coords(fine);
@@ -25,7 +19,6 @@ inline int coarse_id_from_fine_node(
         (ix + 1) / grid.ratio() - 1,
         (iy + 1) / grid.ratio() - 1);
 }
-
 inline GlobalFSystem assemble_global_f_system(
     const StructuredGrid& grid, const SparseMatrix& matrix) {
     GlobalFSystem system;
@@ -38,7 +31,6 @@ inline GlobalFSystem assemble_global_f_system(
         system.local_index[static_cast<std::size_t>(system.f_nodes[local])] =
             static_cast<int>(local);
     }
-
     std::vector<int> row_ptr(system.f_nodes.size() + 1U, 0);
     std::vector<int> col_idx;
     Vector values;
@@ -70,7 +62,6 @@ inline GlobalFSystem assemble_global_f_system(
         }
         row_ptr[local_row + 1U] = static_cast<int>(values.size());
     }
-
     system.matrix = SparseMatrix(
         static_cast<int>(system.f_nodes.size()),
         static_cast<int>(system.f_nodes.size()), std::move(row_ptr),
@@ -82,9 +73,7 @@ inline GlobalFSystem assemble_global_f_system(
     }
     return system;
 }
-
 }
-
 inline SparseMatrix build_geometric_interpolation(
     const StructuredGrid& grid) {
     std::vector<int> row_ptr(
@@ -94,7 +83,6 @@ inline SparseMatrix build_geometric_interpolation(
     col_idx.reserve(static_cast<std::size_t>(4 * grid.fine_size()));
     values.reserve(static_cast<std::size_t>(4 * grid.fine_size()));
     const int coarse_intervals = grid.intervals() / grid.ratio();
-
     for (int fine = 0; fine < grid.fine_size(); ++fine) {
         const auto [ix, iy] = grid.fine_coords(fine);
         const int lattice_x = ix + 1;
@@ -109,7 +97,6 @@ inline SparseMatrix build_geometric_interpolation(
         const int qy[2] = {left_y, left_y + 1};
         const double wx[2] = {1.0 - tx, tx};
         const double wy[2] = {1.0 - ty, ty};
-
         for (int ay = 0; ay < 2; ++ay) {
             for (int ax = 0; ax < 2; ++ax) {
                 if (wx[ax] == 0.0 || wy[ay] == 0.0 ||
@@ -125,10 +112,8 @@ inline SparseMatrix build_geometric_interpolation(
         row_ptr[static_cast<std::size_t>(fine) + 1U] =
             static_cast<int>(values.size());
     }
-
     return SparseMatrix(
         grid.fine_size(), grid.coarse_size(), std::move(row_ptr),
         std::move(col_idx), std::move(values));
 }
-
 }

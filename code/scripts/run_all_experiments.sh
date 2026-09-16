@@ -1,6 +1,5 @@
 #!/usr/bin/env sh
 set -eu
-
 mode="${1:-quick}"
 threads="${TGI_THREADS:-4}"
 build_dir="${TGI_BUILD_DIR:-build}"
@@ -13,13 +12,11 @@ case "$mode" in
 esac
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 cd "$script_dir/.."
-
 if [ "$mode" = "quick" ]; then
     results_dir="${TGI_QUICK_RESULTS_DIR:-$build_dir/quick-results}"
 else
     results_dir="${TGI_RESULTS_DIR:-results}"
 fi
-
 run_step() {
     label="$1"
     shift
@@ -27,7 +24,6 @@ run_step() {
     "$@"
     echo "[done]  $label"
 }
-
 build_direct() {
     cxx="${CXX:-c++}"
     mkdir -p "$build_dir"
@@ -41,7 +37,6 @@ build_direct() {
             "$source" -o "$build_dir/$program"
     done
 }
-
 if command -v cmake >/dev/null 2>&1; then
     run_step configure cmake -S . -B "$build_dir" -DCMAKE_BUILD_TYPE=Release
     run_step build cmake --build "$build_dir" --parallel "$threads"
@@ -49,7 +44,6 @@ else
     echo "[info] cmake unavailable; using direct C++17 build"
     build_direct
 fi
-
 if [ "$mode" = "quick" ]; then
     run_step experiment1 env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment1_finite_path_comparison" \
@@ -63,6 +57,9 @@ if [ "$mode" = "quick" ]; then
     run_step experiment4-export env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment4_local_diagnostic_export" \
         --maximum-steps=40 --threads="$threads"
+    run_step experiment7 env TGI_RESULTS_DIR="$results_dir" \
+        "$build_dir/experiment7_multilevel_pilot" \
+        --quick --threads="$threads"
 else
     run_step experiment1 env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment1_finite_path_comparison" --threads="$threads"
@@ -73,7 +70,6 @@ else
     run_step experiment4-export env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment4_local_diagnostic_export" --threads="$threads"
 fi
-
 run_step experiment4-analysis env MPLCONFIGDIR="$build_dir/matplotlib" \
     python3 scripts/analyze_local_diagnostic.py --results "$results_dir"
 run_step cross-spectral-plot env MPLCONFIGDIR="$build_dir/matplotlib" \
@@ -86,11 +82,12 @@ run_step ring-spectral-plot env MPLCONFIGDIR="$build_dir/matplotlib" \
     "$results_dir/experiment2_winding_ring_spectral_path.csv" \
     "$results_dir/experiment2_winding_ring_spectral_path.png" \
     "Winding-ring spectral path"
-
 if [ "$mode" = "full" ]; then
     run_step experiment5 env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment5_robustness" --threads="$threads"
     run_step experiment6 env TGI_RESULTS_DIR="$results_dir" \
         "$build_dir/experiment6_endpoint_comparison" --threads="$threads"
+    run_step experiment7 env TGI_RESULTS_DIR="$results_dir" \
+        "$build_dir/experiment7_multilevel_pilot" --threads="$threads"
 fi
 echo "[info] results directory: $results_dir"

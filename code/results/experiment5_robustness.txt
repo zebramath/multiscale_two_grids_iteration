@@ -1,5 +1,5 @@
-Coefficient robustness and repeated timing
-==========================================
+Coefficient and right-hand-side robustness with repeated timing
+===============================================================
 
 Seed grid       : 64/16
 Timing grid     : 128/16
@@ -34,10 +34,39 @@ Method              Conv/slow/div  Converged cycle sum  Mean converged  Worst co
 finite-1/3                  5/0/0                  327           65.40               75
 energy-endpoint             5/0/0                  866          173.20              321
 
+Right-hand-side robustness with fixed interpolation
+---------------------------------------------------
+Evaluation RHS                  Method         Parameter      Cycles  Effective factor      Status
+------------------  ------------------  ----------------  ----------  ----------------  ----------
+constant                    finite-1/3              m=21          65          0.806080   converged
+constant               energy-endpoint     relres<=1e-10         321          0.957779   converged
+
+smooth-low                  finite-1/3              m=21          76          0.832902   converged
+smooth-low             energy-endpoint     relres<=1e-10         328          0.958659   converged
+
+smooth-mixed                finite-1/3              m=21          90          0.856965   converged
+smooth-mixed           energy-endpoint     relres<=1e-10         304          0.955459   converged
+
+localized-left              finite-1/3              m=21          69          0.818051   converged
+localized-left         energy-endpoint     relres<=1e-10          42          0.715366   converged
+
+localized-right             finite-1/3              m=21          84          0.847480   converged
+localized-right        energy-endpoint     relres<=1e-10         224          0.940172   converged
+
+oscillatory                 finite-1/3              m=21          85          0.849979   converged
+oscillatory            energy-endpoint     relres<=1e-10         288          0.953140   converged
+
+RHS aggregate
+-------------
+Method              Conv/slow/div  Converged cycle sum  Mean converged  Worst converged
+------------------  -------------  -------------------  --------------  ---------------
+finite-1/3                  6/0/0                  469           78.17               90
+energy-endpoint             6/0/0                 1507          251.17              328
+
 Central 128/16 repeated wall-clock comparison
 ---------------------------------------------
 Method                Runs   Setup mean  Solve mean  Total mean  Mean cycles
 ------------------  ------  -----------  ----------  ----------  -----------
-finite-1/3               5      455.657     243.733     699.389          242
-energy-endpoint          5     2601.906    8179.242   10781.148         3227
+finite-1/3               5      439.173     240.049     679.222          242
+energy-endpoint          5     2553.099    7640.111   10193.209         3227
 

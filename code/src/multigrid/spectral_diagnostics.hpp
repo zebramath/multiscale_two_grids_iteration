@@ -1,7 +1,5 @@
 #pragma once
-
 #include "multigrid/two_grid_solver.hpp"
-
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
@@ -9,31 +7,25 @@
 #include <limits>
 #include <random>
 #include <vector>
-
 namespace tgi {
-
 struct SpectralRadiusEstimate {
     double rho = 1.0;
     double halfway_rho = 1.0;
     double stage_difference = 0.0;
     int krylov_iterations = 0;
 };
-
 namespace spectral_diagnostics_detail {
-
 inline double energy_inner_product(
     const SparseMatrix& a, const Vector& left, const Vector& right,
     Vector& action) {
     a.multiply(right, action);
     return dot(left, action);
 }
-
 inline double energy_norm(
     const SparseMatrix& a, const Vector& value, Vector& action) {
     return std::sqrt(std::max(
         0.0, energy_inner_product(a, value, value, action)));
 }
-
 inline double largest_tridiagonal_eigenvalue(
     const std::vector<double>& diagonal,
     const std::vector<double>& off_diagonal) {
@@ -69,9 +61,7 @@ inline double largest_tridiagonal_eigenvalue(
     }
     return 0.5 * (lower + upper);
 }
-
 }
-
 inline SpectralRadiusEstimate estimate_two_grid_spectral_radius(
     const SparseMatrix& a, const TwoGridCycle& cycle,
     std::uint64_t seed = 0x6a09e667f3bcc909ULL,
@@ -82,12 +72,10 @@ inline SpectralRadiusEstimate estimate_two_grid_spectral_radius(
     for (double& entry : basis) {
         entry = sign(generator) == 0 ? -1.0 : 1.0;
     }
-
     Vector action;
     double scale = spectral_diagnostics_detail::energy_norm(
         a, basis, action);
     for (double& entry : basis) entry /= scale;
-
     const Vector zero(static_cast<std::size_t>(a.rows()), 0.0);
     Vector residual;
     TwoGridCycle::Workspace workspace;
@@ -109,7 +97,6 @@ inline SpectralRadiusEstimate estimate_two_grid_spectral_radius(
         diagonal.push_back(alpha);
         axpy(-alpha, basis, image);
         if (iteration > 1) axpy(-previous_beta, previous, image);
-
         const double current_component =
             spectral_diagnostics_detail::energy_inner_product(
                 a, basis, image, action);
@@ -120,7 +107,6 @@ inline SpectralRadiusEstimate estimate_two_grid_spectral_radius(
                     a, previous, image, action);
             axpy(-previous_component, previous, image);
         }
-
         if (iteration == halfway) {
             result.halfway_rho =
                 spectral_diagnostics_detail::largest_tridiagonal_eigenvalue(
@@ -141,11 +127,9 @@ inline SpectralRadiusEstimate estimate_two_grid_spectral_radius(
             diagonal, off_diagonal);
     result.krylov_iterations = static_cast<int>(diagonal.size());
     if (!std::isfinite(result.halfway_rho)) {
-
         result.halfway_rho = result.rho;
     }
     result.stage_difference = std::abs(result.rho - result.halfway_rho);
     return result;
 }
-
 }

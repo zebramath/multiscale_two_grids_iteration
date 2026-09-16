@@ -1,12 +1,8 @@
 #pragma once
-
 #include "experiment/problem.hpp"
-
 #include <string>
 #include <vector>
-
 namespace experiment_support {
-
 struct ComparisonCase {
     std::string axis;
     int fine = 32;
@@ -14,7 +10,6 @@ struct ComparisonCase {
     double contrast = 1.0e4;
     FieldCase field;
 };
-
 inline std::vector<ComparisonCase> comparison_cases(bool quick) {
     const auto& topologies = channel_topologies();
     const std::vector<ComparisonCase> cases{
@@ -34,7 +29,6 @@ inline std::vector<ComparisonCase> comparison_cases(bool quick) {
     if (!quick) return cases;
     return {cases[0], cases[3], cases[12]};
 }
-
 inline BasicConfig comparison_config(
     const ComparisonCase& item, int threads) {
     BasicConfig config;
@@ -44,5 +38,4 @@ inline BasicConfig comparison_config(
     config.threads = threads;
     return config;
 }
-
 }

@@ -2,18 +2,14 @@
 #include "experiment/reporting.hpp"
 #include "multigrid/global_pcg.hpp"
 #include "multigrid/spectral_diagnostics.hpp"
-
 #include <algorithm>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
-
 namespace {
-
 constexpr int scan_cycle_limit = 12000;
-
 struct PathPoint {
     int steps = 0;
     double rho_tg = 1.0;
@@ -22,7 +18,6 @@ struct PathPoint {
     int cycles = 0;
     std::string status;
 };
-
 struct ScanSummary {
     int minimum_spectral_steps = 0;
     double minimum_spectral_factor = 1.0;
@@ -35,7 +30,6 @@ struct ScanSummary {
     std::string endpoint_status;
     double maximum_stage_difference = 0.0;
 };
-
 PathPoint measure(
     int steps, const tgi::SparseMatrix& matrix, const tgi::Vector& rhs,
     const tgi::SparseMatrix& prolongation, int threads,
@@ -51,7 +45,6 @@ PathPoint measure(
         solved.effective_factor, solved.cycles,
         tgi::stationary_status_name(solved.status)};
 }
-
 ScanSummary scan_case(
     const experiment_support::BasicConfig& config,
     const experiment_support::FieldCase& field,
@@ -62,7 +55,6 @@ ScanSummary scan_case(
     const auto initial = tgi::build_geometric_interpolation(grid);
     tgi::GlobalEnergyPcgPath path(
         grid, problem.matrix, initial, config.threads);
-
     std::vector<PathPoint> points;
     points.reserve(static_cast<std::size_t>(maximum_steps));
     for (int steps = 1; steps <= maximum_steps; ++steps) {
@@ -75,7 +67,6 @@ ScanSummary scan_case(
             steps, problem.matrix, problem.rhs, prolongation,
             config.threads, spectral_iterations));
     }
-
     tgi::GlobalEnergyPcgPath endpoint_path(
         grid, problem.matrix, initial, config.threads);
     endpoint_path.advance_until_relative_residual(1.0e-10);
@@ -83,7 +74,6 @@ ScanSummary scan_case(
     const PathPoint endpoint_point = measure(
         0, problem.matrix, problem.rhs, endpoint, config.threads,
         spectral_iterations);
-
     experiment_support::Rows rows;
     rows.reserve(points.size());
     for (const PathPoint& point : points) {
@@ -100,7 +90,6 @@ ScanSummary scan_case(
         {"m", "rho_TG", "spectral_stage_difference", "rho_eff",
          "cycles", "status"},
         rows);
-
     const auto spectral_minimum = std::min_element(
         points.begin(), points.end(),
         [](const PathPoint& left, const PathPoint& right) {
@@ -124,9 +113,7 @@ ScanSummary scan_case(
         endpoint_point.status,
         maximum_stage_difference};
 }
-
 }
-
 int main(int argc, char** argv) {
     int threads = 4;
     int spectral_iterations = 200;
@@ -145,7 +132,6 @@ int main(int argc, char** argv) {
             topology = argument.substr(11);
         }
     }
-
     experiment_support::BasicConfig config;
     config.fine_intervals = quick ? 32 : 128;
     config.coarse_intervals = quick ? 8 : 16;
@@ -200,7 +186,6 @@ int main(int argc, char** argv) {
         "experiment2_spectral_endpoints",
         {"topology", "rho_TG", "spectral_stage_difference", "rho_eff",
          "cycles", "status"}, endpoint_rows);
-
     experiment_support::Report report(
         "True two-grid spectral-radius paths along finite PCG");
     report.add_summary({

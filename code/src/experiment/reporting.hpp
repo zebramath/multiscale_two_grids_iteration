@@ -1,7 +1,5 @@
 #pragma once
-
 #include "core/linear_algebra.hpp"
-
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>
@@ -13,40 +11,32 @@
 #include <string>
 #include <utility>
 #include <vector>
-
 #ifndef TGI_RESULTS_DIR
 #define TGI_RESULTS_DIR "results"
 #endif
-
 namespace experiment_support {
-
 using Row = std::vector<std::string>;
 using Rows = std::vector<Row>;
 using Summary = std::vector<std::pair<std::string, std::string>>;
-
 inline std::string fixed(double value, int precision = 3) {
     std::ostringstream stream;
     stream << std::fixed << std::setprecision(precision) << value;
     return stream.str();
 }
-
 inline std::string scientific(double value, int precision = 3) {
     std::ostringstream stream;
     stream << std::scientific << std::setprecision(precision) << value;
     return stream.str();
 }
-
 inline void progress(const std::string& message) {
     std::cerr << "[progress] " << message << std::endl;
 }
-
 inline double interpolation_density_percent(
     const tgi::SparseMatrix& prolongation) {
     const double entries = static_cast<double>(prolongation.rows()) *
         static_cast<double>(prolongation.cols());
     return 100.0 * static_cast<double>(prolongation.nnz()) / entries;
 }
-
 inline std::filesystem::path results_directory() {
     const char* runtime_directory = std::getenv("TGI_RESULTS_DIR");
     const std::filesystem::path directory =
@@ -56,7 +46,6 @@ inline std::filesystem::path results_directory() {
     std::filesystem::create_directories(directory);
     return directory;
 }
-
 inline void save_csv(
     const std::string& name, const Row& headers, const Rows& rows) {
     const std::filesystem::path path =
@@ -76,13 +65,11 @@ inline void save_csv(
             "cannot write result file " + path.string());
     }
 }
-
 class Report {
 public:
     explicit Report(const std::string& title) {
         text_ << title << '\n' << std::string(title.size(), '=') << "\n\n";
     }
-
     void add_summary(const Summary& values) {
         std::size_t label_width = 0;
         for (const auto& item : values) {
@@ -94,11 +81,9 @@ public:
         }
         text_ << '\n';
     }
-
     void add_note(const std::string& note) {
         text_ << "Note: " << note << "\n\n";
     }
-
     void add_table(const std::string& section,
                    const Row& headers,
                    const std::vector<int>& widths,
@@ -122,7 +107,6 @@ public:
         }
         text_ << '\n';
     }
-
     void save(const std::string& name) const {
         const std::filesystem::path path =
             results_directory() / (name + ".txt");
@@ -133,7 +117,6 @@ public:
         }
         std::cout << text_.str() << "Saved: " << path.string() << '\n';
     }
-
 private:
     void write_text_row(const Row& row, const std::vector<int>& widths) {
         for (std::size_t i = 0; i < row.size(); ++i) {
@@ -143,8 +126,6 @@ private:
         }
         text_ << '\n';
     }
-
     std::ostringstream text_;
 };
-
 }

@@ -1,25 +1,19 @@
 #!/usr/bin/env python3
-
 from __future__ import annotations
-
 import argparse
 import csv
 from pathlib import Path
-
 import matplotlib
-
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as la
-
 def symmetric_power(matrix: np.ndarray, exponent: float) -> np.ndarray:
     values, vectors = la.eigh(matrix, check_finite=True)
     scale = max(1.0, float(np.max(np.abs(values))))
     if float(np.min(values)) <= 100.0 * np.finfo(float).eps * scale:
         raise RuntimeError("expected a numerically positive-definite matrix")
     return (vectors * values**exponent) @ vectors.T
-
 def load_export(path: Path) -> tuple[np.ndarray, dict[int, np.ndarray], np.ndarray]:
     records: list[tuple[str, int, int, int, float]] = []
     maximum_a = -1
@@ -55,7 +49,6 @@ def load_export(path: Path) -> tuple[np.ndarray, dict[int, np.ndarray], np.ndarr
         else:
             raise RuntimeError(f"unknown record kind {kind!r}")
     return a, finite, endpoint
-
 def grid_partition(intervals: int, ratio: int) -> tuple[np.ndarray, np.ndarray]:
     side = intervals - 1
     coarse: list[int] = []
@@ -68,13 +61,11 @@ def grid_partition(intervals: int, ratio: int) -> tuple[np.ndarray, np.ndarray]:
             else:
                 fine.append(node)
     return np.asarray(fine, dtype=int), np.asarray(coarse, dtype=int)
-
 def graph_factor(
     z: np.ndarray, t_f: np.ndarray, t_star: np.ndarray
 ) -> float:
     left = symmetric_power(np.eye(z.shape[0]) + z @ z.T, -0.5)
     return float(la.svdvals(left @ (t_f - z @ t_star))[0])
-
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--results", type=Path, default=Path("results"))
@@ -89,20 +80,17 @@ def main() -> None:
     c = a[np.ix_(f_index, c_index)]
     w_star = -la.solve(b, c, assume_a="pos")
     endpoint_error = float(la.norm(p_endpoint[f_index, :] - w_star, ord="fro"))
-
     s = a[np.ix_(c_index, c_index)] - c.T @ la.solve(b, c, assume_a="pos")
     b_half = symmetric_power(b, 0.5)
     b_inverse_half = symmetric_power(b, -0.5)
     s_inverse_half = symmetric_power(s, -0.5)
     a_half = symmetric_power(a, 0.5)
     a_inverse_half = symmetric_power(a, -0.5)
-
     lower = np.tril(a)
     g = np.eye(a.shape[0]) - la.solve_triangular(
         lower, a, lower=True, check_finite=True
     )
     t = a_half @ g @ a_inverse_half
-
     q_f = np.zeros((a.shape[0], f_index.size))
     q_f[f_index, :] = b_inverse_half
     q_star = p_endpoint @ s_inverse_half
@@ -126,7 +114,6 @@ def main() -> None:
     v = vh[0, :]
     y = t_star @ v
     tau = float(la.svdvals(t_star)[0])
-
     steps = sorted(path)
     z_path: dict[int, np.ndarray] = {}
     f_path: dict[int, float] = {}
@@ -147,7 +134,6 @@ def main() -> None:
         local_flags[step] = epsilon < gap / 2.0
         f_value = graph_factor(z, t_f, t_star)
         f_path[step] = f_value
-
         graph_basis = np.vstack([z, np.eye(z.shape[1])])
         projector_coordinates = graph_basis @ la.solve(
             graph_basis.T @ graph_basis, graph_basis.T, assume_a="pos"
@@ -158,7 +144,6 @@ def main() -> None:
         direct = float(la.eigvalsh(energy_operator)[-1])
         rho_direct[step] = direct
         formula_defects.append(abs(f_value**2 - direct))
-
     output_rows: list[dict[str, object]] = []
     sign_matches = 0
     informative = 0
@@ -196,13 +181,11 @@ def main() -> None:
                 "D_frobenius_norm": float(la.norm(d, ord="fro")),
             }
         )
-
     csv_path = args.results / "experiment4_local_gap_direction.csv"
     with csv_path.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(output_rows[0]))
         writer.writeheader()
         writer.writerows(output_rows)
-
     local_steps = [step for step in steps if local_flags[step]]
     summary_path = args.results / "experiment4_local_gap_direction.txt"
     with summary_path.open("w", encoding="utf-8") as stream:
@@ -239,7 +222,6 @@ def main() -> None:
             "prediction is u_F^T (Z_m-Z_{m+1}) y for "
             "f=sqrt(rho_TG). The quantities diagnose the local expansion.\n"
         )
-
     figure, axes = plt.subplots(2, 1, figsize=(7.0, 6.8), sharex=True)
     plot_steps = [int(row["m"]) for row in output_rows]
     axes[0].plot(plot_steps, [row["rho_TG"] for row in output_rows], lw=1.8)
@@ -264,6 +246,5 @@ def main() -> None:
         args.results / "experiment4_local_gap_direction.png", dpi=220
     )
     plt.close(figure)
-
 if __name__ == "__main__":
     main()

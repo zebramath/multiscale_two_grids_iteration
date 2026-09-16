@@ -1,52 +1,58 @@
-# Finite energy-minimization paths for two-grid interpolation
+# Finite PCG interpolation for high-contrast two-grid solvers — v10.0
 
-本项目研究有限 Jacobi--PCG 能量极小化路径上的两网格机制。在二维高对比度扩散问题中，插值能量沿路径严格下降，而固定对称 Gauss--Seidel 两网格谱目标可在有限步达到更优值。有限路径点同时降低 setup 时间、插值密度和粗算子复杂度。
+本项目研究高对比、多尺度扩散离散所产生的困难 SPD 线性方程组。固定粗点、单位注入和对称 Gauss--Seidel 磨光后，从几何插值出发，用逐列 Jacobi--PCG 逼近 ideal/energy-minimizing interpolation。核心发现是：PCG 每个非零步都严格降低插值能量，但真实两网格谱半径并不随之单调降低；有限步中间点可以显著优于高精度能量极小端点。
 
-固定 $m=c/h$ 是轻量、可调的路径坐标。项目的核心由精确谱几何、局部方向分析、有限传播尺度和真实谱路径组成。
+## 核心结果
 
-## 主要结论
-
-- 对单位注入 $P(W)=[W;I]$，能量端点为 $W^*=-A_{FF}^{-1}A_{FC}$，并对应当前坐标下的 ideal interpolation。
-- 对固定前向/后向 Gauss--Seidel 与精确 Galerkin 粗解，
+- 归一化图坐标 \(Z=A_{FF}^{1/2}(W-W^*)S^{-1/2}\) 同时给出精确能量差、Galerkin 粗矩阵和到 ideal 粗空间的主角。
+- 对一次前向、一次后向 Gauss--Seidel 与精确粗解，真实对称两网格谱半径满足
   \[
-  \rho_{\rm TG}(Z)=\left\|(I+ZZ^T)^{-1/2}(T_F-ZT_*)\right\|_2^2.
+  \rho_{TG}(Z)=\left\|(I+ZZ^T)^{-1/2}(T_F-ZT_*)\right\|_2^2.
   \]
-  该公式直接呈现能量几何与两网格谱几何的差异。
-- 在简单最大奇异值 gap 且 $T_*v\ne0$ 时，方向 $H=u_F(T_*v)^T$ 在端点附近严格降低 $\rho_{\rm TG}$，给出 energy/ideal endpoint 的局部可改进性。
-- 第 $m$ 步 PCG 校正支撑包含于初始残差在 $A_{FF}$ 图上的半径 $m-1$ 邻域。fixed-$H$/fixed-$q$ 的 16 个组合全部达到该传播界。
-- 二维规则粗化满足
-  \[
-  \kappa(D_{FF}^{-1/2}A_{FF}D_{FF}^{-1/2})
-  \lesssim \chi\left(h^2+\frac{1}{q^2\log(2q)}\right)^{-1}.
-  \]
-  容量构造和高对比度边构造分别达到网格尺度与对比度的一次幂。
+- 在端点最大奇异值简单的条件下，论文给出带显式二阶余项的局部展开、PCG 相邻步变好/变坏的双向判据，以及任意路径位置的谱认证。
+- PCG 校正满足严格的有限图传播：第 \(m\) 步校正支撑不超过初始残量的半径 \(m-1\) 邻域。
+- 二维规则粗化下，Jacobi 条件数由统一容量尺度 \(\Lambda_{h,H}=h^2+[q^2\log(2q)]^{-1}\) 控制；固定物理粗网格 \(H\) 时自然 PCG 尺度为 \(\Theta(h^{-1})\)，固定粗化比 \(q=H/h\) 时为 \(O(1)\)（固定对比度）。
 
-## 数值结果
+中心问题 \((1/h,1/H,\chi)=(128,16,10^4)\) 的循环数为：
 
-中心问题为 $1/h=128,1/H=16,\chi=10^4$。200 步冷启动 $A$-内积 Lanczos/Ritz 路径给出：
+| 插值 | 循环数 | 有效因子 | 插值密度 |
+|---|---:|---:|---:|
+| 几何双线性 | 85,524 | 0.999838472 | 1.3950% |
+| 高精度能量极小端点 | 3,227 | 0.995727131 | 98.2099% |
+| 有限 PCG，\(m=43\) | 242 | 0.944406934 | 29.4678% |
 
-| 拓扑 | 最小真实 $\rho_{\rm TG}$ | 所在 $m$ | 最小 RHS $\rho_{\rm eff}$ / $m$ | endpoint $\rho_{\rm TG}$ |
-|---|---:|---:|---:|---:|
-| cross-channel | 0.949431677 | 36 | 0.941763675 / 38 | 0.996163213 |
-| winding-ring | 0.949386203 | 36 | 0.941012129 / 53 | 0.984367546 |
+因此能量端点已经相对几何插值改善 26.50 倍，而有限 PCG 又在这一强基线上改善 13.33 倍。五次交替顺序计时的平均总时间为 0.679 s 对 10.193 s，即 15.01 倍。
 
-13 个主比较问题中，$m=\operatorname{round}((1/h)/3)$ 全部收敛，累计 5,975 个循环；高精度 endpoint 累计 28,972 个循环。中心问题五次交替计时中，有限点平均 setup/solve/total 为 0.456/0.244/0.699 s，endpoint 为 2.602/8.179/10.781 s。
+## v10.0 相对 v9.4
 
-小规模 $16/4$ 诊断得到 gap $6.6816\times10^{-3}$，理论局部区间内一阶方向符号为 28/28 命中，图公式与直接两网格特征值的最大差为 $4.1\times10^{-14}$。
+- 审核了完整 72 次 Git 提交的文件树、删除记录和主要差异。
+- 恢复了真正增强论文结论的两项历史内容：六类右端项稳健性，以及三层 V-cycle 可行性试验。
+- 未恢复已被 v9 理论替代的旧自动选步/oracle、早期支撑剪枝路线、重复验证报告和过期结果。
+- 将三个 README 合并为本文件；删除旧研究报告和编辑器配置。
+- 将固定迭代求解循环抽象为可供两网格和多层共同使用的模板，避免复制求解状态逻辑。
+- 所有 C++、Python、Shell 和 CMake 源文件已删除空白行，并以严格编译警告重新构建。
+- 使用 Journal of Scientific Computing 官方 `svjour3` 模板和 `smallextended` 选项形成完整英文论文。
+- 全量重跑 7 个实验入口并重新生成所有正式结果和图。
 
-## 文件结构
+早期历史中有价值但不应重新并入主线的内容包括：旧 adaptive/oracle 选择器、停止阈值消融、支撑扩张/剪枝方法、旧版固定物理场表格和多个版本验证文档。其中固定物理场与 fixed-\(H\)/fixed-\(q\) 问题已由当前 experiment 3 更系统地覆盖；旧自动规则则与 v9.4 起采用的固定有限检查点定位不一致。
 
-- `theory.tex`：自包含理论稿，宏包、数学宏和版式配置均位于导言区，技术证明置于附录。
-- `references.bib`：论文写作所需的完整 BibTeX 文献库。
-- `research_report.md`：理论链条、实验设计和定量结论。
-- `code/src/`：线性代数、扩散离散、PCG 路径、两网格循环与谱诊断。
-- `code/experiments/`：6 组正式实验。
-- `code/results/`：完整文本、CSV 与图。
-- `code/scripts/run_all_experiments.sh`：quick/full 复现入口。
+## 目录
+
+| 路径 | 内容 |
+|---|---|
+| `paper/main.tex` | JSC 官方格式英文论文源文件 |
+| `paper/main.pdf` | 编译后的论文 |
+| `paper/references.bib` | 论文引用数据库 |
+| `paper/svjour3.cls`, `paper/svglov3.clo`, `paper/spmpsci.bst` | JSC 官方下载包中的类与参考文献样式 |
+| `theory.tex` | v9.4 中文详细推导底稿；论文已提炼其主定理和证明 |
+| `code/src/` | 稀疏线性代数、扩散离散、PCG、两网格、多层与谱诊断 |
+| `code/experiments/` | 7 个可复现实验入口 |
+| `code/results/` | 全量重跑生成的正式文本、CSV 和图 |
+| `code/scripts/run_all_experiments.sh` | 统一构建、运行、分析与绘图脚本 |
 
 ## 复现
 
-需要 C++17 编译器、Python 3、NumPy、SciPy 和 Matplotlib。
+依赖：支持 C++17 的编译器、POSIX shell、Python 3、NumPy、Matplotlib；CMake 可选。脚本在缺少 CMake 时自动采用直接编译。
 
 ```bash
 cd code
@@ -54,19 +60,22 @@ cd code
 ./scripts/run_all_experiments.sh full
 ```
 
-`TGI_THREADS`、`TGI_BUILD_DIR` 和 `TGI_RESULTS_DIR` 分别控制线程、构建目录和结果目录。正式结果使用 4 个线程，随机系数与谱初值使用固定 seed。
-
-理论稿使用 XeLaTeX 编译：
+完整运行会覆盖 `code/results/` 中的正式结果。默认使用 4 线程；可通过 `TGI_THREADS` 修改：
 
 ```bash
-xelatex theory.tex
-bibtex theory
-xelatex theory.tex
-xelatex theory.tex
+TGI_THREADS=8 ./scripts/run_all_experiments.sh full
 ```
 
-依赖包括 `ctexart`、`geometry`、`fancyhdr`、`mathtools`、`amssymb`、`amsthm`、`bm`、`xcolor`、`hyperref` 和 `cleveref`。
+论文编译：
 
-## 文献关系与实验配置
+```bash
+cd paper
+latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
+latexmk -c
+```
 
-能量极小插值、Krylov/CG 构造和有限能量极小化迭代构成本文的路径基础。Brannick 等的 optimal interpolation 直接优化特定两层收敛率。本文研究单位注入、规则粗点、精确粗解及全变量对称 Gauss--Seidel 下，energy/ideal endpoint 与真实两网格谱目标之间的机制关系。准确引用及 DOI 见 `references.bib`。
+JSC 当前官方投稿指南要求 Springer LaTeX macro package 的 `smallextended` 选项，并要求同时提交源文件、样式、图片与编译 PDF。本目录已经按这一要求组织。投稿前只需在 `paper/main.tex` 填写作者单位、电子邮件、资助与最终数据仓库链接。
+
+## 数值范围与结论边界
+
+已证明结论采用一般 SPD 分块系统或二维规则五点扩散的明确假设；数值主结论采用固定粗点、单位注入、一次前向/后向 Gauss--Seidel、Galerkin 粗算子和精确粗解。三层试验是可行性证据，不被表述为多层收敛定理。`rho_TG` 是真实对称两网格谱半径，`rho_eff` 是给定右端项的有限残量统计，两者在代码和论文中始终分开。

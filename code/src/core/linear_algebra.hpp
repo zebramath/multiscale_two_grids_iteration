@@ -1,34 +1,26 @@
 #pragma once
-
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
 #include <stdexcept>
 #include <utility>
 #include <vector>
-
 namespace tgi {
-
 using Vector = std::vector<double>;
-
 inline double dot(const Vector& x, const Vector& y) {
     double sum = 0.0;
     for (std::size_t i = 0; i < x.size(); ++i) sum += x[i] * y[i];
     return sum;
 }
-
 inline double norm2(const Vector& x) { return std::sqrt(dot(x, x)); }
-
 inline void axpy(double alpha, const Vector& x, Vector& y) {
     for (std::size_t i = 0; i < x.size(); ++i) y[i] += alpha * x[i];
 }
-
 struct Triplet {
     int row;
     int column;
     double value;
 };
-
 class SparseMatrix {
 public:
     SparseMatrix() = default;
@@ -36,14 +28,12 @@ public:
                  double drop_tolerance = 0.0);
     SparseMatrix(int rows, int cols, std::vector<int> row_ptr,
                  std::vector<int> col_idx, std::vector<double> values);
-
     int rows() const { return rows_; }
     int cols() const { return cols_; }
     std::size_t nnz() const { return values_.size(); }
     const std::vector<int>& row_ptr() const { return row_ptr_; }
     const std::vector<int>& col_idx() const { return col_idx_; }
     const std::vector<double>& values() const { return values_; }
-
     void multiply(const Vector& x, Vector& result,
                   int thread_count = 1) const;
     void multiply_add(double alpha, const Vector& x, Vector& result,
@@ -53,7 +43,6 @@ public:
                             int thread_count = 1) const;
     SparseMatrix transpose(int thread_count = 1) const;
     Vector diagonal() const;
-
 private:
     int rows_ = 0;
     int cols_ = 0;
@@ -61,7 +50,6 @@ private:
     std::vector<int> col_idx_;
     std::vector<double> values_;
 };
-
 class SparseCholesky {
 public:
     SparseCholesky() = default;
@@ -69,7 +57,6 @@ public:
         const SparseMatrix& matrix,
         const std::vector<int>& new_to_old_permutation);
     void solve(const Vector& rhs, Vector& result, Vector& work) const;
-
 private:
     int n_ = 0;
     std::vector<int> new_to_old_;
@@ -77,7 +64,6 @@ private:
     std::vector<int> row_idx_;
     std::vector<double> values_;
 };
-
 inline SparseMatrix::SparseMatrix(
     int rows, int cols, const std::vector<Triplet>& triplets,
     double drop_tolerance)
@@ -86,7 +72,6 @@ inline SparseMatrix::SparseMatrix(
     for (const auto& item : triplets) {
         ++counts[static_cast<std::size_t>(item.row)];
     }
-
     std::vector<int> offsets(static_cast<std::size_t>(rows_) + 1U, 0);
     for (int row = 0; row < rows_; ++row) {
         offsets[static_cast<std::size_t>(row) + 1U] =
@@ -99,7 +84,6 @@ inline SparseMatrix::SparseMatrix(
         const int position = next[static_cast<std::size_t>(item.row)]++;
         entries[static_cast<std::size_t>(position)] = {item.column, item.value};
     }
-
     row_ptr_.assign(static_cast<std::size_t>(rows_) + 1U, 0);
     col_idx_.reserve(triplets.size());
     values_.reserve(triplets.size());
@@ -125,13 +109,11 @@ inline SparseMatrix::SparseMatrix(
             static_cast<int>(values_.size());
     }
 }
-
 inline SparseMatrix::SparseMatrix(
     int rows, int cols, std::vector<int> row_ptr,
     std::vector<int> col_idx, std::vector<double> values)
     : rows_(rows), cols_(cols), row_ptr_(std::move(row_ptr)),
       col_idx_(std::move(col_idx)), values_(std::move(values)) {}
-
 inline void SparseMatrix::multiply(const Vector& x, Vector& result,
                                    int thread_count) const {
     result.resize(static_cast<std::size_t>(rows_));
@@ -159,7 +141,6 @@ inline void SparseMatrix::multiply(const Vector& x, Vector& result,
         multiply_row(row);
     }
 }
-
 inline void SparseMatrix::multiply_add(double alpha, const Vector& x,
                                        Vector& result, int thread_count) const {
     const auto multiply_add_row = [&](int row) {
@@ -186,7 +167,6 @@ inline void SparseMatrix::multiply_add(double alpha, const Vector& x,
         multiply_add_row(row);
     }
 }
-
 inline double SparseMatrix::residual_squared(
     const Vector& x, const Vector& rhs, Vector& residual,
     int thread_count) const {
@@ -231,7 +211,6 @@ inline double SparseMatrix::residual_squared(
     }
     return squared_norm;
 }
-
 inline SparseMatrix SparseMatrix::transpose(int thread_count) const {
 #if defined(_OPENMP)
     if (thread_count > 1 && values_.size() >= 50000U) {
@@ -255,7 +234,6 @@ inline SparseMatrix SparseMatrix::transpose(int thread_count) const {
                 }
             }
         }
-
         std::vector<int> transpose_row_ptr(
             static_cast<std::size_t>(cols_) + 1U, 0);
         for (int col = 0; col < cols_; ++col) {
@@ -269,7 +247,6 @@ inline SparseMatrix SparseMatrix::transpose(int thread_count) const {
             transpose_row_ptr[static_cast<std::size_t>(col) + 1U] =
                 transpose_row_ptr[static_cast<std::size_t>(col)] + count;
         }
-
         std::vector<int> worker_next(count_size, 0);
         for (int col = 0; col < cols_; ++col) {
             int next = transpose_row_ptr[static_cast<std::size_t>(col)];
@@ -282,7 +259,6 @@ inline SparseMatrix SparseMatrix::transpose(int thread_count) const {
                 next += local_counts[offset];
             }
         }
-
         std::vector<int> transpose_col_idx(values_.size());
         std::vector<double> transpose_values(values_.size());
 #pragma omp parallel for schedule(static) num_threads(workers)
@@ -320,7 +296,6 @@ inline SparseMatrix SparseMatrix::transpose(int thread_count) const {
         transpose_row_ptr[static_cast<std::size_t>(row) + 1U] +=
             transpose_row_ptr[static_cast<std::size_t>(row)];
     }
-
     std::vector<int> next = transpose_row_ptr;
     std::vector<int> transpose_col_idx(values_.size());
     std::vector<double> transpose_values(values_.size());
@@ -338,7 +313,6 @@ inline SparseMatrix SparseMatrix::transpose(int thread_count) const {
                         std::move(transpose_col_idx),
                         std::move(transpose_values));
 }
-
 inline Vector SparseMatrix::diagonal() const {
     const int n = std::min(rows_, cols_);
     Vector result(static_cast<std::size_t>(n), 0.0);
@@ -353,19 +327,16 @@ inline Vector SparseMatrix::diagonal() const {
     }
     return result;
 }
-
 inline void SparseCholesky::factorize(
     const SparseMatrix& matrix,
     const std::vector<int>& new_to_old_permutation) {
     n_ = matrix.rows();
     new_to_old_ = new_to_old_permutation;
-
     std::vector<int> old_to_new(static_cast<std::size_t>(n_), -1);
     for (int index = 0; index < n_; ++index) {
         const int old = new_to_old_[static_cast<std::size_t>(index)];
         old_to_new[static_cast<std::size_t>(old)] = index;
     }
-
     std::vector<int> c_column_ptr(static_cast<std::size_t>(n_) + 1U, 0);
     for (int old_row = 0; old_row < n_; ++old_row) {
         const int new_row = old_to_new[static_cast<std::size_t>(old_row)];
@@ -422,7 +393,6 @@ inline void SparseCholesky::factorize(
                 entries[static_cast<std::size_t>(offset)].second;
         }
     }
-
     std::vector<int> parent(static_cast<std::size_t>(n_), -1);
     std::vector<int> ancestor(static_cast<std::size_t>(n_), -1);
     for (int col = 0; col < n_; ++col) {
@@ -439,7 +409,6 @@ inline void SparseCholesky::factorize(
             }
         }
     }
-
     std::vector<std::vector<std::pair<int, double>>> lower_columns(
         static_cast<std::size_t>(n_));
     std::vector<double> work(static_cast<std::size_t>(n_), 0.0);
@@ -447,7 +416,6 @@ inline void SparseCholesky::factorize(
     std::vector<int> stack(static_cast<std::size_t>(n_));
     std::vector<int> path;
     path.reserve(static_cast<std::size_t>(n_));
-
     std::vector<int> lower_column_sizes(
         static_cast<std::size_t>(n_), 1);
     for (int col = 0; col < n_; ++col) {
@@ -481,7 +449,6 @@ inline void SparseCholesky::factorize(
                 lower_column_sizes[static_cast<std::size_t>(col)]));
     }
     std::fill(visited.begin(), visited.end(), -1);
-
     for (int col = 0; col < n_; ++col) {
         int top = n_;
         visited[static_cast<std::size_t>(col)] = col;
@@ -501,7 +468,6 @@ inline void SparseCholesky::factorize(
                 path.pop_back();
             }
         }
-
         for (int position = c_column_ptr[static_cast<std::size_t>(col)];
              position < c_column_ptr[static_cast<std::size_t>(col) + 1U];
              ++position) {
@@ -536,7 +502,6 @@ inline void SparseCholesky::factorize(
         lower_columns[static_cast<std::size_t>(col)].emplace_back(
             col, std::sqrt(diagonal));
     }
-
     column_ptr_.assign(static_cast<std::size_t>(n_) + 1U, 0);
     for (int col = 0; col < n_; ++col) {
         column_ptr_[static_cast<std::size_t>(col) + 1U] =
@@ -554,7 +519,6 @@ inline void SparseCholesky::factorize(
         }
     }
 }
-
 inline void SparseCholesky::solve(const Vector& rhs, Vector& result,
                                   Vector& work) const {
     work.resize(static_cast<std::size_t>(n_));
@@ -589,7 +553,6 @@ inline void SparseCholesky::solve(const Vector& rhs, Vector& result,
         work[static_cast<std::size_t>(col)] /=
             values_[static_cast<std::size_t>(begin)];
     }
-
     result.resize(static_cast<std::size_t>(n_));
     for (int index = 0; index < n_; ++index) {
         result[static_cast<std::size_t>(
@@ -597,5 +560,4 @@ inline void SparseCholesky::solve(const Vector& rhs, Vector& result,
             work[static_cast<std::size_t>(index)];
     }
 }
-
 }
